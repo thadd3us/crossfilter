@@ -37,8 +37,12 @@ A Python web application for viewing and analyzing large collections of GPX file
 # Install dependencies using uv
 uv sync
 
+# Install dev dependencies for testing
+uv sync --extra dev
+
 # Or using pip
 pip install -e .
+pip install -e .[dev]
 ```
 
 ## Usage
@@ -57,11 +61,14 @@ Then open http://localhost:8000 in your browser.
 
 ### Testing
 ```bash
+# Install dev dependencies first
+uv sync --extra dev
+
 # Run all tests
-uv run pytest
+uv run --extra dev pytest
 
 # Run with coverage
-uv run pytest --cov=gpx_viewer
+uv run --extra dev pytest --cov=gpx_viewer
 ```
 
 ### Project Structure

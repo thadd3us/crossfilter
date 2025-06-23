@@ -1,1 +1,4 @@
 .claude/
+.coverage
+tests/__pycache__/
+

@@ -5,7 +5,6 @@ import subprocess
 import time
 from contextlib import closing
 
-import pytest
 import requests
 
 
@@ -38,13 +37,13 @@ def test_cli_server_startup_and_html_content() -> None:
     """Test that the CLI starts the server and serves HTML with 'Crossfilter' in title."""
     port = find_free_port()
     host = "127.0.0.1"
-    
+
     # Start the server process
     process = subprocess.Popen([
-        "uv", "run", "python", "-m", "gpx_viewer.main", "serve", 
+        "uv", "run", "python", "-m", "gpx_viewer.main", "serve",
         "--port", str(port), "--host", host
     ], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    
+
     try:
         # Wait for server to start
         server_started = wait_for_server(host, port, timeout=10.0)
@@ -53,22 +52,22 @@ def test_cli_server_startup_and_html_content() -> None:
             process.wait()
             stderr = process.stderr.read().decode('utf-8') if process.stderr else ''
             raise AssertionError(f"Server failed to start on {host}:{port}, {stderr=}")
-        
+
         # Give server a moment to fully initialize
         time.sleep(0.5)
-        
+
         # Make request to the main page
         response = requests.get(f"http://{host}:{port}/", timeout=5)
         assert response.status_code == 200
-        
+
         # Check that the HTML contains "Crossfilter" in the title
         html_content = response.text
         assert "Crossfilter" in html_content, f"'Crossfilter' not found in HTML content: {html_content}"
-        
+
         # Additional checks for expected content
         assert "<title>" in html_content
         assert "GPX Viewer" in html_content
-        
+
     finally:
         # Clean up: terminate the server process
         process.terminate()
@@ -84,7 +83,7 @@ def test_cli_help_command():
     result = subprocess.run([
         "uv", "run", "python", "-m", "gpx_viewer.main", "--help"
     ], capture_output=True, text=True)
-    
+
     assert result.returncode == 0
     assert "GPX Viewer" in result.stdout
     assert "serve" in result.stdout
@@ -95,7 +94,7 @@ def test_serve_command_help():
     result = subprocess.run([
         "uv", "run", "python", "-m", "gpx_viewer.main", "serve", "--help"
     ], capture_output=True, text=True)
-    
+
     assert result.returncode == 0
     assert "--port" in result.stdout
     assert "--host" in result.stdout

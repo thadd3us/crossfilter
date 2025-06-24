@@ -41,7 +41,7 @@ def test_cli_server_startup_and_html_content() -> None:
     
     # Start the server process
     process = subprocess.Popen([
-        "uv", "run", "python", "-m", "gpx_viewer.main", "serve", 
+        "uv", "run", "python", "-m", "crossfilter.main", "serve", 
         "--port", str(port), "--host", host
     ], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     
@@ -82,7 +82,7 @@ def test_cli_server_startup_and_html_content() -> None:
 def test_cli_help_command():
     """Test that the CLI help command works."""
     result = subprocess.run([
-        "uv", "run", "python", "-m", "gpx_viewer.main", "--help"
+        "uv", "run", "python", "-m", "crossfilter.main", "--help"
     ], capture_output=True, text=True)
     
     assert result.returncode == 0
@@ -93,7 +93,7 @@ def test_cli_help_command():
 def test_serve_command_help():
     """Test that the serve command help works."""
     result = subprocess.run([
-        "uv", "run", "python", "-m", "gpx_viewer.main", "serve", "--help"
+        "uv", "run", "python", "-m", "crossfilter.main", "serve", "--help"
     ], capture_output=True, text=True)
     
     assert result.returncode == 0

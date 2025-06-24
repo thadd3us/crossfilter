@@ -45,10 +45,10 @@ pip install -e .
 
 ```bash
 # Start the development server
-uv run python -m gpx_viewer.main
+uv run python -m crossfilter.main
 
 # Or using uvicorn directly
-uvicorn gpx_viewer.main:app --reload --port 8000
+uvicorn crossfilter.main:app --reload --port 8000
 ```
 
 Then open http://localhost:8000 in your browser.
@@ -61,12 +61,12 @@ Then open http://localhost:8000 in your browser.
 uv run --extra dev pytest
 
 # Run with coverage
-uv run --extra dev pytest --cov=gpx_viewer
+uv run --extra dev pytest --cov=crossfilter
 ```
 
 ### Project Structure
 ```
-gpx_viewer/
+crossfilter/
 ├── core/           # Core data processing and indexing
 ├── visualization/  # Plotting and rendering components
 ├── web/           # FastAPI web server and routes

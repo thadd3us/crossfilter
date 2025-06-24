@@ -64,7 +64,7 @@ def serve(
     typer.echo(f"Starting Crossfilter on http://{host}:{port}")
     
     uvicorn.run(
-        "gpx_viewer.main:app",
+        "crossfilter.main:app",
         host=host,
         port=port,
         reload=reload,

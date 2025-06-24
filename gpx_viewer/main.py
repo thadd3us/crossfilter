@@ -36,7 +36,16 @@ async def root() -> str:
 cli = typer.Typer(help="GPX Viewer - Interactive GPX file viewer with cross-filtering")
 
 
-@cli.command()
+@cli.callback(invoke_without_command=True)
+def main_callback(ctx: typer.Context) -> None:
+    """GPX Viewer - Interactive GPX file viewer with cross-filtering."""
+    if ctx.invoked_subcommand is None:
+        # If no subcommand is provided, show help
+        typer.echo(ctx.get_help())
+        raise typer.Exit(0)
+
+
+@cli.command("serve")
 def serve(
     port: int = typer.Option(8000, "--port", "-p", help="Port to serve on"),
     host: str = typer.Option("127.0.0.1", "--host", "-h", help="Host to bind to"),

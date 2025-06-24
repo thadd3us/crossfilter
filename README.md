@@ -1,6 +1,6 @@
-# GPX Viewer with Cross-Filtering
+# Crossfilter
 
-A Python web application for viewing and analyzing large collections of GPX files with interactive geospatial and temporal filtering capabilities.
+A Python web application for interactive crossfiltering and analysis of geospatial and temporal data, with support for large collections of GPX files and other datasets.
 
 ## Features
 

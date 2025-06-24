@@ -67,7 +67,7 @@ def test_cli_server_startup_and_html_content() -> None:
         
         # Additional checks for expected content
         assert "<title>" in html_content
-        assert "GPX Viewer" in html_content
+        assert "Crossfilter" in html_content
         
     finally:
         # Clean up: terminate the server process
@@ -86,7 +86,7 @@ def test_cli_help_command():
     ], capture_output=True, text=True)
     
     assert result.returncode == 0
-    assert "GPX Viewer" in result.stdout
+    assert "Crossfilter" in result.stdout
     assert "serve" in result.stdout
 
 

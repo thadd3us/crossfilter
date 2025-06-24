@@ -3,11 +3,11 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "gpx-viewer"
+name = "crossfilter"
 version = "0.1.0"
-description = "Interactive GPX file viewer with cross-filtering capabilities"
+description = "Interactive crossfilter application for geospatial and temporal data analysis"
 authors = [
-    {name = "GPX Viewer Team"}
+    {name = "Crossfilter Team"}
 ]
 license = {text = "MIT"}
 readme = "README.md"
@@ -43,7 +43,7 @@ dev = [
 ]
 
 [project.scripts]
-gpx-viewer = "gpx_viewer.main:main"
+crossfilter = "gpx_viewer.main:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["gpx_viewer"]

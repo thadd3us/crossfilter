@@ -1,4 +1,4 @@
-"""Main CLI application for GPX Viewer."""
+"""Main CLI application for Crossfilter."""
 
 import asyncio
 import signal
@@ -11,7 +11,7 @@ from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
 
 
-app = FastAPI(title="GPX Viewer", description="Interactive GPX file viewer with cross-filtering capabilities")
+app = FastAPI(title="Crossfilter", description="Interactive crossfilter application for geospatial and temporal data analysis")
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -21,24 +21,24 @@ async def root() -> str:
     <!DOCTYPE html>
     <html>
     <head>
-        <title>GPX Viewer - Crossfilter Interactive Maps</title>
+        <title>Crossfilter - Interactive Data Analysis</title>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
     </head>
     <body>
-        <h1>GPX Viewer</h1>
-        <p>Interactive GPX file viewer with Crossfilter capabilities</p>
+        <h1>Crossfilter</h1>
+        <p>Interactive crossfilter application for geospatial and temporal data analysis</p>
     </body>
     </html>
     """
 
 
-cli = typer.Typer(help="GPX Viewer - Interactive GPX file viewer with cross-filtering")
+cli = typer.Typer(help="Crossfilter - Interactive crossfilter application for geospatial and temporal data analysis")
 
 
 @cli.callback(invoke_without_command=True)
 def main_callback(ctx: typer.Context) -> None:
-    """GPX Viewer - Interactive GPX file viewer with cross-filtering."""
+    """Crossfilter - Interactive crossfilter application for geospatial and temporal data analysis."""
     if ctx.invoked_subcommand is None:
         # If no subcommand is provided, show help
         typer.echo(ctx.get_help())
@@ -51,17 +51,17 @@ def serve(
     host: str = typer.Option("127.0.0.1", "--host", "-h", help="Host to bind to"),
     reload: bool = typer.Option(False, "--reload", help="Enable auto-reload"),
 ) -> None:
-    """Start the GPX Viewer web application."""
+    """Start the Crossfilter web application."""
     
     def signal_handler(signum: int, frame) -> None:
         """Handle shutdown signals gracefully."""
-        typer.echo("Shutting down GPX Viewer...")
+        typer.echo("Shutting down Crossfilter...")
         sys.exit(0)
     
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
     
-    typer.echo(f"Starting GPX Viewer on http://{host}:{port}")
+    typer.echo(f"Starting Crossfilter on http://{host}:{port}")
     
     uvicorn.run(
         "gpx_viewer.main:app",

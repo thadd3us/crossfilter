@@ -1,6 +1,5 @@
 """Tests for the main CLI application."""
 
-import asyncio
 import socket
 import subprocess
 import time
@@ -35,7 +34,7 @@ def wait_for_server(host: str, port: int, timeout: float = 10.0) -> bool:
     return False
 
 
-def test_cli_server_startup_and_html_content():
+def test_cli_server_startup_and_html_content() -> None:
     """Test that the CLI starts the server and serves HTML with 'Crossfilter' in title."""
     port = find_free_port()
     host = "127.0.0.1"
@@ -49,7 +48,11 @@ def test_cli_server_startup_and_html_content():
     try:
         # Wait for server to start
         server_started = wait_for_server(host, port, timeout=10.0)
-        assert server_started, f"Server failed to start on {host}:{port}"
+        if not server_started:
+            process.terminate()
+            process.wait()
+            stderr = process.stderr.read().decode('utf-8') if process.stderr else ''
+            raise AssertionError(f"Server failed to start on {host}:{port}, {stderr=}")
         
         # Give server a moment to fully initialize
         time.sleep(0.5)

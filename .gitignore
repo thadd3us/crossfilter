@@ -1,1 +1,5 @@
 .claude/
+gpx_viewer/__pycache__/
+tests/__pycache__/
+.coverage
+coverage.xml

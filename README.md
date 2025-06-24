@@ -58,10 +58,10 @@ Then open http://localhost:8000 in your browser.
 ### Testing
 ```bash
 # Run all tests
-uv run pytest
+uv run --extra dev pytest
 
 # Run with coverage
-uv run pytest --cov=gpx_viewer
+uv run --extra dev pytest --cov=gpx_viewer
 ```
 
 ### Project Structure

@@ -3,6 +3,7 @@
 import asyncio
 import signal
 import sys
+from pathlib import Path
 from typing import Optional
 
 import typer
@@ -11,6 +12,7 @@ from fastapi import FastAPI
 from fastapi.responses import HTMLResponse, JSONResponse
 
 from crossfilter.core.session_state import SessionState
+from crossfilter.core.data_schema import load_jsonl_to_dataframe
 
 
 app = FastAPI(title="Crossfilter", description="Interactive crossfilter application for geospatial and temporal data analysis")
@@ -61,8 +63,24 @@ def serve(
     port: int = typer.Option(8000, "--port", "-p", help="Port to serve on"),
     host: str = typer.Option("127.0.0.1", "--host", "-h", help="Host to bind to"),
     reload: bool = typer.Option(False, "--reload", help="Enable auto-reload"),
+    preload_jsonl: Optional[Path] = typer.Option(None, "--preload-jsonl", help="Path to JSONL file to preload into session state"),
 ) -> None:
     """Start the Crossfilter web application."""
+    
+    # Preload data if JSONL file is provided
+    if preload_jsonl:
+        if not preload_jsonl.exists():
+            typer.echo(f"Error: JSONL file '{preload_jsonl}' does not exist.", err=True)
+            raise typer.Exit(1)
+        
+        try:
+            typer.echo(f"Loading data from {preload_jsonl}...")
+            df = load_jsonl_to_dataframe(preload_jsonl)
+            session_state.load_dataframe(df)
+            typer.echo(f"Successfully loaded {len(df)} records into session state.")
+        except Exception as e:
+            typer.echo(f"Error loading JSONL file: {e}", err=True)
+            raise typer.Exit(1)
     
     def signal_handler(signum: int, frame) -> None:
         """Handle shutdown signals gracefully."""

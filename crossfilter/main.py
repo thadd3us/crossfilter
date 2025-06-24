@@ -8,10 +8,15 @@ from typing import Optional
 import typer
 import uvicorn
 from fastapi import FastAPI
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
+
+from crossfilter.core.session_state import SessionState
 
 
 app = FastAPI(title="Crossfilter", description="Interactive crossfilter application for geospatial and temporal data analysis")
+
+# Global session state - single instance for the entire application
+session_state = SessionState()
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -31,6 +36,12 @@ async def root() -> str:
     </body>
     </html>
     """
+
+
+@app.get("/api/session")
+async def get_session_status() -> dict:
+    """Get the current session state status."""
+    return session_state.get_summary()
 
 
 cli = typer.Typer(help="Crossfilter - Interactive crossfilter application for geospatial and temporal data analysis")

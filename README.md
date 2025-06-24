@@ -13,6 +13,23 @@ A Python web application for interactive crossfiltering and analysis of geospati
 
 ## Architecture
 
+### Single-Session Design
+
+Crossfilter uses a **single-session architecture** where each instance of the web server maintains exactly one active session state. This design is inspired by successful local web applications like Jupyter Notebook, ParaView, and VisIt, which run local web servers and use the browser as a rich UI client.
+
+**Key Benefits:**
+- **Simplified State Management**: No need for complex session management, user authentication, or multi-user coordination
+- **Rich Browser UI**: Leverages modern web technologies for interactive visualizations and responsive interfaces
+- **Local Performance**: Direct access to local file system and full computational resources
+- **Familiar Development Stack**: Uses standard web technologies (FastAPI, HTML/CSS/JS) while maintaining desktop-like performance
+
+**Similar Applications:**
+- Jupyter Notebook: Runs local server (typically localhost:8888) with browser-based notebook interface
+- ParaViewWeb: Provides web-based access to ParaView's visualization capabilities
+- VisIt: Supports local client-server mode for interactive scientific visualization
+
+This pattern is ideal for data analysis applications where the primary use case is individual researchers working with their local datasets, similar to how one would use a traditional desktop application but with the flexibility and rich UI capabilities of modern web technologies.
+
 ### Data Processing
 - **GPX parsing**: Extracts trackpoints with coordinates, timestamps, and metadata
 - **Spatial indexing**: H3 hexagonal indexing for efficient spatial queries and aggregation

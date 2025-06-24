@@ -50,6 +50,7 @@ Crossfilter is a Python web application for interactive crossfiltering and analy
 ### Code Style Guidelines:
 1. **No __init__.py Files**: Avoid creating `__init__.py` files - they are unnecessary boilerplate
 2. **Use Absolute Imports**: Always use absolute imports (e.g., `from crossfilter.core.session_state import SessionState`) instead of relative imports
+3. **Avoid Union Types**: Don't use `Union[str, Path]` or similar - pick one type and stick with it. Union types add complexity and additional code paths. Use the most appropriate single type (e.g., `Path` for file paths)
 
 ### Project Structure
 ```

@@ -160,6 +160,7 @@ async def apply_filter(filter_request: FilterRequest) -> Dict[str, Any]:
     
     try:
         # Apply filter based on type
+        # THAD: There should be very few naked strings like this.  These should be enum values.
         if filter_request.operation_type == 'spatial':
             session_state.filter_state.apply_spatial_filter(
                 set(filter_request.uuids),
@@ -180,6 +181,7 @@ async def apply_filter(filter_request: FilterRequest) -> Dict[str, Any]:
             "filter_state": session_state.filter_state.get_summary()
         }
     except Exception as e:
+        # Thad: I'm seeing a linter suggestion here about re-raising
         raise HTTPException(status_code=500, detail=f"Error applying filter: {str(e)}")
 
 
@@ -287,6 +289,7 @@ def serve(
         typer.echo(f"Will load data from {preload_jsonl} during server startup...")
         set_preload_path(preload_jsonl)
     
+    # THAD: Add type annotations to all function arguments.
     def signal_handler(signum: int, frame) -> None:
         """Handle shutdown signals gracefully."""
         typer.echo("Shutting down Crossfilter...")
@@ -298,6 +301,7 @@ def serve(
     typer.echo(f"Starting Crossfilter on http://{host}:{port}")
     
     # THAD: Explain what uvicorn is and why we're using it.
+    # THAD: Is there a way to pass the preload_jsonl object on here?
     uvicorn.run(
         "crossfilter.main:app",
         host=host,

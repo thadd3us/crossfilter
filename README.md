@@ -71,6 +71,11 @@ Then open http://localhost:8000 in your browser.
 
 ### Testing
 ```bash
+# Run once.
+uv run playwright install
+```
+
+```bash
 # Run all tests
 uv run --extra dev pytest
 

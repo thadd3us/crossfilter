@@ -12,7 +12,7 @@ import requests
 def find_free_port() -> int:
     """Find an available port on localhost."""
     with closing(socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as s:
-        s.bind(('', 0))
+        s.bind(("", 0))
         s.listen(1)
         port = s.getsockname()[1]
     return port
@@ -38,37 +38,51 @@ def test_cli_server_startup_and_html_content() -> None:
     """Test that the CLI starts the server and serves HTML with 'Crossfilter' in title."""
     port = find_free_port()
     host = "127.0.0.1"
-    
+
     # Start the server process
-    process = subprocess.Popen([
-        "uv", "run", "python", "-m", "crossfilter.main", "serve", 
-        "--port", str(port), "--host", host
-    ], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    
+    process = subprocess.Popen(
+        [
+            "uv",
+            "run",
+            "python",
+            "-m",
+            "crossfilter.main",
+            "serve",
+            "--port",
+            str(port),
+            "--host",
+            host,
+        ],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+
     try:
         # Wait for server to start
         server_started = wait_for_server(host, port, timeout=10.0)
         if not server_started:
             process.terminate()
             process.wait()
-            stderr = process.stderr.read().decode('utf-8') if process.stderr else ''
+            stderr = process.stderr.read().decode("utf-8") if process.stderr else ""
             raise AssertionError(f"Server failed to start on {host}:{port}, {stderr=}")
-        
+
         # Give server a moment to fully initialize
         time.sleep(0.5)
-        
+
         # Make request to the main page
         response = requests.get(f"http://{host}:{port}/", timeout=5)
         assert response.status_code == 200
-        
+
         # Check that the HTML contains "Crossfilter" in the title
         html_content = response.text
-        assert "Crossfilter" in html_content, f"'Crossfilter' not found in HTML content: {html_content}"
-        
+        assert (
+            "Crossfilter" in html_content
+        ), f"'Crossfilter' not found in HTML content: {html_content}"
+
         # Additional checks for expected content
         assert "<title>" in html_content
         assert "Crossfilter" in html_content
-        
+
     finally:
         # Clean up: terminate the server process
         process.terminate()
@@ -81,10 +95,12 @@ def test_cli_server_startup_and_html_content() -> None:
 
 def test_cli_help_command():
     """Test that the CLI help command works."""
-    result = subprocess.run([
-        "uv", "run", "python", "-m", "crossfilter.main", "--help"
-    ], capture_output=True, text=True)
-    
+    result = subprocess.run(
+        ["uv", "run", "python", "-m", "crossfilter.main", "--help"],
+        capture_output=True,
+        text=True,
+    )
+
     assert result.returncode == 0
     assert "Crossfilter" in result.stdout
     assert "serve" in result.stdout
@@ -92,10 +108,12 @@ def test_cli_help_command():
 
 def test_serve_command_help():
     """Test that the serve command help works."""
-    result = subprocess.run([
-        "uv", "run", "python", "-m", "crossfilter.main", "serve", "--help"
-    ], capture_output=True, text=True)
-    
+    result = subprocess.run(
+        ["uv", "run", "python", "-m", "crossfilter.main", "serve", "--help"],
+        capture_output=True,
+        text=True,
+    )
+
     assert result.returncode == 0
     assert "--port" in result.stdout
     assert "--host" in result.stdout
@@ -106,35 +124,52 @@ def test_cli_server_with_preload_jsonl(snapshot) -> None:
     port = find_free_port()
     host = "127.0.0.1"
     jsonl_path = "test_data/sample_100.jsonl"
-    
+
     # Start the server process with preload
-    process = subprocess.Popen([
-        "uv", "run", "python", "-m", "crossfilter.main", "serve", 
-        "--port", str(port), "--host", host, "--preload-jsonl", jsonl_path
-    ], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-    
+    process = subprocess.Popen(
+        [
+            "uv",
+            "run",
+            "python",
+            "-m",
+            "crossfilter.main",
+            "serve",
+            "--port",
+            str(port),
+            "--host",
+            host,
+            "--preload_jsonl",
+            jsonl_path,
+        ],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+
     try:
         # Wait for server to start
         server_started = wait_for_server(host, port, timeout=15.0)
         if not server_started:
             process.terminate()
             process.wait()
-            stderr = process.stderr.read() if process.stderr else ''
-            stdout = process.stdout.read() if process.stdout else ''
-            raise AssertionError(f"Server failed to start on {host}:{port}, stderr={stderr}, stdout={stdout}")
-        
+            stderr = process.stderr.read() if process.stderr else ""
+            stdout = process.stdout.read() if process.stdout else ""
+            raise AssertionError(
+                f"Server failed to start on {host}:{port}, stderr={stderr}, stdout={stdout}"
+            )
+
         # Give server a moment to fully initialize
         time.sleep(1.0)
-        
+
         # Make request to the session API to verify data was loaded
         response = requests.get(f"http://{host}:{port}/api/session", timeout=5)
         assert response.status_code == 200
-        
+
         session_data = response.json()
-        
+
         # Use snapshot to verify the complete session state
         assert session_data == snapshot
-        
+
     finally:
         # Clean up: terminate the server process
         process.terminate()

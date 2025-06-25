@@ -4,7 +4,7 @@ import asyncio
 import multiprocessing
 import time
 from pathlib import Path
-from typing import Generator
+from typing import AsyncGenerator, Generator
 
 import pytest
 import pytest_asyncio
@@ -97,15 +97,10 @@ def sample_data_loaded(test_server: TestServer) -> bool:
 
 
 @pytest_asyncio.fixture(scope="session")
-async def browser() -> Generator[Browser, None, None]:
+async def browser() -> AsyncGenerator[Browser, None]:
     """Pytest fixture to manage browser lifecycle."""
     async with async_playwright() as p:
-        try:
-            browser = await p.chromium.launch(headless=True)
-        except Exception as e:
-            pytest.skip(
-                f"Browser could not be launched (missing system dependencies): {e}"
-            )
+        browser = await p.chromium.launch(headless=True)
         try:
             yield browser
         finally:

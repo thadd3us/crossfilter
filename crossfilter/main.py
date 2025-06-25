@@ -22,7 +22,7 @@ from crossfilter.visualization.plots import (
     create_temporal_cdf,
     create_kepler_config,
     prepare_kepler_data,
-    create_fallback_scatter_geo
+    create_fallback_scatter_geo,
 )
 
 
@@ -32,6 +32,7 @@ _session_state_instance = SessionState()
 
 class OperationType(Enum):
     """Valid operation types for filters."""
+
     SPATIAL = "spatial"
     TEMPORAL = "temporal"
 
@@ -41,7 +42,10 @@ def get_session_state() -> SessionState:
     return _session_state_instance
 
 
-app = FastAPI(title="Crossfilter", description="Interactive crossfilter application for geospatial and temporal data analysis")
+app = FastAPI(
+    title="Crossfilter",
+    description="Interactive crossfilter application for geospatial and temporal data analysis",
+)
 
 # Mount static files
 static_path = Path(__file__).parent / "static"
@@ -50,25 +54,25 @@ if static_path.exists():
 
 
 @app.post("/api/data/load")
-async def load_data_endpoint(file_path: str, session_state: SessionState = Depends(get_session_state)) -> Dict[str, Any]:
+async def load_data_endpoint(
+    file_path: str, session_state: SessionState = Depends(get_session_state)
+) -> Dict[str, Any]:
     """Load data from a JSONL file into the session state."""
     try:
         jsonl_path = Path(file_path)
         if not jsonl_path.exists():
             raise HTTPException(status_code=404, detail=f"File not found: {file_path}")
-        
+
         df = load_jsonl_to_dataframe(jsonl_path)
         session_state.load_dataframe(df)
-        
+
         return {
             "success": True,
             "message": f"Successfully loaded {len(df)} records",
-            "session_state": session_state.get_summary()
+            "session_state": session_state.get_summary(),
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error loading data: {str(e)}")
-
-
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -96,7 +100,9 @@ async def root() -> str:
 
 
 @app.get("/api/session")
-async def get_session_status(session_state: SessionState = Depends(get_session_state)) -> dict:
+async def get_session_status(
+    session_state: SessionState = Depends(get_session_state),
+) -> dict:
     """Get the current session state status."""
     summary = session_state.get_summary()
     print(f"DEBUG: Session status requested - has_data: {session_state.has_data()}")
@@ -106,6 +112,7 @@ async def get_session_status(session_state: SessionState = Depends(get_session_s
 # Pydantic models for API requests
 class FilterRequest(BaseModel):
     """Request model for applying filters."""
+
     uuids: List[int]
     operation_type: OperationType  # 'spatial' or 'temporal'
     description: str
@@ -113,161 +120,200 @@ class FilterRequest(BaseModel):
 
 
 @app.get("/api/plots/spatial")
-async def get_spatial_plot_data(max_groups: int = Query(100000, ge=1, le=1000000), session_state: SessionState = Depends(get_session_state)) -> Dict[str, Any]:
+async def get_spatial_plot_data(
+    max_groups: int = Query(100000, ge=1, le=1000000),
+    session_state: SessionState = Depends(get_session_state),
+) -> Dict[str, Any]:
     """Get data for the spatial heatmap plot."""
     if not session_state.has_data():
         raise HTTPException(status_code=404, detail="No data loaded")
-    
+
     try:
         # Get aggregated spatial data
         spatial_data = session_state.get_spatial_aggregation(max_groups)
-        
+
         # Prepare data and config for Kepler.gl
         kepler_data = prepare_kepler_data(spatial_data)
         kepler_config = create_kepler_config(spatial_data)
-        
+
         # Also create fallback Plotly plot
         plotly_plot = create_fallback_scatter_geo(spatial_data)
-        
+
         return {
             "kepler_data": kepler_data,
             "kepler_config": kepler_config,
             "plotly_fallback": plotly_plot,
-            "data_type": "aggregated" if 'count' in spatial_data.columns else "individual",
-            "point_count": len(spatial_data)
+            "data_type": (
+                "aggregated" if "count" in spatial_data.columns else "individual"
+            ),
+            "point_count": len(spatial_data),
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error generating spatial plot: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Error generating spatial plot: {str(e)}"
+        )
 
 
 @app.get("/api/plots/temporal")
-async def get_temporal_plot_data(max_groups: int = Query(100000, ge=1, le=1000000), session_state: SessionState = Depends(get_session_state)) -> Dict[str, Any]:
+async def get_temporal_plot_data(
+    max_groups: int = Query(100000, ge=1, le=1000000),
+    session_state: SessionState = Depends(get_session_state),
+) -> Dict[str, Any]:
     """Get data for the temporal CDF plot."""
     if not session_state.has_data():
         raise HTTPException(status_code=404, detail="No data loaded")
-    
+
     try:
         # Get aggregated temporal data
         temporal_data = session_state.get_temporal_aggregation(max_groups)
-        
+
         # Create Plotly CDF plot
         plotly_plot = create_temporal_cdf(temporal_data)
-        
+
         return {
             "plotly_plot": plotly_plot,
-            "data_type": "aggregated" if 'count' in temporal_data.columns else "individual", 
-            "point_count": len(temporal_data)
+            "data_type": (
+                "aggregated" if "count" in temporal_data.columns else "individual"
+            ),
+            "point_count": len(temporal_data),
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error generating temporal plot: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Error generating temporal plot: {str(e)}"
+        )
 
 
 @app.post("/api/filters/apply")
-async def apply_filter(filter_request: FilterRequest, session_state: SessionState = Depends(get_session_state)) -> Dict[str, Any]:
+async def apply_filter(
+    filter_request: FilterRequest,
+    session_state: SessionState = Depends(get_session_state),
+) -> Dict[str, Any]:
     """Apply a spatial or temporal filter."""
     if not session_state.has_data():
         raise HTTPException(status_code=404, detail="No data loaded")
-    
+
     try:
         # Apply filter based on type
         if filter_request.operation_type == OperationType.SPATIAL:
             session_state.filter_state.apply_spatial_filter(
                 set(filter_request.uuids),
                 filter_request.description,
-                filter_request.metadata
+                filter_request.metadata,
             )
         elif filter_request.operation_type == OperationType.TEMPORAL:
             session_state.filter_state.apply_temporal_filter(
                 set(filter_request.uuids),
                 filter_request.description,
-                filter_request.metadata
+                filter_request.metadata,
             )
         else:
-            raise HTTPException(status_code=400, detail="Invalid operation_type. Must be 'spatial' or 'temporal'")
-        
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid operation_type. Must be 'spatial' or 'temporal'",
+            )
+
         return {
             "success": True,
-            "filter_state": session_state.filter_state.get_summary()
+            "filter_state": session_state.filter_state.get_summary(),
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error applying filter: {str(e)}") from e
+        raise HTTPException(
+            status_code=500, detail=f"Error applying filter: {str(e)}"
+        ) from e
 
 
 @app.post("/api/filters/intersect")
-async def intersect_filter(filter_request: FilterRequest, session_state: SessionState = Depends(get_session_state)) -> Dict[str, Any]:
+async def intersect_filter(
+    filter_request: FilterRequest,
+    session_state: SessionState = Depends(get_session_state),
+) -> Dict[str, Any]:
     """Intersect current filter with new selection."""
     if not session_state.has_data():
         raise HTTPException(status_code=404, detail="No data loaded")
-    
+
     try:
         session_state.filter_state.intersect_with_filter(
             set(filter_request.uuids),
             filter_request.operation_type.value,
             filter_request.description,
-            filter_request.metadata
+            filter_request.metadata,
         )
-        
+
         return {
             "success": True,
-            "filter_state": session_state.filter_state.get_summary()
+            "filter_state": session_state.filter_state.get_summary(),
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error intersecting filter: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Error intersecting filter: {str(e)}"
+        )
 
 
 @app.post("/api/filters/reset")
-async def reset_filters(session_state: SessionState = Depends(get_session_state)) -> Dict[str, Any]:
+async def reset_filters(
+    session_state: SessionState = Depends(get_session_state),
+) -> Dict[str, Any]:
     """Reset all filters to show all data."""
     if not session_state.has_data():
         raise HTTPException(status_code=404, detail="No data loaded")
-    
+
     try:
         session_state.filter_state.reset_filters()
-        
+
         return {
             "success": True,
-            "filter_state": session_state.filter_state.get_summary()
+            "filter_state": session_state.filter_state.get_summary(),
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error resetting filters: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Error resetting filters: {str(e)}"
+        )
 
 
 @app.post("/api/filters/undo")
-async def undo_filter(session_state: SessionState = Depends(get_session_state)) -> Dict[str, Any]:
+async def undo_filter(
+    session_state: SessionState = Depends(get_session_state),
+) -> Dict[str, Any]:
     """Undo the last filter operation."""
     if not session_state.has_data():
         raise HTTPException(status_code=404, detail="No data loaded")
-    
+
     try:
         success = session_state.filter_state.undo()
-        
+
         return {
             "success": success,
             "filter_state": session_state.filter_state.get_summary(),
-            "message": "Filter undone" if success else "No operations to undo"
+            "message": "Filter undone" if success else "No operations to undo",
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error undoing filter: {str(e)}")
 
 
 @app.get("/api/filters/history")
-async def get_filter_history(session_state: SessionState = Depends(get_session_state)) -> Dict[str, Any]:
+async def get_filter_history(
+    session_state: SessionState = Depends(get_session_state),
+) -> Dict[str, Any]:
     """Get the filter operation history."""
     if not session_state.has_data():
         raise HTTPException(status_code=404, detail="No data loaded")
-    
+
     try:
         history = session_state.filter_state.get_undo_stack_info()
-        
-        return {
-            "history": history,
-            "can_undo": session_state.filter_state.can_undo
-        }
+
+        return {"history": history, "can_undo": session_state.filter_state.can_undo}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error getting filter history: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Error getting filter history: {str(e)}"
+        )
 
 
-cli = typer.Typer(help="Crossfilter - Interactive crossfilter application for geospatial and temporal data analysis")
+# https://github.com/fastapi/typer/issues/341
+typer.main.get_command_name = lambda name: name
+
+cli = typer.Typer(
+    help="Crossfilter - Interactive crossfilter application for geospatial and temporal data analysis"
+)
 
 
 @cli.callback(invoke_without_command=True)
@@ -281,19 +327,21 @@ def main_callback(ctx: typer.Context) -> None:
 
 @cli.command("serve")
 def serve(
-    port: int = typer.Option(8000, "--port", "-p", help="Port to serve on"),
-    host: str = typer.Option("127.0.0.1", "--host", "-h", help="Host to bind to"),
-    reload: bool = typer.Option(False, "--reload", help="Enable auto-reload"),
-    preload_jsonl: Optional[Path] = typer.Option(None, "--preload-jsonl", help="Path to JSONL file to preload into session state"),
+    port: int = typer.Option(8000, help="Port to serve on"),
+    host: str = typer.Option("127.0.0.1", help="Host to bind to"),
+    reload: bool = typer.Option(False, help="Enable auto-reload"),
+    preload_jsonl: Optional[Path] = typer.Option(
+        None, help="Path to JSONL file to preload into session state"
+    ),
 ) -> None:
     """Start the Crossfilter web application."""
-    
+
     # Handle preload data if provided
     if preload_jsonl:
         if not preload_jsonl.exists():
             typer.echo(f"Error: JSONL file '{preload_jsonl}' does not exist.", err=True)
             raise typer.Exit(1)
-        
+
         typer.echo(f"Loading data from {preload_jsonl}...")
         try:
             df = load_jsonl_to_dataframe(preload_jsonl)
@@ -302,27 +350,23 @@ def serve(
         except Exception as e:
             typer.echo(f"Error loading data: {str(e)}", err=True)
             raise typer.Exit(1)
-    
+
     def signal_handler(signum: int, frame: Any) -> None:
         """Handle shutdown signals gracefully."""
-        typer.echo("Shutting down Crossfilter...")
+        typer.echo(
+            f"Shutting down Crossfilter {signal.Signals(signum).name=}, {frame=}..."
+        )
         sys.exit(0)
-    
+
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
-    
+
     typer.echo(f"Starting Crossfilter on http://{host}:{port}")
-    
+
     # Use Uvicorn as the ASGI server - it's the recommended production server for FastAPI
     # providing high performance async request handling
     # Pass the app instance directly to preserve the session state
-    uvicorn.run(
-        app,
-        host=host,
-        port=port,
-        reload=reload,
-        log_level="info"
-    )
+    uvicorn.run(app, host=host, port=port, reload=reload, log_level="info")
 
 
 def main() -> None:

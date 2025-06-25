@@ -45,7 +45,7 @@ class CrossfilterApp {
                 this.updateStatus(`Loaded ${sessionStatus.shape[0]} records - ${sessionStatus.filter_state.filtered_count} visible`);
                 await this.refreshPlots();
             } else {
-                this.updateStatus('No data loaded. Please start the server with --preload-jsonl option.');
+                this.updateStatus('No data loaded. Please start the server with --preload_jsonl option.');
             }
         } catch (error) {
             this.showError('Failed to initialize application', error);

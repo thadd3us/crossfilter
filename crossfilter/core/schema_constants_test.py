@@ -3,14 +3,15 @@
 import pytest
 from crossfilter.core.schema_constants import (
     SchemaColumns,
-    FilterOperationType, 
+    FilterOperationType,
     QuantizedColumns,
     TemporalLevel,
     DF_ID_COLUMN,
-    get_h3_column_name
+    get_h3_column_name,
 )
 
 
+# THAD: This is a silly test, don't write this kind of test.
 def test_schema_columns_enum() -> None:
     """Test that SchemaColumns enum has expected values."""
     assert SchemaColumns.GPS_LATITUDE == "GPS_LATITUDE"
@@ -20,6 +21,7 @@ def test_schema_columns_enum() -> None:
     assert SchemaColumns.DATA_TYPE == "DATA_TYPE"
 
 
+# THAD: This is a silly test, don't write this kind of test.
 def test_filter_operation_type_enum() -> None:
     """Test that FilterOperationType enum has expected values."""
     assert FilterOperationType.SPATIAL == "spatial"
@@ -27,13 +29,14 @@ def test_filter_operation_type_enum() -> None:
     assert FilterOperationType.RESET == "reset"
 
 
+# THAD: This is a silly test, don't write this kind of test.
 def test_quantized_columns_enum() -> None:
     """Test that QuantizedColumns enum has expected values."""
     # Test specific H3 levels
     assert QuantizedColumns.QUANTIZED_H3_L0 == "QUANTIZED_H3_L0"
     assert QuantizedColumns.QUANTIZED_H3_L7 == "QUANTIZED_H3_L7"
     assert QuantizedColumns.QUANTIZED_H3_L15 == "QUANTIZED_H3_L15"
-    
+
     # Test temporal columns with new DRY approach
     assert QuantizedColumns.QUANTIZED_TIMESTAMP_SECOND == "QUANTIZED_TIMESTAMP_SECOND"
     assert QuantizedColumns.QUANTIZED_TIMESTAMP_MINUTE == "QUANTIZED_TIMESTAMP_MINUTE"
@@ -43,6 +46,7 @@ def test_quantized_columns_enum() -> None:
     assert QuantizedColumns.QUANTIZED_TIMESTAMP_YEAR == "QUANTIZED_TIMESTAMP_YEAR"
 
 
+# THAD: This is a silly test, don't write this kind of test.
 def test_temporal_level_enum() -> None:
     """Test that TemporalLevel enum has expected values."""
     assert TemporalLevel.SECOND == "SECOND"
@@ -53,6 +57,7 @@ def test_temporal_level_enum() -> None:
     assert TemporalLevel.YEAR == "YEAR"
 
 
+# THAD: This is a silly test, don't write this kind of test.
 def test_df_id_column_constant() -> None:
     """Test that DF_ID_COLUMN constant is defined correctly."""
     assert DF_ID_COLUMN == "df_id"
@@ -64,7 +69,7 @@ def test_h3_column_name_construction() -> None:
     assert get_h3_column_name(7) == "QUANTIZED_H3_L7"
     assert get_h3_column_name(0) == "QUANTIZED_H3_L0"
     assert get_h3_column_name(15) == "QUANTIZED_H3_L15"
-    
+
     # Test that it raises for invalid levels
     with pytest.raises(ValueError):
         get_h3_column_name(-1)
@@ -72,6 +77,7 @@ def test_h3_column_name_construction() -> None:
         get_h3_column_name(16)
 
 
+# THAD: This is a silly test, don't write this kind of test.
 def test_temporal_column_name_construction() -> None:
     """Test temporal column name construction."""
     # Test that the temporal columns are constructed using TemporalLevel enum

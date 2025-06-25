@@ -5,6 +5,7 @@ from enum import StrEnum
 
 class SchemaColumns(StrEnum):
     """Column names from the DataSchema."""
+
     UUID_STRING = "UUID_STRING"
     DATA_TYPE = "DATA_TYPE"
     NAME = "NAME"
@@ -14,12 +15,13 @@ class SchemaColumns(StrEnum):
     TIMESTAMP_UTC = "TIMESTAMP_UTC"
     GPS_LATITUDE = "GPS_LATITUDE"
     GPS_LONGITUDE = "GPS_LONGITUDE"
-    RATING_1_TO_5 = "RATING_1_TO_5"
+    RATING_0_TO_5 = "RATING_0_TO_5"
     SIZE_IN_BYTES = "SIZE_IN_BYTES"
 
 
 class FilterOperationType(StrEnum):
     """Types of filter operations."""
+
     SPATIAL = "spatial"
     TEMPORAL = "temporal"
     RESET = "reset"
@@ -27,6 +29,7 @@ class FilterOperationType(StrEnum):
 
 class TemporalLevel(StrEnum):
     """Temporal quantization levels."""
+
     SECOND = "SECOND"
     MINUTE = "MINUTE"
     HOUR = "HOUR"
@@ -35,8 +38,10 @@ class TemporalLevel(StrEnum):
     YEAR = "YEAR"
 
 
+# THAD: Actually, let's get rid of this enum and instead just offer a function that can yield these strings if necessary.  We shouldn't need to identify these individually in code.
 class QuantizedColumns(StrEnum):
     """Quantized column name patterns."""
+
     # H3 hex grid columns at different levels
     QUANTIZED_H3_L0 = "QUANTIZED_H3_L0"
     QUANTIZED_H3_L1 = "QUANTIZED_H3_L1"

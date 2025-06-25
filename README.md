@@ -53,19 +53,16 @@ This pattern is ideal for data analysis applications where the primary use case 
 ```bash
 # Install dependencies using uv
 uv sync
-
-# Or using pip
-pip install -e .
 ```
 
 ## Usage
 
 ```bash
 # Start the development server
-uv run python -m crossfilter.main
+uv run python -m crossfilter.main serve --port 8000 --preload_jsonl 
 
 # Or using uvicorn directly
-uvicorn crossfilter.main:app --reload --port 8000
+uvicorn crossfilter.main:app serve --reload --port 8000
 ```
 
 Then open http://localhost:8000 in your browser.

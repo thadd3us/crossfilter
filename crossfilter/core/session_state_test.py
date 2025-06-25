@@ -65,6 +65,7 @@ def test_load_dataframe(sample_df: pd.DataFrame) -> None:
     assert len(temporal_cols) > 0
 
 
+# THAD: Lots of tests in this filedon't have type annotations on parameters, please fix.
 def test_session_state_metadata(sample_df) -> None:
     """Test metadata tracking."""
     session = SessionState()

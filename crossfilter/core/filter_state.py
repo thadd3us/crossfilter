@@ -17,6 +17,7 @@ class FilterOperation:
     operation_type: FilterOperationType
     filtered_df_ids: Set[int]  # df_ids that remain after filtering
     description: str  # Human-readable description
+    # THAD: Avoid YAGNI and weakly typed fields in general.  Delete the next line.
     metadata: Dict[str, Any] = field(default_factory=dict)  # Additional filter params
 
 

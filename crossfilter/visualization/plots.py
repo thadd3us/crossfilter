@@ -7,6 +7,7 @@ from typing import Dict, Any, Optional, List
 import json
 
 
+# THAD: Don't wrap these functions inside a class.  Just define them as top-level functions.
 class PlotGenerator:
     """Generates interactive plots for crossfilter visualization."""
     

@@ -28,6 +28,7 @@ class FilterOperationType(StrEnum):
 class QuantizedColumns(StrEnum):
     """Quantized column name patterns."""
     H3_PREFIX = "QUANTIZED_H3_L"
+    # THAD: There's a weird inconsistency here: the H3_PREFIX is a prefix, but the other columns are not.  Let's spell them all out.
     TIMESTAMP_SECOND = "QUANTIZED_TIMESTAMP_SECOND"
     TIMESTAMP_MINUTE = "QUANTIZED_TIMESTAMP_MINUTE"
     TIMESTAMP_HOUR = "QUANTIZED_TIMESTAMP_HOUR"
@@ -36,6 +37,7 @@ class QuantizedColumns(StrEnum):
     TIMESTAMP_YEAR = "QUANTIZED_TIMESTAMP_YEAR"
 
 
+# THAD: DRY: Move this class above the previous one, then use its values in f-strings when defining things like "QUANTIZED_TIMESTAMP_YEAR".  Make these all caps.
 class TemporalLevel(StrEnum):
     """Temporal quantization levels."""
     SECOND = "second"

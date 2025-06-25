@@ -28,7 +28,7 @@ class DataSchema(pa.DataFrameModel):
     TIMESTAMP_UTC: Series[pd.DatetimeTZDtype] = pa.Field(nullable=True, dtype_kwargs={"tz": "UTC"})
     GPS_LATITUDE: Series[float] = pa.Field(nullable=True, ge=-90, le=90)
     GPS_LONGITUDE: Series[float] = pa.Field(nullable=True, ge=-180, le=180)
-    RATING_1_TO_5: Series[pd.Int64Dtype] = pa.Field(nullable=True, ge=1, le=5)
+    RATING_1_TO_5: Series[pd.Int64Dtype] = pa.Field(nullable=True, ge=0, le=5)
     SIZE_IN_BYTES: Series[pd.Int64Dtype] = pa.Field(nullable=True, ge=0)
 
     class Config:
@@ -67,6 +67,8 @@ def load_jsonl_to_dataframe(jsonl_path: Path) -> pd.DataFrame:
             except json.JSONDecodeError as e:
                 raise ValueError(f"Invalid JSON on line {line_num}: {e}")
     
+    # THAD: Do you really need this branch here?  Won't it work to just use the else branch even if records is empty?
+    # THAD: In general, avoid branches if at all possible!
     if not records:
         # Create an empty DataFrame with the correct schema
         df = pd.DataFrame()
@@ -92,6 +94,7 @@ def load_jsonl_to_dataframe(jsonl_path: Path) -> pd.DataFrame:
         if col not in df.columns:
             df[col] = None
     
+    # THAD: Can you get rid of the branches below?  The columns should always exist -- just map them with a function that supports missing values.
     # Convert SOURCE_FILE from Path objects to strings if needed
     if SchemaColumns.SOURCE_FILE in df.columns and not df[SchemaColumns.SOURCE_FILE].isna().all():
         df[SchemaColumns.SOURCE_FILE] = df[SchemaColumns.SOURCE_FILE].astype(str)
@@ -115,6 +118,8 @@ def load_jsonl_to_dataframe(jsonl_path: Path) -> pd.DataFrame:
     result_df = result_df.reset_index(drop=True)
     result_df.index.name = DF_ID_COLUMN
     
+    # THAD: Prefer f-strings that use the '=' syntax, such as '{jsonl_path=}' to add more context to the log message and show empty strings better.
+    # THAD: Please configure pyline to ignore f-strings passed to logger.
     logger.info(f"Loaded {len(result_df)} records from {jsonl_path}")
     
     return result_df

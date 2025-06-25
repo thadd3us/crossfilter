@@ -47,6 +47,7 @@ def test_add_quantized_columns_spatial(sample_df):
     assert len(result.columns) > len(sample_df.columns)
     
     # Check that H3 columns were added
+    # THAD: Lean on pytest's syrupy plugin to check the contents of data (and types!) in a way that's easy to visually diff and keeps the test short.
     for level in H3_LEVELS:
         col_name = f"{QuantizedColumns.H3_PREFIX}{level}"
         assert col_name in result.columns
@@ -59,6 +60,7 @@ def test_add_quantized_columns_temporal(sample_df):
     result = add_quantized_columns(sample_df)
     
     # Check that temporal columns were added
+    # THAD: Lean on pytest's syrupy plugin to check the contents of data (and types!) in a way that's easy to visually diff and keeps the test short.
     expected_cols = [
         QuantizedColumns.TIMESTAMP_SECOND,
         QuantizedColumns.TIMESTAMP_MINUTE,
@@ -84,6 +86,7 @@ def test_add_quantized_columns_missing_spatial():
     
     result = add_quantized_columns(df)
     
+    # THAD: Lean on pytest's syrupy plugin to check the contents of data (and types!) in a way that's easy to visually diff and keeps the test short.
     # Should have temporal columns but not H3 columns
     assert QuantizedColumns.TIMESTAMP_HOUR in result.columns
     
@@ -104,6 +107,7 @@ def test_add_quantized_columns_missing_temporal():
     
     result = add_quantized_columns(df)
     
+    # THAD: Lean on pytest's syrupy plugin to check the contents of data (and types!) in a way that's easy to visually diff and keeps the test short.
     # Should have H3 columns but not temporal columns
     col_name = f"{QuantizedColumns.H3_PREFIX}{H3_LEVELS[0]}"
     assert col_name in result.columns

@@ -10,6 +10,7 @@ from crossfilter.core.data_schema import DataSchema, DataType, load_jsonl_to_dat
 from crossfilter.core.schema_constants import SchemaColumns, DF_ID_COLUMN
 
 
+# THAD: Always specify return type annotations for all functions.
 def test_data_type_enum():
     """Test DataType enum values."""
     assert DataType.PHOTO == "PHOTO"
@@ -20,6 +21,7 @@ def test_data_type_enum():
 
 def test_load_jsonl_empty_file():
     """Test loading an empty JSONL file."""
+    # THAD: use pytest's tmp_path fixture instead of tempfile.NamedTemporaryFile, and Path.write_text to fill it.
     with tempfile.NamedTemporaryFile(mode='w', suffix='.jsonl', delete=False) as f:
         f.write("")
         temp_path = Path(f.name)
@@ -62,6 +64,7 @@ def test_load_jsonl_sample_data():
     
     try:
         df = load_jsonl_to_dataframe(temp_path)
+        # THAD: Lean on pytest's syrupy plugin to check the contents of data in a way that's easy to diff and keeps the test short.
         assert len(df) == 2
         assert df.index.name == DF_ID_COLUMN
         assert list(df.index) == [0, 1]  # df_id should be 0, 1
@@ -171,6 +174,7 @@ def test_df_id_stability():
         {"UUID_STRING": "uuid-3", "GPS_LATITUDE": 37.7949}
     ]
     
+    # THAD: use pytest's tmp_path fixture instead of tempfile.NamedTemporaryFile, and Path.write_text to fill it.
     with tempfile.NamedTemporaryFile(mode='w', suffix='.jsonl', delete=False) as f:
         for record in sample_data:
             f.write(json.dumps(record) + '\n')

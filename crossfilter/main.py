@@ -30,6 +30,7 @@ static_path = Path(__file__).parent / "static"
 if static_path.exists():
     app.mount("/static", StaticFiles(directory=str(static_path)), name="static")
 
+# THAD: Never create a global variable for anything.
 # Global variable to hold preload path for startup event
 _preload_jsonl_path: Optional[Path] = None
 
@@ -296,6 +297,7 @@ def serve(
     
     typer.echo(f"Starting Crossfilter on http://{host}:{port}")
     
+    # THAD: Explain what uvicorn is and why we're using it.
     uvicorn.run(
         "crossfilter.main:app",
         host=host,

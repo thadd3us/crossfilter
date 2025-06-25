@@ -3,14 +3,19 @@
 from dataclasses import dataclass, field
 from typing import List, Set, Optional, Dict, Any
 import pandas as pd
+import logging
 from copy import deepcopy
+
+from crossfilter.core.schema_constants import FilterOperationType, DF_ID_COLUMN
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
 class FilterOperation:
     """Represents a single filter operation that can be undone."""
-    operation_type: str  # 'spatial', 'temporal', 'reset'
-    filtered_uuids: Set[int]  # UUIDs that remain after filtering
+    operation_type: FilterOperationType
+    filtered_df_ids: Set[int]  # df_ids that remain after filtering
     description: str  # Human-readable description
     metadata: Dict[str, Any] = field(default_factory=dict)  # Additional filter params
 
@@ -20,7 +25,8 @@ class FilterState:
     Manages the current filter state with undo/redo functionality.
     
     Tracks which data points are currently visible based on spatial and temporal
-    filters applied through the visualization interface.
+    filters applied through the visualization interface. Uses DataFrame index (df_id)
+    for tracking rows.
     """
     
     def __init__(self, max_undo_steps: int = 50):
@@ -32,42 +38,42 @@ class FilterState:
         """
         self.max_undo_steps = max_undo_steps
         self._undo_stack: List[FilterOperation] = []
-        self._current_filtered_uuids: Optional[Set[int]] = None
-        self._all_uuids: Set[int] = set()
+        self._current_filtered_df_ids: Optional[Set[int]] = None
+        self._all_df_ids: Set[int] = set()
         
-    def initialize_with_data(self, df: pd.DataFrame, uuid_col: str = 'UUID_LONG') -> None:
+    def initialize_with_data(self, df: pd.DataFrame) -> None:
         """
         Initialize the filter state with a dataset.
         
         Args:
-            df: DataFrame containing the data
-            uuid_col: Name of the UUID column
+            df: DataFrame containing the data (with df_id as index)
         """
-        self._all_uuids = set(df[uuid_col].values)
-        self._current_filtered_uuids = self._all_uuids.copy()
+        self._all_df_ids = set(df.index)
+        self._current_filtered_df_ids = self._all_df_ids.copy()
         self._undo_stack.clear()
+        logger.info(f"Initialized filter state with {len(self._all_df_ids)} data points")
         
     @property
-    def filtered_uuids(self) -> Set[int]:
-        """Get the currently filtered UUIDs."""
-        if self._current_filtered_uuids is None:
+    def filtered_df_ids(self) -> Set[int]:
+        """Get the currently filtered df_ids."""
+        if self._current_filtered_df_ids is None:
             return set()
-        return self._current_filtered_uuids.copy()
+        return self._current_filtered_df_ids.copy()
     
     @property
-    def all_uuids(self) -> Set[int]:
-        """Get all available UUIDs in the dataset."""
-        return self._all_uuids.copy()
+    def all_df_ids(self) -> Set[int]:
+        """Get all available df_ids in the dataset."""
+        return self._all_df_ids.copy()
     
     @property
     def filter_count(self) -> int:
         """Get the number of currently filtered items."""
-        return len(self._current_filtered_uuids) if self._current_filtered_uuids else 0
+        return len(self._current_filtered_df_ids) if self._current_filtered_df_ids else 0
     
     @property
     def total_count(self) -> int:
         """Get the total number of items in the dataset."""
-        return len(self._all_uuids)
+        return len(self._all_df_ids)
     
     @property
     def can_undo(self) -> bool:

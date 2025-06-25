@@ -2,198 +2,213 @@
 
 import h3
 import pandas as pd
-from datetime import datetime
-from typing import Optional
+import logging
+from typing import Optional, List
+
+from crossfilter.core.schema_constants import (
+    SchemaColumns, 
+    QuantizedColumns, 
+    TemporalLevel,
+    DF_ID_COLUMN
+)
+
+logger = logging.getLogger(__name__)
+
+# H3 resolution levels to pre-compute (0-15, where higher = more granular)
+H3_LEVELS = [3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+
+# Temporal quantization levels
+TEMPORAL_LEVELS = [
+    TemporalLevel.SECOND, 
+    TemporalLevel.MINUTE, 
+    TemporalLevel.HOUR, 
+    TemporalLevel.DAY, 
+    TemporalLevel.MONTH, 
+    TemporalLevel.YEAR
+]
 
 
-class DataQuantizer:
+def add_quantized_columns(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Handles pre-computation of quantized columns for spatial and temporal data.
+    Add all quantized columns to the DataFrame.
     
-    This class adds quantized columns to the DataFrame that enable efficient
-    grouping and aggregation for visualization at different zoom levels.
+    Args:
+        df: Input DataFrame
+        
+    Returns:
+        DataFrame with added quantized columns
     """
+    df = df.copy()
     
-    # H3 resolution levels to pre-compute (0-15, where higher = more granular)
-    H3_LEVELS = [3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+    # Add spatial quantization (H3 cells)
+    if SchemaColumns.GPS_LATITUDE in df.columns and SchemaColumns.GPS_LONGITUDE in df.columns:
+        df = _add_h3_columns(df)
     
-    # Temporal quantization levels
-    TEMPORAL_LEVELS = [
-        'second', 'minute', 'hour', 'day', 'month', 'year'
-    ]
-    
-    @classmethod
-    def add_quantized_columns(cls, df: pd.DataFrame, 
-                            lat_col: str = 'GPS_LATITUDE',
-                            lon_col: str = 'GPS_LONGITUDE', 
-                            timestamp_col: str = 'TIMESTAMP_UTC') -> pd.DataFrame:
-        """
-        Add all quantized columns to the DataFrame.
+    # Add temporal quantization
+    if SchemaColumns.TIMESTAMP_UTC in df.columns:
+        df = _add_temporal_columns(df)
         
-        Args:
-            df: Input DataFrame
-            lat_col: Name of latitude column
-            lon_col: Name of longitude column  
-            timestamp_col: Name of timestamp column
-            
-        Returns:
-            DataFrame with added quantized columns
-        """
-        df = df.copy()
-        
-        # Add spatial quantization (H3 cells)
-        if lat_col in df.columns and lon_col in df.columns:
-            df = cls._add_h3_columns(df, lat_col, lon_col)
-        
-        # Add temporal quantization
-        if timestamp_col in df.columns:
-            df = cls._add_temporal_columns(df, timestamp_col)
-            
-        return df
-    
-    @classmethod
-    def _add_h3_columns(cls, df: pd.DataFrame, lat_col: str, lon_col: str) -> pd.DataFrame:
-        """Add H3 hexagon columns at multiple resolutions."""
-        for level in cls.H3_LEVELS:
-            col_name = f"QUANTIZED_H3_L{level}"
-            df[col_name] = df.apply(
-                lambda row: h3.latlng_to_cell(row[lat_col], row[lon_col], level)
-                if pd.notna(row[lat_col]) and pd.notna(row[lon_col])
-                else None,
-                axis=1
+    logger.info(f"Added quantized columns to DataFrame with {len(df)} rows")
+    return df
+
+
+def _add_h3_columns(df: pd.DataFrame) -> pd.DataFrame:
+    """Add H3 hexagon columns at multiple resolutions."""
+    for level in H3_LEVELS:
+        col_name = f"{QuantizedColumns.H3_PREFIX}{level}"
+        df[col_name] = df.apply(
+            lambda row: h3.latlng_to_cell(
+                row[SchemaColumns.GPS_LATITUDE], 
+                row[SchemaColumns.GPS_LONGITUDE], 
+                level
             )
-        return df
+            if pd.notna(row[SchemaColumns.GPS_LATITUDE]) and pd.notna(row[SchemaColumns.GPS_LONGITUDE])
+            else None,
+            axis=1
+        )
+    return df
+
+
+def _add_temporal_columns(df: pd.DataFrame) -> pd.DataFrame:
+    """Add temporal quantization columns at multiple levels."""
+    # Convert to datetime if string
+    timestamps = pd.to_datetime(df[SchemaColumns.TIMESTAMP_UTC])
     
-    @classmethod  
-    def _add_temporal_columns(cls, df: pd.DataFrame, timestamp_col: str) -> pd.DataFrame:
-        """Add temporal quantization columns at multiple levels."""
-        # Convert to datetime if string
-        timestamps = pd.to_datetime(df[timestamp_col])
-        
-        # Second level (round to nearest second)
-        df['QUANTIZED_TIMESTAMP_SECOND'] = timestamps.dt.floor('s')
-        
-        # Minute level  
-        df['QUANTIZED_TIMESTAMP_MINUTE'] = timestamps.dt.floor('min')
-        
-        # Hour level
-        df['QUANTIZED_TIMESTAMP_HOUR'] = timestamps.dt.floor('h')
-        
-        # Day level
-        df['QUANTIZED_TIMESTAMP_DAY'] = timestamps.dt.floor('D')
-        
-        # Month level - normalize to first day of month
-        df['QUANTIZED_TIMESTAMP_MONTH'] = timestamps.dt.normalize().dt.to_period('M').dt.start_time
-        
-        # Year level - normalize to first day of year
-        df['QUANTIZED_TIMESTAMP_YEAR'] = timestamps.dt.normalize().dt.to_period('Y').dt.start_time
-        
-        return df
+    # Second level (round to nearest second)
+    df[QuantizedColumns.TIMESTAMP_SECOND] = timestamps.dt.floor('s')
     
-    @classmethod
-    def get_optimal_h3_level(cls, df: pd.DataFrame, max_groups: int = 100000) -> Optional[int]:
-        """
-        Find the H3 resolution level that gives closest to max_groups unique cells.
-        
-        Args:
-            df: DataFrame with H3 columns
-            max_groups: Maximum number of groups desired
-            
-        Returns:
-            Optimal H3 level, or None if no H3 columns found
-        """
-        best_level = None
-        best_count = 0
-        
-        for level in cls.H3_LEVELS:
-            col_name = f"QUANTIZED_H3_L{level}"
-            if col_name in df.columns:
-                unique_count = df[col_name].nunique()
-                if unique_count <= max_groups and unique_count > best_count:
-                    best_level = level
-                    best_count = unique_count
-        
-        return best_level
+    # Minute level  
+    df[QuantizedColumns.TIMESTAMP_MINUTE] = timestamps.dt.floor('min')
     
-    @classmethod
-    def get_optimal_temporal_level(cls, df: pd.DataFrame, max_groups: int = 100000) -> Optional[str]:
-        """
-        Find the temporal quantization level that gives closest to max_groups unique buckets.
-        
-        Args:
-            df: DataFrame with temporal quantization columns
-            max_groups: Maximum number of groups desired
-            
-        Returns:
-            Optimal temporal level name, or None if no temporal columns found
-        """
-        best_level = None
-        best_count = 0
-        
-        for level in cls.TEMPORAL_LEVELS:
-            col_name = f"QUANTIZED_TIMESTAMP_{level.upper()}"
-            if col_name in df.columns:
-                unique_count = df[col_name].nunique()
-                if unique_count <= max_groups and unique_count > best_count:
-                    best_level = level
-                    best_count = unique_count
-        
-        return best_level
+    # Hour level
+    df[QuantizedColumns.TIMESTAMP_HOUR] = timestamps.dt.floor('h')
     
-    @classmethod
-    def aggregate_by_h3(cls, df: pd.DataFrame, h3_level: int) -> pd.DataFrame:
-        """
-        Aggregate data by H3 cells at the specified level.
-        
-        Args:
-            df: DataFrame with H3 columns
-            h3_level: H3 resolution level to aggregate by
-            
-        Returns:
-            Aggregated DataFrame with H3 cell, count, and representative lat/lon
-        """
-        col_name = f"QUANTIZED_H3_L{h3_level}"
-        if col_name not in df.columns:
-            raise ValueError(f"H3 level {h3_level} not found in DataFrame")
-        
-        # Group by H3 cell and aggregate
-        grouped = df.groupby(col_name).agg({
-            'GPS_LATITUDE': ['mean', 'count'],
-            'GPS_LONGITUDE': 'mean',
-            'UUID_LONG': lambda x: list(x)  # Keep track of original IDs
-        }).reset_index()
-        
-        # Flatten column names
-        grouped.columns = [col_name, 'lat', 'count', 'lon', 'uuids']
-        
-        return grouped
+    # Day level
+    df[QuantizedColumns.TIMESTAMP_DAY] = timestamps.dt.floor('D')
     
-    @classmethod
-    def aggregate_by_temporal(cls, df: pd.DataFrame, temporal_level: str) -> pd.DataFrame:
-        """
-        Aggregate data by temporal buckets at the specified level.
+    # Month level - normalize to first day of month
+    df[QuantizedColumns.TIMESTAMP_MONTH] = timestamps.dt.normalize().dt.to_period('M').dt.start_time
+    
+    # Year level - normalize to first day of year
+    df[QuantizedColumns.TIMESTAMP_YEAR] = timestamps.dt.normalize().dt.to_period('Y').dt.start_time
+    
+    return df
+
+
+def get_optimal_h3_level(df: pd.DataFrame, max_groups: int) -> Optional[int]:
+    """
+    Find the H3 resolution level that gives closest to max_groups unique cells.
+    
+    Args:
+        df: DataFrame with H3 columns
+        max_groups: Maximum number of groups desired
         
-        Args:
-            df: DataFrame with temporal quantization columns
-            temporal_level: Temporal level to aggregate by
-            
-        Returns:
-            Aggregated DataFrame with timestamp bucket, count, and cumulative count
-        """
-        col_name = f"QUANTIZED_TIMESTAMP_{temporal_level.upper()}"
-        if col_name not in df.columns:
-            raise ValueError(f"Temporal level {temporal_level} not found in DataFrame")
+    Returns:
+        Optimal H3 level, or None if no H3 columns found
+    """
+    best_level = None
+    best_count = 0
+    
+    for level in H3_LEVELS:
+        col_name = f"{QuantizedColumns.H3_PREFIX}{level}"
+        if col_name in df.columns:
+            unique_count = df[col_name].nunique()
+            if unique_count <= max_groups and unique_count > best_count:
+                best_level = level
+                best_count = unique_count
+    
+    logger.debug(f"Optimal H3 level: {best_level} with {best_count} groups")
+    return best_level
+
+
+def get_optimal_temporal_level(df: pd.DataFrame, max_groups: int) -> Optional[TemporalLevel]:
+    """
+    Find the temporal quantization level that gives closest to max_groups unique buckets.
+    
+    Args:
+        df: DataFrame with temporal quantization columns
+        max_groups: Maximum number of groups desired
         
-        # Group by temporal bucket and aggregate
-        grouped = df.groupby(col_name).agg({
-            'UUID_LONG': ['count', lambda x: list(x)]
-        }).reset_index()
+    Returns:
+        Optimal temporal level, or None if no temporal columns found
+    """
+    best_level = None
+    best_count = 0
+    
+    for level in TEMPORAL_LEVELS:
+        col_name = f"QUANTIZED_TIMESTAMP_{level.upper()}"
+        if col_name in df.columns:
+            unique_count = df[col_name].nunique()
+            if unique_count <= max_groups and unique_count > best_count:
+                best_level = level
+                best_count = unique_count
+    
+    logger.debug(f"Optimal temporal level: {best_level} with {best_count} groups")
+    return best_level
+
+
+def aggregate_by_h3(df: pd.DataFrame, h3_level: int) -> pd.DataFrame:
+    """
+    Aggregate data by H3 cells at the specified level.
+    
+    Args:
+        df: DataFrame with H3 columns
+        h3_level: H3 resolution level to aggregate by
         
-        # Flatten column names
-        grouped.columns = [col_name, 'count', 'uuids']
+    Returns:
+        Aggregated DataFrame with H3 cell, count, and representative lat/lon
+    """
+    col_name = f"{QuantizedColumns.H3_PREFIX}{h3_level}"
+    if col_name not in df.columns:
+        raise ValueError(f"H3 level {h3_level} not found in DataFrame")
+    
+    # Group by H3 cell and aggregate
+    grouped = df.groupby(col_name).agg({
+        SchemaColumns.GPS_LATITUDE: ['mean', 'count'],
+        SchemaColumns.GPS_LONGITUDE: 'mean',
+    }).reset_index()
+    
+    # Flatten column names
+    grouped.columns = [col_name, 'lat', 'count', 'lon']
+    
+    # Add df_ids for the aggregated groups
+    df_id_groups = df.groupby(col_name).apply(lambda x: list(x.index)).reset_index(name='df_ids')
+    grouped = grouped.merge(df_id_groups, on=col_name)
+    
+    logger.debug(f"Aggregated {len(df)} rows into {len(grouped)} H3 groups at level {h3_level}")
+    return grouped
+
+
+def aggregate_by_temporal(df: pd.DataFrame, temporal_level: TemporalLevel) -> pd.DataFrame:
+    """
+    Aggregate data by temporal buckets at the specified level.
+    
+    Args:
+        df: DataFrame with temporal quantization columns
+        temporal_level: Temporal level to aggregate by
         
-        # Sort by timestamp and add cumulative count for CDF
-        grouped = grouped.sort_values(col_name)
-        grouped['cumulative_count'] = grouped['count'].cumsum()
-        
-        return grouped
+    Returns:
+        Aggregated DataFrame with timestamp bucket, count, and cumulative count
+    """
+    col_name = f"QUANTIZED_TIMESTAMP_{temporal_level.upper()}"
+    if col_name not in df.columns:
+        raise ValueError(f"Temporal level {temporal_level} not found in DataFrame")
+    
+    # Group by temporal bucket and aggregate
+    grouped = df.groupby(col_name).agg({
+        DF_ID_COLUMN: 'count'
+    }).reset_index()
+    
+    # Rename count column
+    grouped.columns = [col_name, 'count']
+    
+    # Add df_ids for the aggregated groups
+    df_id_groups = df.groupby(col_name).apply(lambda x: list(x.index)).reset_index(name='df_ids')
+    grouped = grouped.merge(df_id_groups, on=col_name)
+    
+    # Sort by timestamp and add cumulative count for CDF
+    grouped = grouped.sort_values(col_name)
+    grouped['cumulative_count'] = grouped['count'].cumsum()
+    
+    logger.debug(f"Aggregated {len(df)} rows into {len(grouped)} temporal groups at level {temporal_level}")
+    return grouped

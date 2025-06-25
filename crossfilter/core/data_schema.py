@@ -4,6 +4,11 @@ import pandas as pd
 import pandera.pandas as pa
 from pandera.typing import DataFrame, Series
 import json
+import logging
+
+from crossfilter.core.schema_constants import SchemaColumns, DF_ID_COLUMN
+
+logger = logging.getLogger(__name__)
 
 
 class DataType(StrEnum):
@@ -14,7 +19,6 @@ class DataType(StrEnum):
 
 
 class DataSchema(pa.DataFrameModel):
-    UUID_LONG: Series[object] = pa.Field(nullable=True)
     UUID_STRING: Series[str] = pa.Field(nullable=True)
     DATA_TYPE: Series[str] = pa.Field(nullable=True, isin=list(DataType.__members__.values()))
     NAME: Series[str] = pa.Field(nullable=True)
@@ -71,18 +75,17 @@ def load_jsonl_to_dataframe(jsonl_path: Path) -> pd.DataFrame:
     
     # Ensure all required columns exist, adding missing ones with null values
     required_columns = [
-        "UUID_LONG",
-        "UUID_STRING", 
-        "DATA_TYPE",
-        "NAME",
-        "CAPTION",
-        "SOURCE_FILE",
-        "TIMESTAMP_MAYBE_TIMEZONE_AWARE",
-        "TIMESTAMP_UTC",
-        "GPS_LATITUDE",
-        "GPS_LONGITUDE",
-        "RATING_1_TO_5",
-        "SIZE_IN_BYTES"
+        SchemaColumns.UUID_STRING, 
+        SchemaColumns.DATA_TYPE,
+        SchemaColumns.NAME,
+        SchemaColumns.CAPTION,
+        SchemaColumns.SOURCE_FILE,
+        SchemaColumns.TIMESTAMP_MAYBE_TIMEZONE_AWARE,
+        SchemaColumns.TIMESTAMP_UTC,
+        SchemaColumns.GPS_LATITUDE,
+        SchemaColumns.GPS_LONGITUDE,
+        SchemaColumns.RATING_1_TO_5,
+        SchemaColumns.SIZE_IN_BYTES
     ]
     
     for col in required_columns:
@@ -90,12 +93,12 @@ def load_jsonl_to_dataframe(jsonl_path: Path) -> pd.DataFrame:
             df[col] = None
     
     # Convert SOURCE_FILE from Path objects to strings if needed
-    if "SOURCE_FILE" in df.columns and not df["SOURCE_FILE"].isna().all():
-        df["SOURCE_FILE"] = df["SOURCE_FILE"].astype(str)
+    if SchemaColumns.SOURCE_FILE in df.columns and not df[SchemaColumns.SOURCE_FILE].isna().all():
+        df[SchemaColumns.SOURCE_FILE] = df[SchemaColumns.SOURCE_FILE].astype(str)
     
     # Convert TIMESTAMP_UTC to UTC timezone-aware datetime if it's a string
-    if "TIMESTAMP_UTC" in df.columns and not df["TIMESTAMP_UTC"].isna().all():
-        df["TIMESTAMP_UTC"] = pd.to_datetime(df["TIMESTAMP_UTC"], utc=True)
+    if SchemaColumns.TIMESTAMP_UTC in df.columns and not df[SchemaColumns.TIMESTAMP_UTC].isna().all():
+        df[SchemaColumns.TIMESTAMP_UTC] = pd.to_datetime(df[SchemaColumns.TIMESTAMP_UTC], utc=True)
     
     # Validate and coerce only the schema columns
     schema_df = df[required_columns].copy()
@@ -107,5 +110,11 @@ def load_jsonl_to_dataframe(jsonl_path: Path) -> pd.DataFrame:
         result_df = pd.concat([validated_schema_df, df[extra_columns]], axis=1)
     else:
         result_df = validated_schema_df
+    
+    # Set stable df_id index using pandas int64 index
+    result_df = result_df.reset_index(drop=True)
+    result_df.index.name = DF_ID_COLUMN
+    
+    logger.info(f"Loaded {len(result_df)} records from {jsonl_path}")
     
     return result_df

@@ -51,6 +51,15 @@ Crossfilter is a Python web application for interactive crossfiltering and analy
 1. **No __init__.py Files**: Avoid creating `__init__.py` files - they are unnecessary boilerplate
 2. **Use Absolute Imports**: Always use absolute imports (e.g., `from crossfilter.core.session_state import SessionState`) instead of relative imports
 3. **Avoid Union Types**: Don't use `Union[str, Path]` or similar - pick one type and stick with it. Union types add complexity and additional code paths. Use the most appropriate single type (e.g., `Path` for file paths)
+4. **Use df_id for Row Tracking**: Use Pandas int64 index (called `df_id`) rather than UUIDs to track and refer to which points are left after filtering. These should stay stable while the app is running.
+5. **Schema Column References**: When referring to a column named in a schema, don't use naked strings. Use Python identifiers, ideally derived from the Pandera schema if possible, or a parallel enum if not. Stick to the same identifier everywhere in the code (e.g. "GPS_LATITUDE") until another API forces you to change ("lat").
+6. **Avoid Default Values**: Lean away from supplying default values, just make the callers be explicit (e.g., don't use `max_groups: int = 100000`).
+7. **Use Python Logging**: Use Python logging rather than prints for debugging and informational output.
+8. **Define Enums for Constants**: Define an enum for string constants rather than using naked strings (e.g., operation types).
+9. **Prefer Stateless Functions**: Prefer stateless functions defined outside of classes when possible. Don't use classes with static methods just to scope things.
+10. **Keep Logic in Python**: Keep as much logic in Python as possible, and not in Javascript. The frontend should be primarily for display and user interaction.
+11. **Comprehensive Testing**: For each Python file, there should be a corresponding "*_test.py" file that concisely exercises as much functionality as possible.
+12. **No Manual Testing**: Never do any sort of "ad hoc" running the server and "trying things out". Always build functionality into automated tests that can be repeated.
 
 ### Project Structure
 ```

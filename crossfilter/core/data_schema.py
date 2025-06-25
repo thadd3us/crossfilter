@@ -84,7 +84,7 @@ def load_jsonl_to_dataframe(jsonl_path: Path) -> pd.DataFrame:
         SchemaColumns.TIMESTAMP_UTC,
         SchemaColumns.GPS_LATITUDE,
         SchemaColumns.GPS_LONGITUDE,
-        SchemaColumns.RATING_0_TO_5,
+        SchemaColumns.RATING_1_TO_5,
         SchemaColumns.SIZE_IN_BYTES,
     ]
 

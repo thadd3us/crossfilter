@@ -15,10 +15,10 @@ from crossfilter.core.quantization import (
 )
 from crossfilter.core.schema_constants import (
     SchemaColumns,
-    QuantizedColumns,
     TemporalLevel,
     DF_ID_COLUMN,
-    get_h3_column_name
+    get_h3_column_name,
+    get_temporal_column_name
 )
 
 
@@ -59,12 +59,12 @@ def test_add_quantized_columns_temporal(sample_df, snapshot) -> None:
     
     # Check that temporal columns were added and their contents
     temporal_columns = {
-        QuantizedColumns.QUANTIZED_TIMESTAMP_SECOND: result[QuantizedColumns.QUANTIZED_TIMESTAMP_SECOND].dt.strftime('%Y-%m-%d %H:%M:%S').tolist(),
-        QuantizedColumns.QUANTIZED_TIMESTAMP_MINUTE: result[QuantizedColumns.QUANTIZED_TIMESTAMP_MINUTE].dt.strftime('%Y-%m-%d %H:%M').tolist(),
-        QuantizedColumns.QUANTIZED_TIMESTAMP_HOUR: result[QuantizedColumns.QUANTIZED_TIMESTAMP_HOUR].dt.strftime('%Y-%m-%d %H:00').tolist(),
-        QuantizedColumns.QUANTIZED_TIMESTAMP_DAY: result[QuantizedColumns.QUANTIZED_TIMESTAMP_DAY].dt.strftime('%Y-%m-%d').tolist(),
-        QuantizedColumns.QUANTIZED_TIMESTAMP_MONTH: result[QuantizedColumns.QUANTIZED_TIMESTAMP_MONTH].dt.strftime('%Y-%m').tolist(),
-        QuantizedColumns.QUANTIZED_TIMESTAMP_YEAR: result[QuantizedColumns.QUANTIZED_TIMESTAMP_YEAR].dt.strftime('%Y').tolist()
+        get_temporal_column_name(TemporalLevel.SECOND): result[get_temporal_column_name(TemporalLevel.SECOND)].dt.strftime('%Y-%m-%d %H:%M:%S').tolist(),
+        get_temporal_column_name(TemporalLevel.MINUTE): result[get_temporal_column_name(TemporalLevel.MINUTE)].dt.strftime('%Y-%m-%d %H:%M').tolist(),
+        get_temporal_column_name(TemporalLevel.HOUR): result[get_temporal_column_name(TemporalLevel.HOUR)].dt.strftime('%Y-%m-%d %H:00').tolist(),
+        get_temporal_column_name(TemporalLevel.DAY): result[get_temporal_column_name(TemporalLevel.DAY)].dt.strftime('%Y-%m-%d').tolist(),
+        get_temporal_column_name(TemporalLevel.MONTH): result[get_temporal_column_name(TemporalLevel.MONTH)].dt.strftime('%Y-%m').tolist(),
+        get_temporal_column_name(TemporalLevel.YEAR): result[get_temporal_column_name(TemporalLevel.YEAR)].dt.strftime('%Y').tolist()
     }
     assert temporal_columns == snapshot
 
@@ -82,7 +82,7 @@ def test_add_quantized_columns_missing_spatial(snapshot) -> None:
     # Check column presence and content
     column_info = {
         'present_columns': sorted(result.columns.tolist()),
-        'temporal_hour_value': result[QuantizedColumns.QUANTIZED_TIMESTAMP_HOUR].dt.strftime('%Y-%m-%d %H:00').iloc[0],
+        'temporal_hour_value': result[get_temporal_column_name(TemporalLevel.HOUR)].dt.strftime('%Y-%m-%d %H:00').iloc[0],
         'h3_columns_present': [col for col in result.columns if col.startswith('QUANTIZED_H3_L')]
     }
     assert column_info == snapshot
@@ -247,5 +247,5 @@ def test_null_coordinates() -> None:
     assert pd.isna(result.loc[1, h3_col])   # Null coordinates
     
     # Temporal columns should work for both rows
-    assert pd.notna(result.loc[0, QuantizedColumns.QUANTIZED_TIMESTAMP_HOUR])
-    assert pd.notna(result.loc[1, QuantizedColumns.QUANTIZED_TIMESTAMP_HOUR])
+    assert pd.notna(result.loc[0, get_temporal_column_name(TemporalLevel.HOUR)])
+    assert pd.notna(result.loc[1, get_temporal_column_name(TemporalLevel.HOUR)])

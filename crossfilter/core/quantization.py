@@ -195,12 +195,7 @@ def aggregate_by_temporal(df: pd.DataFrame, temporal_level: TemporalLevel) -> pd
         raise ValueError(f"Temporal level {temporal_level} not found in DataFrame")
     
     # Group by temporal bucket and aggregate
-    grouped = df.groupby(col_name).agg({
-        DF_ID_COLUMN: 'count'
-    }).reset_index()
-    
-    # Rename count column
-    grouped.columns = [col_name, 'count']
+    grouped = df.groupby(col_name).size().reset_index(name='count')
     
     # Add df_ids for the aggregated groups
     df_id_groups = df.groupby(col_name).apply(lambda x: list(x.index)).reset_index(name='df_ids')

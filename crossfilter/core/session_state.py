@@ -1,8 +1,21 @@
 """Session state management for single-session Crossfilter application."""
 
 import pandas as pd
-from crossfilter.core.quantization import DataQuantizer
+import logging
+
+from crossfilter.core.quantization import (
+    add_quantized_columns, 
+    get_optimal_h3_level,
+    get_optimal_temporal_level,
+    aggregate_by_h3,
+    aggregate_by_temporal,
+    H3_LEVELS,
+    TEMPORAL_LEVELS
+)
 from crossfilter.core.filter_state import FilterState
+from crossfilter.core.schema_constants import SchemaColumns, TemporalLevel, DF_ID_COLUMN
+
+logger = logging.getLogger(__name__)
 
 
 class SessionState:
@@ -34,9 +47,10 @@ class SessionState:
     def data(self, value: pd.DataFrame) -> None:
         """Set the current dataset."""
         self._data = value
-        self._quantized_data = DataQuantizer.add_quantized_columns(value)
+        self._quantized_data = add_quantized_columns(value)
         self._filter_state.initialize_with_data(self._quantized_data)
         self._update_metadata()
+        logger.info(f"Loaded dataset with {len(value)} rows into session state")
     
     def _update_metadata(self) -> None:
         """Update metadata based on current DataFrame."""
@@ -97,7 +111,7 @@ class SessionState:
         """Get the currently filtered dataset."""
         return self._filter_state.get_filtered_dataframe(self._quantized_data)
     
-    def get_spatial_aggregation(self, max_groups: int = 100000) -> pd.DataFrame:
+    def get_spatial_aggregation(self, max_groups: int) -> pd.DataFrame:
         """
         Get spatially aggregated data for visualization.
         
@@ -111,19 +125,23 @@ class SessionState:
         
         if len(filtered_data) <= max_groups:
             # Return individual points if under threshold
-            return filtered_data[['UUID_LONG', 'GPS_LATITUDE', 'GPS_LONGITUDE']].copy()
+            columns = [SchemaColumns.GPS_LATITUDE, SchemaColumns.GPS_LONGITUDE]
+            result = filtered_data[columns].copy()
+            # Add df_id column for consistency
+            result[DF_ID_COLUMN] = filtered_data.index
+            return result
         
         # Find optimal H3 level
-        optimal_level = DataQuantizer.get_optimal_h3_level(filtered_data, max_groups)
+        optimal_level = get_optimal_h3_level(filtered_data, max_groups)
         
         if optimal_level is None:
             # Fallback to least granular level
-            optimal_level = min(DataQuantizer.H3_LEVELS)
+            optimal_level = min(H3_LEVELS)
         
         # Aggregate by H3 cells
-        return DataQuantizer.aggregate_by_h3(filtered_data, optimal_level)
+        return aggregate_by_h3(filtered_data, optimal_level)
     
-    def get_temporal_aggregation(self, max_groups: int = 100000) -> pd.DataFrame:
+    def get_temporal_aggregation(self, max_groups: int) -> pd.DataFrame:
         """
         Get temporally aggregated data for CDF visualization.
         
@@ -137,17 +155,19 @@ class SessionState:
         
         if len(filtered_data) <= max_groups:
             # Return individual points if under threshold
-            df = filtered_data[['UUID_LONG', 'TIMESTAMP_UTC']].copy()
-            df = df.sort_values('TIMESTAMP_UTC')
+            df = filtered_data[[SchemaColumns.TIMESTAMP_UTC]].copy()
+            df = df.sort_values(SchemaColumns.TIMESTAMP_UTC)
             df['cumulative_count'] = range(1, len(df) + 1)
+            # Add df_id column for consistency
+            df[DF_ID_COLUMN] = df.index
             return df
         
         # Find optimal temporal level
-        optimal_level = DataQuantizer.get_optimal_temporal_level(filtered_data, max_groups)
+        optimal_level = get_optimal_temporal_level(filtered_data, max_groups)
         
         if optimal_level is None:
             # Fallback to least granular level
-            optimal_level = 'year'
+            optimal_level = TemporalLevel.YEAR
         
         # Aggregate by temporal buckets
-        return DataQuantizer.aggregate_by_temporal(filtered_data, optimal_level)
+        return aggregate_by_temporal(filtered_data, optimal_level)

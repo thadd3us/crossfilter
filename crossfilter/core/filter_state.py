@@ -80,54 +80,58 @@ class FilterState:
         """Check if undo is possible."""
         return len(self._undo_stack) > 0
     
-    def apply_spatial_filter(self, filtered_uuids: Set[int], description: str, 
+    def apply_spatial_filter(self, filtered_df_ids: Set[int], description: str, 
                            metadata: Optional[Dict[str, Any]] = None) -> None:
         """
         Apply a spatial filter operation.
         
         Args:
-            filtered_uuids: Set of UUIDs that should remain visible
+            filtered_df_ids: Set of df_ids that should remain visible
             description: Description of the filter operation
             metadata: Additional metadata about the filter
         """
-        self._push_current_state('spatial', description, metadata or {})
-        self._current_filtered_uuids = filtered_uuids & self._all_uuids
+        self._push_current_state(FilterOperationType.SPATIAL, description, metadata or {})
+        self._current_filtered_df_ids = filtered_df_ids & self._all_df_ids
+        logger.info(f"Applied spatial filter: {len(self._current_filtered_df_ids)} points remain")
         
-    def apply_temporal_filter(self, filtered_uuids: Set[int], description: str,
+    def apply_temporal_filter(self, filtered_df_ids: Set[int], description: str,
                             metadata: Optional[Dict[str, Any]] = None) -> None:
         """
         Apply a temporal filter operation.
         
         Args:
-            filtered_uuids: Set of UUIDs that should remain visible
+            filtered_df_ids: Set of df_ids that should remain visible
             description: Description of the filter operation  
             metadata: Additional metadata about the filter
         """
-        self._push_current_state('temporal', description, metadata or {})
-        self._current_filtered_uuids = filtered_uuids & self._all_uuids
+        self._push_current_state(FilterOperationType.TEMPORAL, description, metadata or {})
+        self._current_filtered_df_ids = filtered_df_ids & self._all_df_ids
+        logger.info(f"Applied temporal filter: {len(self._current_filtered_df_ids)} points remain")
         
-    def intersect_with_filter(self, new_filtered_uuids: Set[int], operation_type: str,
+    def intersect_with_filter(self, new_filtered_df_ids: Set[int], operation_type: FilterOperationType,
                             description: str, metadata: Optional[Dict[str, Any]] = None) -> None:
         """
         Apply a filter by intersecting with current filter state.
         
         Args:
-            new_filtered_uuids: New UUIDs to intersect with current filter
-            operation_type: Type of operation ('spatial' or 'temporal')
+            new_filtered_df_ids: New df_ids to intersect with current filter
+            operation_type: Type of operation (spatial or temporal)
             description: Description of the filter operation
             metadata: Additional metadata about the filter
         """
         self._push_current_state(operation_type, description, metadata or {})
-        if self._current_filtered_uuids is not None:
-            self._current_filtered_uuids &= new_filtered_uuids
+        if self._current_filtered_df_ids is not None:
+            self._current_filtered_df_ids &= new_filtered_df_ids
         else:
-            self._current_filtered_uuids = new_filtered_uuids & self._all_uuids
+            self._current_filtered_df_ids = new_filtered_df_ids & self._all_df_ids
+        logger.info(f"Applied intersect filter: {len(self._current_filtered_df_ids)} points remain")
             
     def reset_filters(self) -> None:
         """Reset all filters to show all data."""
-        if self._current_filtered_uuids != self._all_uuids:
-            self._push_current_state('reset', 'Reset all filters')
-            self._current_filtered_uuids = self._all_uuids.copy()
+        if self._current_filtered_df_ids != self._all_df_ids:
+            self._push_current_state(FilterOperationType.RESET, 'Reset all filters')
+            self._current_filtered_df_ids = self._all_df_ids.copy()
+            logger.info("Reset all filters - all points now visible")
             
     def undo(self) -> bool:
         """
@@ -140,7 +144,8 @@ class FilterState:
             return False
             
         last_operation = self._undo_stack.pop()
-        self._current_filtered_uuids = last_operation.filtered_uuids.copy()
+        self._current_filtered_df_ids = last_operation.filtered_df_ids.copy()
+        logger.info(f"Undid filter operation: {len(self._current_filtered_df_ids)} points now visible")
         return True
         
     def get_undo_stack_info(self) -> List[Dict[str, Any]]:
@@ -154,35 +159,34 @@ class FilterState:
             {
                 'operation_type': op.operation_type,
                 'description': op.description,
-                'count': len(op.filtered_uuids),
+                'count': len(op.filtered_df_ids),
                 'metadata': op.metadata
             }
             for op in reversed(self._undo_stack)
         ]
         
-    def get_filtered_dataframe(self, df: pd.DataFrame, uuid_col: str = 'UUID_LONG') -> pd.DataFrame:
+    def get_filtered_dataframe(self, df: pd.DataFrame) -> pd.DataFrame:
         """
         Get a DataFrame filtered by the current filter state.
         
         Args:
-            df: Input DataFrame
-            uuid_col: Name of the UUID column
+            df: Input DataFrame with df_id as index
             
         Returns:
             Filtered DataFrame
         """
-        if self._current_filtered_uuids is None:
+        if self._current_filtered_df_ids is None:
             return df.iloc[0:0]  # Empty DataFrame
             
-        return df[df[uuid_col].isin(self._current_filtered_uuids)].copy()
+        return df.loc[df.index.isin(self._current_filtered_df_ids)].copy()
         
-    def _push_current_state(self, operation_type: str, description: str, 
+    def _push_current_state(self, operation_type: FilterOperationType, description: str, 
                           metadata: Optional[Dict[str, Any]] = None) -> None:
         """Push the current state onto the undo stack."""
-        if self._current_filtered_uuids is not None:
+        if self._current_filtered_df_ids is not None:
             operation = FilterOperation(
                 operation_type=operation_type,
-                filtered_uuids=self._current_filtered_uuids.copy(),
+                filtered_df_ids=self._current_filtered_df_ids.copy(),
                 description=description,
                 metadata=metadata or {}
             )

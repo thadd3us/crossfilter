@@ -96,6 +96,62 @@ crossfilter/
 - **Package Manager**: uv for dependency management
 - **Python Version**: 3.9+
 
+### Frontend Testing
+- **Browser Automation**: Playwright for end-to-end testing
+- **Headless Support**: Built-in headless browser support for CI/CD environments
+- **Test Location**: End-to-end tests in `tests/test_frontend_e2e.py`
+- **Fixtures**: Automated server startup/teardown and browser management
+- **Test Markers**: Use `@pytest.mark.e2e` for frontend tests
+
+#### Running Frontend Tests
+```bash
+# Install Playwright browsers (first time only)
+uv run --extra dev playwright install
+
+# Run all tests including frontend
+uv run --extra dev pytest
+
+# Run only frontend tests
+uv run --extra dev pytest -m e2e
+
+# Run frontend tests with visible browser (for debugging)
+uv run --extra dev pytest -m e2e --headed
+
+# Skip frontend tests
+uv run --extra dev pytest -m "not e2e"
+```
+
+#### Headless Browser Support
+Frontend tests use Playwright's built-in headless browser support, making them suitable for:
+- **CI/CD Pipelines**: No need to install browsers on build servers
+- **Docker Containers**: Works in headless environments
+- **Development Machines**: Developers don't need browsers installed
+- **Automated Testing**: Faster execution without GUI overhead
+
+**System Dependencies Required:**
+For browser tests to run, the system needs certain dependencies. Install them with:
+```bash
+# On Ubuntu/Debian systems
+sudo playwright install-deps
+
+# Or manually install specific packages
+sudo apt-get install libnspr4 libnss3 libdbus-1-3 libatk1.0-0 \
+    libatk-bridge2.0-0 libcups2 libxkbcommon0 libatspi2.0-0 \
+    libxcomposite1 libxdamage1 libxfixes3 libxrandr2 libgbm1 libasound2
+```
+
+**Graceful Degradation:**
+- Tests that require browsers are automatically skipped if dependencies are missing
+- Server-only tests (HTTP API testing) work without browser dependencies
+- Non-browser tests provide valuable coverage of the backend functionality
+
+The test framework automatically:
+- Starts the FastAPI server on a test port (8001)
+- Launches headless Chromium browser (if dependencies available)
+- Manages browser context and page lifecycle
+- Cleans up resources after tests complete
+- Skips browser tests gracefully when dependencies are missing
+
 ## Current Implementation Status
 
 ✅ **Completed**:

@@ -4,12 +4,12 @@
     'h3_columns_present': list([
     ]),
     'present_columns': list([
-      <QuantizedColumns.QUANTIZED_TIMESTAMP_DAY: 'QUANTIZED_TIMESTAMP_DAY'>,
-      <QuantizedColumns.QUANTIZED_TIMESTAMP_HOUR: 'QUANTIZED_TIMESTAMP_HOUR'>,
-      <QuantizedColumns.QUANTIZED_TIMESTAMP_MINUTE: 'QUANTIZED_TIMESTAMP_MINUTE'>,
-      <QuantizedColumns.QUANTIZED_TIMESTAMP_MONTH: 'QUANTIZED_TIMESTAMP_MONTH'>,
-      <QuantizedColumns.QUANTIZED_TIMESTAMP_SECOND: 'QUANTIZED_TIMESTAMP_SECOND'>,
-      <QuantizedColumns.QUANTIZED_TIMESTAMP_YEAR: 'QUANTIZED_TIMESTAMP_YEAR'>,
+      'QUANTIZED_TIMESTAMP_DAY',
+      'QUANTIZED_TIMESTAMP_HOUR',
+      'QUANTIZED_TIMESTAMP_MINUTE',
+      'QUANTIZED_TIMESTAMP_MONTH',
+      'QUANTIZED_TIMESTAMP_SECOND',
+      'QUANTIZED_TIMESTAMP_YEAR',
       <SchemaColumns.TIMESTAMP_UTC: 'TIMESTAMP_UTC'>,
       <SchemaColumns.UUID_STRING: 'UUID_STRING'>,
     ]),
@@ -260,7 +260,7 @@
 # ---
 # name: test_add_quantized_columns_temporal
   dict({
-    <QuantizedColumns.QUANTIZED_TIMESTAMP_DAY: 'QUANTIZED_TIMESTAMP_DAY'>: list([
+    'QUANTIZED_TIMESTAMP_DAY': list([
       '2024-01-01',
       '2024-01-01',
       '2024-01-01',
@@ -272,7 +272,7 @@
       '2024-01-01',
       '2024-01-01',
     ]),
-    <QuantizedColumns.QUANTIZED_TIMESTAMP_HOUR: 'QUANTIZED_TIMESTAMP_HOUR'>: list([
+    'QUANTIZED_TIMESTAMP_HOUR': list([
       '2024-01-01 10:00',
       '2024-01-01 11:00',
       '2024-01-01 12:00',
@@ -284,7 +284,7 @@
       '2024-01-01 18:00',
       '2024-01-01 19:00',
     ]),
-    <QuantizedColumns.QUANTIZED_TIMESTAMP_MINUTE: 'QUANTIZED_TIMESTAMP_MINUTE'>: list([
+    'QUANTIZED_TIMESTAMP_MINUTE': list([
       '2024-01-01 10:00',
       '2024-01-01 11:00',
       '2024-01-01 12:00',
@@ -296,7 +296,7 @@
       '2024-01-01 18:00',
       '2024-01-01 19:00',
     ]),
-    <QuantizedColumns.QUANTIZED_TIMESTAMP_MONTH: 'QUANTIZED_TIMESTAMP_MONTH'>: list([
+    'QUANTIZED_TIMESTAMP_MONTH': list([
       '2024-01',
       '2024-01',
       '2024-01',
@@ -308,7 +308,7 @@
       '2024-01',
       '2024-01',
     ]),
-    <QuantizedColumns.QUANTIZED_TIMESTAMP_SECOND: 'QUANTIZED_TIMESTAMP_SECOND'>: list([
+    'QUANTIZED_TIMESTAMP_SECOND': list([
       '2024-01-01 10:00:00',
       '2024-01-01 11:00:00',
       '2024-01-01 12:00:00',
@@ -320,7 +320,7 @@
       '2024-01-01 18:00:00',
       '2024-01-01 19:00:00',
     ]),
-    <QuantizedColumns.QUANTIZED_TIMESTAMP_YEAR: 'QUANTIZED_TIMESTAMP_YEAR'>: list([
+    'QUANTIZED_TIMESTAMP_YEAR': list([
       '2024',
       '2024',
       '2024',

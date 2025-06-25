@@ -1,16 +1,16 @@
 """Data quantization utilities for spatial and temporal aggregation."""
 
+import logging
+from typing import Optional
+
 import h3
 import pandas as pd
-import logging
-from typing import Optional, List
 
 from crossfilter.core.schema_constants import (
     SchemaColumns,
-    QuantizedColumns,
     TemporalLevel,
-    DF_ID_COLUMN,
     get_h3_column_name,
+    get_temporal_column_name,
 )
 
 logger = logging.getLogger(__name__)
@@ -61,7 +61,7 @@ def _add_h3_columns(df: pd.DataFrame) -> pd.DataFrame:
     for level in H3_LEVELS:
         col_name = get_h3_column_name(level)
         df[col_name] = df.apply(
-            lambda row: (
+            lambda row, level=level: (
                 h3.latlng_to_cell(
                     row[SchemaColumns.GPS_LATITUDE],
                     row[SchemaColumns.GPS_LONGITUDE],
@@ -82,24 +82,24 @@ def _add_temporal_columns(df: pd.DataFrame) -> pd.DataFrame:
     timestamps = pd.to_datetime(df[SchemaColumns.TIMESTAMP_UTC])
 
     # Second level (round to nearest second)
-    df[QuantizedColumns.QUANTIZED_TIMESTAMP_SECOND] = timestamps.dt.floor("s")
+    df[get_temporal_column_name(TemporalLevel.SECOND)] = timestamps.dt.floor("s")
 
     # Minute level
-    df[QuantizedColumns.QUANTIZED_TIMESTAMP_MINUTE] = timestamps.dt.floor("min")
+    df[get_temporal_column_name(TemporalLevel.MINUTE)] = timestamps.dt.floor("min")
 
     # Hour level
-    df[QuantizedColumns.QUANTIZED_TIMESTAMP_HOUR] = timestamps.dt.floor("h")
+    df[get_temporal_column_name(TemporalLevel.HOUR)] = timestamps.dt.floor("h")
 
     # Day level
-    df[QuantizedColumns.QUANTIZED_TIMESTAMP_DAY] = timestamps.dt.floor("D")
+    df[get_temporal_column_name(TemporalLevel.DAY)] = timestamps.dt.floor("D")
 
     # Month level - normalize to first day of month
-    df[QuantizedColumns.QUANTIZED_TIMESTAMP_MONTH] = (
+    df[get_temporal_column_name(TemporalLevel.MONTH)] = (
         timestamps.dt.normalize().dt.to_period("M").dt.start_time
     )
 
     # Year level - normalize to first day of year
-    df[QuantizedColumns.QUANTIZED_TIMESTAMP_YEAR] = (
+    df[get_temporal_column_name(TemporalLevel.YEAR)] = (
         timestamps.dt.normalize().dt.to_period("Y").dt.start_time
     )
 
@@ -149,7 +149,7 @@ def get_optimal_temporal_level(
     best_count = 0
 
     for level in TEMPORAL_LEVELS:
-        col_name = f"QUANTIZED_TIMESTAMP_{level.upper()}"
+        col_name = get_temporal_column_name(level)
         if col_name in df.columns:
             unique_count = df[col_name].nunique()
             if unique_count <= max_groups and unique_count > best_count:
@@ -217,7 +217,7 @@ def aggregate_by_temporal(
     Returns:
         Aggregated DataFrame with timestamp bucket, count, and cumulative count
     """
-    col_name = f"QUANTIZED_TIMESTAMP_{temporal_level.upper()}"
+    col_name = get_temporal_column_name(temporal_level)
     if col_name not in df.columns:
         raise ValueError(f"Temporal level {temporal_level} not found in DataFrame")
 

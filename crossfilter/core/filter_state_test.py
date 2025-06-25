@@ -18,7 +18,7 @@ def sample_df():
     return df
 
 
-def test_filter_state_initialization():
+def test_filter_state_initialization() -> None:
     """Test FilterState initialization."""
     filter_state = FilterState()
     
@@ -29,7 +29,7 @@ def test_filter_state_initialization():
     assert filter_state.all_df_ids == set()
 
 
-def test_initialize_with_data(sample_df):
+def test_initialize_with_data(sample_df) -> None:
     """Test initializing filter state with data."""
     filter_state = FilterState()
     filter_state.initialize_with_data(sample_df)
@@ -41,7 +41,7 @@ def test_initialize_with_data(sample_df):
     assert not filter_state.can_undo  # No operations yet
 
 
-def test_apply_spatial_filter(sample_df):
+def test_apply_spatial_filter(sample_df) -> None:
     """Test applying spatial filter."""
     filter_state = FilterState()
     filter_state.initialize_with_data(sample_df)
@@ -62,7 +62,7 @@ def test_apply_spatial_filter(sample_df):
     assert history[0]['count'] == 100  # Previous state had all points
 
 
-def test_apply_temporal_filter(sample_df):
+def test_apply_temporal_filter(sample_df) -> None:
     """Test applying temporal filter."""
     filter_state = FilterState()
     filter_state.initialize_with_data(sample_df)
@@ -76,7 +76,7 @@ def test_apply_temporal_filter(sample_df):
     assert filter_state.can_undo
 
 
-def test_intersect_with_filter(sample_df):
+def test_intersect_with_filter(sample_df) -> None:
     """Test intersecting filters."""
     filter_state = FilterState()
     filter_state.initialize_with_data(sample_df)
@@ -104,7 +104,7 @@ def test_intersect_with_filter(sample_df):
     assert len(history) == 2
 
 
-def test_reset_filters(sample_df):
+def test_reset_filters(sample_df) -> None:
     """Test resetting all filters."""
     filter_state = FilterState()
     filter_state.initialize_with_data(sample_df)
@@ -129,7 +129,7 @@ def test_reset_filters(sample_df):
     assert history[0]['operation_type'] == FilterOperationType.RESET
 
 
-def test_undo_operations(sample_df):
+def test_undo_operations(sample_df) -> None:
     """Test undo functionality."""
     filter_state = FilterState()
     filter_state.initialize_with_data(sample_df)
@@ -165,7 +165,7 @@ def test_undo_operations(sample_df):
     assert not filter_state.can_undo
 
 
-def test_undo_stack_limit():
+def test_undo_stack_limit() -> None:
     """Test that undo stack respects maximum size."""
     filter_state = FilterState(max_undo_steps=3)
     df = pd.DataFrame({'col': range(10)})
@@ -187,7 +187,7 @@ def test_undo_stack_limit():
     assert history[2]['description'] == "Filter 2"
 
 
-def test_get_filtered_dataframe(sample_df):
+def test_get_filtered_dataframe(sample_df) -> None:
     """Test getting filtered DataFrame."""
     filter_state = FilterState()
     filter_state.initialize_with_data(sample_df)
@@ -211,7 +211,7 @@ def test_get_filtered_dataframe(sample_df):
     assert len(filtered) == 0
 
 
-def test_filter_with_invalid_df_ids(sample_df):
+def test_filter_with_invalid_df_ids(sample_df) -> None:
     """Test filtering with df_ids that don't exist in dataset."""
     filter_state = FilterState()
     filter_state.initialize_with_data(sample_df)
@@ -225,7 +225,7 @@ def test_filter_with_invalid_df_ids(sample_df):
     assert filter_state.filtered_df_ids == set(range(90, 100))
 
 
-def test_get_summary(sample_df):
+def test_get_summary(sample_df) -> None:
     """Test getting filter state summary."""
     filter_state = FilterState()
     filter_state.initialize_with_data(sample_df)
@@ -248,7 +248,7 @@ def test_get_summary(sample_df):
     assert summary['undo_stack_size'] == 1
 
 
-def test_filter_operation_dataclass():
+def test_filter_operation_dataclass() -> None:
     """Test FilterOperation dataclass."""
     df_ids = set(range(10))
     operation = FilterOperation(
@@ -264,7 +264,7 @@ def test_filter_operation_dataclass():
     assert operation.metadata == {"key": "value"}
 
 
-def test_multiple_resets():
+def test_multiple_resets() -> None:
     """Test that multiple resets don't add unnecessary undo entries."""
     filter_state = FilterState()
     df = pd.DataFrame({'col': range(10)})
@@ -287,7 +287,7 @@ def test_multiple_resets():
     assert history[1]['operation_type'] == FilterOperationType.SPATIAL
 
 
-def test_empty_dataframe():
+def test_empty_dataframe() -> None:
     """Test filter state with empty DataFrame."""
     filter_state = FilterState()
     empty_df = pd.DataFrame()

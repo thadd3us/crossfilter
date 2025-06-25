@@ -6,11 +6,12 @@ from crossfilter.core.schema_constants import (
     FilterOperationType, 
     QuantizedColumns,
     TemporalLevel,
-    DF_ID_COLUMN
+    DF_ID_COLUMN,
+    get_h3_column_name
 )
 
 
-def test_schema_columns_enum():
+def test_schema_columns_enum() -> None:
     """Test that SchemaColumns enum has expected values."""
     assert SchemaColumns.GPS_LATITUDE == "GPS_LATITUDE"
     assert SchemaColumns.GPS_LONGITUDE == "GPS_LONGITUDE"
@@ -19,48 +20,62 @@ def test_schema_columns_enum():
     assert SchemaColumns.DATA_TYPE == "DATA_TYPE"
 
 
-def test_filter_operation_type_enum():
+def test_filter_operation_type_enum() -> None:
     """Test that FilterOperationType enum has expected values."""
     assert FilterOperationType.SPATIAL == "spatial"
     assert FilterOperationType.TEMPORAL == "temporal"
     assert FilterOperationType.RESET == "reset"
 
 
-def test_quantized_columns_enum():
+def test_quantized_columns_enum() -> None:
     """Test that QuantizedColumns enum has expected values."""
-    assert QuantizedColumns.H3_PREFIX == "QUANTIZED_H3_L"
-    assert QuantizedColumns.TIMESTAMP_SECOND == "QUANTIZED_TIMESTAMP_SECOND"
-    assert QuantizedColumns.TIMESTAMP_MINUTE == "QUANTIZED_TIMESTAMP_MINUTE"
-    assert QuantizedColumns.TIMESTAMP_HOUR == "QUANTIZED_TIMESTAMP_HOUR"
-    assert QuantizedColumns.TIMESTAMP_DAY == "QUANTIZED_TIMESTAMP_DAY"
-    assert QuantizedColumns.TIMESTAMP_MONTH == "QUANTIZED_TIMESTAMP_MONTH"
-    assert QuantizedColumns.TIMESTAMP_YEAR == "QUANTIZED_TIMESTAMP_YEAR"
+    # Test specific H3 levels
+    assert QuantizedColumns.QUANTIZED_H3_L0 == "QUANTIZED_H3_L0"
+    assert QuantizedColumns.QUANTIZED_H3_L7 == "QUANTIZED_H3_L7"
+    assert QuantizedColumns.QUANTIZED_H3_L15 == "QUANTIZED_H3_L15"
+    
+    # Test temporal columns with new DRY approach
+    assert QuantizedColumns.QUANTIZED_TIMESTAMP_SECOND == "QUANTIZED_TIMESTAMP_SECOND"
+    assert QuantizedColumns.QUANTIZED_TIMESTAMP_MINUTE == "QUANTIZED_TIMESTAMP_MINUTE"
+    assert QuantizedColumns.QUANTIZED_TIMESTAMP_HOUR == "QUANTIZED_TIMESTAMP_HOUR"
+    assert QuantizedColumns.QUANTIZED_TIMESTAMP_DAY == "QUANTIZED_TIMESTAMP_DAY"
+    assert QuantizedColumns.QUANTIZED_TIMESTAMP_MONTH == "QUANTIZED_TIMESTAMP_MONTH"
+    assert QuantizedColumns.QUANTIZED_TIMESTAMP_YEAR == "QUANTIZED_TIMESTAMP_YEAR"
 
 
-def test_temporal_level_enum():
+def test_temporal_level_enum() -> None:
     """Test that TemporalLevel enum has expected values."""
-    assert TemporalLevel.SECOND == "second"
-    assert TemporalLevel.MINUTE == "minute"
-    assert TemporalLevel.HOUR == "hour"
-    assert TemporalLevel.DAY == "day"
-    assert TemporalLevel.MONTH == "month"
-    assert TemporalLevel.YEAR == "year"
+    assert TemporalLevel.SECOND == "SECOND"
+    assert TemporalLevel.MINUTE == "MINUTE"
+    assert TemporalLevel.HOUR == "HOUR"
+    assert TemporalLevel.DAY == "DAY"
+    assert TemporalLevel.MONTH == "MONTH"
+    assert TemporalLevel.YEAR == "YEAR"
 
 
-def test_df_id_column_constant():
+def test_df_id_column_constant() -> None:
     """Test that DF_ID_COLUMN constant is defined correctly."""
     assert DF_ID_COLUMN == "df_id"
 
 
-def test_h3_column_name_construction():
+def test_h3_column_name_construction() -> None:
     """Test H3 column name construction."""
-    level = 7
-    expected = f"{QuantizedColumns.H3_PREFIX}{level}"
-    assert expected == "QUANTIZED_H3_L7"
+    # Test the helper function
+    assert get_h3_column_name(7) == "QUANTIZED_H3_L7"
+    assert get_h3_column_name(0) == "QUANTIZED_H3_L0"
+    assert get_h3_column_name(15) == "QUANTIZED_H3_L15"
+    
+    # Test that it raises for invalid levels
+    with pytest.raises(ValueError):
+        get_h3_column_name(-1)
+    with pytest.raises(ValueError):
+        get_h3_column_name(16)
 
 
-def test_temporal_column_name_construction():
+def test_temporal_column_name_construction() -> None:
     """Test temporal column name construction."""
+    # Test that the temporal columns are constructed using TemporalLevel enum
     level = TemporalLevel.HOUR
-    expected = f"QUANTIZED_TIMESTAMP_{level.upper()}"
+    expected = f"QUANTIZED_TIMESTAMP_{level}"
     assert expected == "QUANTIZED_TIMESTAMP_HOUR"
+    assert expected == QuantizedColumns.QUANTIZED_TIMESTAMP_HOUR

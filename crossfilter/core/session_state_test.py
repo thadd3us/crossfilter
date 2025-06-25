@@ -25,7 +25,7 @@ def sample_df():
     return df
 
 
-def test_session_state_initialization():
+def test_session_state_initialization() -> None:
     """Test SessionState initialization."""
     session = SessionState()
     
@@ -38,7 +38,7 @@ def test_session_state_initialization():
     assert summary["message"] == "No data loaded"
 
 
-def test_load_dataframe(sample_df):
+def test_load_dataframe(sample_df) -> None:
     """Test loading a DataFrame into session state."""
     session = SessionState()
     session.load_dataframe(sample_df)
@@ -59,7 +59,7 @@ def test_load_dataframe(sample_df):
     assert len(temporal_cols) > 0
 
 
-def test_session_state_metadata(sample_df):
+def test_session_state_metadata(sample_df) -> None:
     """Test metadata tracking."""
     session = SessionState()
     session.load_dataframe(sample_df)
@@ -76,7 +76,7 @@ def test_session_state_metadata(sample_df):
     assert "filter_state" in summary
 
 
-def test_filter_state_integration(sample_df):
+def test_filter_state_integration(sample_df) -> None:
     """Test integration with filter state."""
     session = SessionState()
     session.load_dataframe(sample_df)
@@ -98,7 +98,7 @@ def test_filter_state_integration(sample_df):
     assert all(idx in range(0, 10) for idx in filtered.index)
 
 
-def test_spatial_aggregation_individual_points(sample_df):
+def test_spatial_aggregation_individual_points(sample_df) -> None:
     """Test spatial aggregation when under threshold."""
     session = SessionState()
     session.load_dataframe(sample_df)
@@ -113,7 +113,7 @@ def test_spatial_aggregation_individual_points(sample_df):
     assert DF_ID_COLUMN in result.columns
 
 
-def test_spatial_aggregation_aggregated(sample_df):
+def test_spatial_aggregation_aggregated(sample_df) -> None:
     """Test spatial aggregation when over threshold."""
     session = SessionState()
     session.load_dataframe(sample_df)
@@ -132,7 +132,7 @@ def test_spatial_aggregation_aggregated(sample_df):
     assert result['count'].sum() == 20
 
 
-def test_temporal_aggregation_individual_points(sample_df):
+def test_temporal_aggregation_individual_points(sample_df) -> None:
     """Test temporal aggregation when under threshold."""
     session = SessionState()
     session.load_dataframe(sample_df)
@@ -153,7 +153,7 @@ def test_temporal_aggregation_individual_points(sample_df):
     assert list(result['cumulative_count']) == list(range(1, 21))
 
 
-def test_temporal_aggregation_aggregated(sample_df):
+def test_temporal_aggregation_aggregated(sample_df) -> None:
     """Test temporal aggregation when over threshold."""
     session = SessionState()
     session.load_dataframe(sample_df)
@@ -174,7 +174,7 @@ def test_temporal_aggregation_aggregated(sample_df):
     assert result['cumulative_count'].iloc[-1] == 20
 
 
-def test_clear_session_state(sample_df):
+def test_clear_session_state(sample_df) -> None:
     """Test clearing session state."""
     session = SessionState()
     session.load_dataframe(sample_df)
@@ -192,7 +192,7 @@ def test_clear_session_state(sample_df):
     assert summary["status"] == "empty"
 
 
-def test_data_property_setter(sample_df):
+def test_data_property_setter(sample_df) -> None:
     """Test that the data property setter works correctly."""
     session = SessionState()
     
@@ -204,7 +204,7 @@ def test_data_property_setter(sample_df):
     assert len(session.quantized_data) > len(sample_df.columns)  # Should have quantized columns
 
 
-def test_filter_integration_with_aggregation(sample_df):
+def test_filter_integration_with_aggregation(sample_df) -> None:
     """Test that filtering affects aggregation results."""
     session = SessionState()
     session.load_dataframe(sample_df)
@@ -232,7 +232,7 @@ def test_filter_integration_with_aggregation(sample_df):
     assert all(df_id in filtered_df_ids for df_id in filtered_temporal[DF_ID_COLUMN])
 
 
-def test_empty_dataframe_handling():
+def test_empty_dataframe_handling() -> None:
     """Test handling of empty DataFrames."""
     session = SessionState()
     empty_df = pd.DataFrame(columns=[

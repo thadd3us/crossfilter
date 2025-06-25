@@ -39,7 +39,7 @@ def sample_df():
     return df
 
 
-def test_add_quantized_columns_spatial(sample_df):
+def test_add_quantized_columns_spatial(sample_df) -> None:
     """Test adding spatial quantization columns."""
     result = add_quantized_columns(sample_df)
     
@@ -55,7 +55,7 @@ def test_add_quantized_columns_spatial(sample_df):
         assert result[col_name].dtype == object
 
 
-def test_add_quantized_columns_temporal(sample_df):
+def test_add_quantized_columns_temporal(sample_df) -> None:
     """Test adding temporal quantization columns."""
     result = add_quantized_columns(sample_df)
     
@@ -76,7 +76,7 @@ def test_add_quantized_columns_temporal(sample_df):
         assert pd.api.types.is_datetime64_any_dtype(result[col])
 
 
-def test_add_quantized_columns_missing_spatial():
+def test_add_quantized_columns_missing_spatial() -> None:
     """Test quantization when spatial columns are missing."""
     df = pd.DataFrame({
         SchemaColumns.UUID_STRING: ["uuid_1"],
@@ -96,7 +96,7 @@ def test_add_quantized_columns_missing_spatial():
         assert col_name not in result.columns
 
 
-def test_add_quantized_columns_missing_temporal():
+def test_add_quantized_columns_missing_temporal() -> None:
     """Test quantization when temporal columns are missing."""
     df = pd.DataFrame({
         SchemaColumns.UUID_STRING: ["uuid_1"],
@@ -116,7 +116,7 @@ def test_add_quantized_columns_missing_temporal():
     assert QuantizedColumns.TIMESTAMP_HOUR not in result.columns
 
 
-def test_get_optimal_h3_level(sample_df):
+def test_get_optimal_h3_level(sample_df) -> None:
     """Test finding optimal H3 level."""
     quantized = add_quantized_columns(sample_df)
     
@@ -131,7 +131,7 @@ def test_get_optimal_h3_level(sample_df):
     assert optimal_small <= optimal  # Lower resolution has smaller numbers
 
 
-def test_get_optimal_temporal_level(sample_df):
+def test_get_optimal_temporal_level(sample_df) -> None:
     """Test finding optimal temporal level."""
     quantized = add_quantized_columns(sample_df)
     
@@ -145,7 +145,7 @@ def test_get_optimal_temporal_level(sample_df):
     assert optimal_small is not None
 
 
-def test_aggregate_by_h3(sample_df):
+def test_aggregate_by_h3(sample_df) -> None:
     """Test H3 aggregation."""
     quantized = add_quantized_columns(sample_df)
     h3_level = 7  # Use a specific level for testing
@@ -173,7 +173,7 @@ def test_aggregate_by_h3(sample_df):
     assert set(all_df_ids) == set(sample_df.index)
 
 
-def test_aggregate_by_temporal(sample_df):
+def test_aggregate_by_temporal(sample_df) -> None:
     """Test temporal aggregation."""
     quantized = add_quantized_columns(sample_df)
     temporal_level = TemporalLevel.HOUR
@@ -199,7 +199,7 @@ def test_aggregate_by_temporal(sample_df):
     assert aggregated[timestamp_col].is_monotonic_increasing
 
 
-def test_aggregate_by_h3_invalid_level(sample_df):
+def test_aggregate_by_h3_invalid_level(sample_df) -> None:
     """Test H3 aggregation with invalid level."""
     quantized = add_quantized_columns(sample_df)
     
@@ -207,7 +207,7 @@ def test_aggregate_by_h3_invalid_level(sample_df):
         aggregate_by_h3(quantized, 99)
 
 
-def test_aggregate_by_temporal_invalid_level(sample_df):
+def test_aggregate_by_temporal_invalid_level(sample_df) -> None:
     """Test temporal aggregation with invalid level."""
     quantized = add_quantized_columns(sample_df)
     
@@ -215,7 +215,7 @@ def test_aggregate_by_temporal_invalid_level(sample_df):
         aggregate_by_temporal(quantized, "invalid")
 
 
-def test_empty_dataframe():
+def test_empty_dataframe() -> None:
     """Test quantization with empty DataFrame."""
     df = pd.DataFrame(columns=[
         SchemaColumns.GPS_LATITUDE,
@@ -233,7 +233,7 @@ def test_empty_dataframe():
     assert f"{QuantizedColumns.H3_PREFIX}{H3_LEVELS[0]}" in result.columns
 
 
-def test_null_coordinates():
+def test_null_coordinates() -> None:
     """Test quantization with null coordinates."""
     df = pd.DataFrame({
         SchemaColumns.UUID_STRING: ["uuid_1", "uuid_2"],

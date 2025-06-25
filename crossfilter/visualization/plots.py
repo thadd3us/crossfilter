@@ -7,12 +7,7 @@ from typing import Dict, Any, Optional, List
 import json
 
 
-# THAD: Don't wrap these functions inside a class.  Just define them as top-level functions.
-class PlotGenerator:
-    """Generates interactive plots for crossfilter visualization."""
-    
-    @staticmethod
-    def create_temporal_cdf(df: pd.DataFrame, title: str = "Temporal Distribution (CDF)") -> Dict[str, Any]:
+def create_temporal_cdf(df: pd.DataFrame, title: str = "Temporal Distribution (CDF)") -> Dict[str, Any]:
         """
         Create a Plotly CDF plot for temporal data.
         
@@ -84,9 +79,9 @@ class PlotGenerator:
         )
         
         return fig.to_dict()
-    
-    @staticmethod
-    def create_kepler_config(df: pd.DataFrame) -> Dict[str, Any]:
+
+
+def create_kepler_config(df: pd.DataFrame) -> Dict[str, Any]:
         """
         Create Kepler.gl configuration for geographic heatmap.
         
@@ -269,9 +264,9 @@ class PlotGenerator:
         }
         
         return config
-    
-    @staticmethod
-    def prepare_kepler_data(df: pd.DataFrame) -> List[Dict[str, Any]]:
+
+
+def prepare_kepler_data(df: pd.DataFrame) -> List[Dict[str, Any]]:
         """
         Prepare data for Kepler.gl visualization.
         
@@ -286,9 +281,9 @@ class PlotGenerator:
         
         # Convert DataFrame to list of dictionaries
         return df.to_dict('records')
-    
-    @staticmethod
-    def create_fallback_scatter_geo(df: pd.DataFrame, title: str = "Geographic Distribution") -> Dict[str, Any]:
+
+
+def create_fallback_scatter_geo(df: pd.DataFrame, title: str = "Geographic Distribution") -> Dict[str, Any]:
         """
         Create a fallback Plotly scatter_geo plot if Kepler.gl is not available.
         

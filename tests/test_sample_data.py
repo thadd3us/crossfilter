@@ -8,7 +8,7 @@ from crossfilter.core.data_schema import load_jsonl_to_dataframe, DataSchema
 from crossfilter.core.schema_constants import SchemaColumns
 
 
-def test_sample_100_jsonl_loads():
+def test_sample_100_jsonl_loads() -> None:
     """Test that sample_100.jsonl loads correctly and follows the schema."""
     sample_file = Path(__file__).parent.parent / "test_data" / "sample_100.jsonl"
     
@@ -55,7 +55,7 @@ def test_sample_100_jsonl_loads():
         assert dt in valid_data_types, f"Invalid DATA_TYPE: {dt}"
 
 
-def test_sample_data_has_geographic_diversity():
+def test_sample_data_has_geographic_diversity() -> None:
     """Test that sample data covers multiple geographic locations."""
     sample_file = Path(__file__).parent.parent / "test_data" / "sample_100.jsonl"
     df = load_jsonl_to_dataframe(sample_file)
@@ -69,7 +69,7 @@ def test_sample_data_has_geographic_diversity():
     assert lon_range > 200, f"Expected wide longitude range, got {lon_range}"
 
 
-def test_sample_data_has_temporal_diversity():
+def test_sample_data_has_temporal_diversity() -> None:
     """Test that sample data covers multiple time periods."""
     sample_file = Path(__file__).parent.parent / "test_data" / "sample_100.jsonl"
     df = load_jsonl_to_dataframe(sample_file)

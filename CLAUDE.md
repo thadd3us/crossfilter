@@ -60,6 +60,13 @@ Crossfilter is a Python web application for interactive crossfiltering and analy
 10. **Keep Logic in Python**: Keep as much logic in Python as possible, and not in Javascript. The frontend should be primarily for display and user interaction.
 11. **Comprehensive Testing**: For each Python file, there should be a corresponding "*_test.py" file that concisely exercises as much functionality as possible.
 12. **No Manual Testing**: Never do any sort of "ad hoc" running the server and "trying things out". Always build functionality into automated tests that can be repeated.
+13. **No Global Variables**: Never create global variables. Use dependency injection or other patterns to pass state where needed.
+14. **Complete Type Annotations**: Always add type annotations to all function arguments and return types.
+15. **Use pytest Best Practices**: 
+    - Use `tmp_path` fixture instead of `tempfile.NamedTemporaryFile`
+    - Use `syrupy` plugin for testing data content in a diff-friendly way
+    - Always specify return type annotations for test functions
+16. **Proper Exception Handling**: Follow linter suggestions for proper exception re-raising patterns.
 
 ### Project Structure
 ```

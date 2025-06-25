@@ -196,7 +196,7 @@ def test_aggregate_by_h3_invalid_level(sample_df) -> None:
     """Test H3 aggregation with invalid level."""
     quantized = add_quantized_columns(sample_df)
     
-    with pytest.raises(ValueError, match="H3 level 99 not found"):
+    with pytest.raises(ValueError, match="H3 level must be between 0 and 15, got 99"):
         aggregate_by_h3(quantized, 99)
 
 

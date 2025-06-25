@@ -173,7 +173,7 @@ def aggregate_by_h3(df: pd.DataFrame, h3_level: int) -> pd.DataFrame:
     grouped.columns = [col_name, 'lat', 'count', 'lon']
     
     # Add df_ids for the aggregated groups
-    df_id_groups = df.groupby(col_name).apply(lambda x: list(x.index)).reset_index(name='df_ids')
+    df_id_groups = df.groupby(col_name).apply(lambda x: list(x.index), include_groups=False).reset_index(name='df_ids')
     grouped = grouped.merge(df_id_groups, on=col_name)
     
     logger.debug(f"Aggregated {len(df)} rows into {len(grouped)} H3 groups at level {h3_level}")
@@ -199,7 +199,7 @@ def aggregate_by_temporal(df: pd.DataFrame, temporal_level: TemporalLevel) -> pd
     grouped = df.groupby(col_name).size().reset_index(name='count')
     
     # Add df_ids for the aggregated groups
-    df_id_groups = df.groupby(col_name).apply(lambda x: list(x.index)).reset_index(name='df_ids')
+    df_id_groups = df.groupby(col_name).apply(lambda x: list(x.index), include_groups=False).reset_index(name='df_ids')
     grouped = grouped.merge(df_id_groups, on=col_name)
     
     # Sort by timestamp and add cumulative count for CDF

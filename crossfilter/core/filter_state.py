@@ -16,8 +16,6 @@ class FilterOperation:
     operation_type: FilterOperationType
     filtered_df_ids: Set[int]  # df_ids that remain after filtering
     description: str  # Human-readable description
-    # THAD: Avoid YAGNI and weakly typed fields in general.  Delete the next line.
-    metadata: Dict[str, Any] = field(default_factory=dict)  # Additional filter params
 
 
 class FilterState:
@@ -80,36 +78,32 @@ class FilterState:
         """Check if undo is possible."""
         return len(self._undo_stack) > 0
     
-    def apply_spatial_filter(self, filtered_df_ids: Set[int], description: str, 
-                           metadata: Optional[Dict[str, Any]] = None) -> None:
+    def apply_spatial_filter(self, filtered_df_ids: Set[int], description: str) -> None:
         """
         Apply a spatial filter operation.
         
         Args:
             filtered_df_ids: Set of df_ids that should remain visible
             description: Description of the filter operation
-            metadata: Additional metadata about the filter
         """
-        self._push_current_state(FilterOperationType.SPATIAL, description, metadata or {})
+        self._push_current_state(FilterOperationType.SPATIAL, description)
         self._current_filtered_df_ids = filtered_df_ids & self._all_df_ids
         logger.info(f"Applied spatial filter: {len(self._current_filtered_df_ids)} points remain")
         
-    def apply_temporal_filter(self, filtered_df_ids: Set[int], description: str,
-                            metadata: Optional[Dict[str, Any]] = None) -> None:
+    def apply_temporal_filter(self, filtered_df_ids: Set[int], description: str) -> None:
         """
         Apply a temporal filter operation.
         
         Args:
             filtered_df_ids: Set of df_ids that should remain visible
             description: Description of the filter operation  
-            metadata: Additional metadata about the filter
         """
-        self._push_current_state(FilterOperationType.TEMPORAL, description, metadata or {})
+        self._push_current_state(FilterOperationType.TEMPORAL, description)
         self._current_filtered_df_ids = filtered_df_ids & self._all_df_ids
         logger.info(f"Applied temporal filter: {len(self._current_filtered_df_ids)} points remain")
         
     def intersect_with_filter(self, new_filtered_df_ids: Set[int], operation_type: FilterOperationType,
-                            description: str, metadata: Optional[Dict[str, Any]] = None) -> None:
+                            description: str) -> None:
         """
         Apply a filter by intersecting with current filter state.
         
@@ -117,9 +111,8 @@ class FilterState:
             new_filtered_df_ids: New df_ids to intersect with current filter
             operation_type: Type of operation (spatial or temporal)
             description: Description of the filter operation
-            metadata: Additional metadata about the filter
         """
-        self._push_current_state(operation_type, description, metadata or {})
+        self._push_current_state(operation_type, description)
         if self._current_filtered_df_ids is not None:
             self._current_filtered_df_ids &= new_filtered_df_ids
         else:
@@ -153,14 +146,13 @@ class FilterState:
         Get information about operations in the undo stack.
         
         Returns:
-            List of operation descriptions and metadata
+            List of operation descriptions
         """
         return [
             {
                 'operation_type': op.operation_type,
                 'description': op.description,
-                'count': len(op.filtered_df_ids),
-                'metadata': op.metadata
+                'count': len(op.filtered_df_ids)
             }
             for op in reversed(self._undo_stack)
         ]
@@ -180,15 +172,13 @@ class FilterState:
             
         return df.loc[df.index.isin(self._current_filtered_df_ids)].copy()
         
-    def _push_current_state(self, operation_type: FilterOperationType, description: str, 
-                          metadata: Optional[Dict[str, Any]] = None) -> None:
+    def _push_current_state(self, operation_type: FilterOperationType, description: str) -> None:
         """Push the current state onto the undo stack."""
         if self._current_filtered_df_ids is not None:
             operation = FilterOperation(
                 operation_type=operation_type,
                 filtered_df_ids=self._current_filtered_df_ids.copy(),
-                description=description,
-                metadata=metadata or {}
+                description=description
             )
             self._undo_stack.append(operation)
             

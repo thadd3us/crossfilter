@@ -254,14 +254,12 @@ def test_filter_operation_dataclass() -> None:
     operation = FilterOperation(
         operation_type=FilterOperationType.SPATIAL,
         filtered_df_ids=df_ids,
-        description="Test operation",
-        metadata={"key": "value"}
+        description="Test operation"
     )
     
     assert operation.operation_type == FilterOperationType.SPATIAL
     assert operation.filtered_df_ids == df_ids
     assert operation.description == "Test operation"
-    assert operation.metadata == {"key": "value"}
 
 
 def test_multiple_resets() -> None:

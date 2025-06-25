@@ -91,10 +91,10 @@ module = [
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
-python_files = ["test_*.py", "*_test.py"]
-python_classes = ["Test*"]
-python_functions = ["test_*"]
+testpaths = ["."]
+#python_files = ["test_*.py", "*_test.py"]
+#python_classes = ["Test*"]
+#python_functions = ["test_*"]
 addopts = [
     "--strict-markers",
     "--strict-config",
@@ -118,9 +118,5 @@ omit = [
 [tool.coverage.report]
 exclude_lines = [
     "pragma: no cover",
-    "def __repr__",
-    "raise AssertionError",
-    "raise NotImplementedError",
-    "if __name__ == .__main__.:",
     "if TYPE_CHECKING:",
 ]

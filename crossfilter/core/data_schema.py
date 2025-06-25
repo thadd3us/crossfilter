@@ -67,13 +67,7 @@ def load_jsonl_to_dataframe(jsonl_path: Path) -> pd.DataFrame:
             except json.JSONDecodeError as e:
                 raise ValueError(f"Invalid JSON on line {line_num}: {e}")
     
-    # THAD: Do you really need this branch here?  Won't it work to just use the else branch even if records is empty?
-    # THAD: In general, avoid branches if at all possible!
-    if not records:
-        # Create an empty DataFrame with the correct schema
-        df = pd.DataFrame()
-    else:
-        df = pd.DataFrame(records)
+    df = pd.DataFrame(records)
     
     # Ensure all required columns exist, adding missing ones with null values
     required_columns = [
@@ -94,14 +88,11 @@ def load_jsonl_to_dataframe(jsonl_path: Path) -> pd.DataFrame:
         if col not in df.columns:
             df[col] = None
     
-    # THAD: Can you get rid of the branches below?  The columns should always exist -- just map them with a function that supports missing values.
-    # Convert SOURCE_FILE from Path objects to strings if needed
-    if SchemaColumns.SOURCE_FILE in df.columns and not df[SchemaColumns.SOURCE_FILE].isna().all():
-        df[SchemaColumns.SOURCE_FILE] = df[SchemaColumns.SOURCE_FILE].astype(str)
+    # Convert SOURCE_FILE from Path objects to strings, handling missing values
+    df[SchemaColumns.SOURCE_FILE] = df[SchemaColumns.SOURCE_FILE].astype(str)
     
-    # Convert TIMESTAMP_UTC to UTC timezone-aware datetime if it's a string
-    if SchemaColumns.TIMESTAMP_UTC in df.columns and not df[SchemaColumns.TIMESTAMP_UTC].isna().all():
-        df[SchemaColumns.TIMESTAMP_UTC] = pd.to_datetime(df[SchemaColumns.TIMESTAMP_UTC], utc=True)
+    # Convert TIMESTAMP_UTC to UTC timezone-aware datetime, handling missing values
+    df[SchemaColumns.TIMESTAMP_UTC] = pd.to_datetime(df[SchemaColumns.TIMESTAMP_UTC], utc=True, errors='coerce')
     
     # Validate and coerce only the schema columns
     schema_df = df[required_columns].copy()
@@ -118,8 +109,6 @@ def load_jsonl_to_dataframe(jsonl_path: Path) -> pd.DataFrame:
     result_df = result_df.reset_index(drop=True)
     result_df.index.name = DF_ID_COLUMN
     
-    # THAD: Prefer f-strings that use the '=' syntax, such as '{jsonl_path=}' to add more context to the log message and show empty strings better.
-    # THAD: Please configure pyline to ignore f-strings passed to logger.
-    logger.info(f"Loaded {len(result_df)} records from {jsonl_path}")
+    logger.info(f"Loaded {len(result_df)} records from {jsonl_path=}")
     
     return result_df

@@ -1,10 +1,9 @@
 """Filter state management with undo stack for crossfilter operations."""
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import List, Set, Optional, Dict, Any
 import pandas as pd
 import logging
-from copy import deepcopy
 
 from crossfilter.core.schema_constants import FilterOperationType, DF_ID_COLUMN
 

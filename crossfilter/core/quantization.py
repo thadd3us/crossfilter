@@ -9,7 +9,8 @@ from crossfilter.core.schema_constants import (
     SchemaColumns, 
     QuantizedColumns, 
     TemporalLevel,
-    DF_ID_COLUMN
+    DF_ID_COLUMN,
+    get_h3_column_name
 )
 
 logger = logging.getLogger(__name__)
@@ -55,7 +56,7 @@ def add_quantized_columns(df: pd.DataFrame) -> pd.DataFrame:
 def _add_h3_columns(df: pd.DataFrame) -> pd.DataFrame:
     """Add H3 hexagon columns at multiple resolutions."""
     for level in H3_LEVELS:
-        col_name = f"{QuantizedColumns.H3_PREFIX}{level}"
+        col_name = get_h3_column_name(level)
         df[col_name] = df.apply(
             lambda row: h3.latlng_to_cell(
                 row[SchemaColumns.GPS_LATITUDE], 
@@ -75,22 +76,22 @@ def _add_temporal_columns(df: pd.DataFrame) -> pd.DataFrame:
     timestamps = pd.to_datetime(df[SchemaColumns.TIMESTAMP_UTC])
     
     # Second level (round to nearest second)
-    df[QuantizedColumns.TIMESTAMP_SECOND] = timestamps.dt.floor('s')
+    df[QuantizedColumns.QUANTIZED_TIMESTAMP_SECOND] = timestamps.dt.floor('s')
     
     # Minute level  
-    df[QuantizedColumns.TIMESTAMP_MINUTE] = timestamps.dt.floor('min')
+    df[QuantizedColumns.QUANTIZED_TIMESTAMP_MINUTE] = timestamps.dt.floor('min')
     
     # Hour level
-    df[QuantizedColumns.TIMESTAMP_HOUR] = timestamps.dt.floor('h')
+    df[QuantizedColumns.QUANTIZED_TIMESTAMP_HOUR] = timestamps.dt.floor('h')
     
     # Day level
-    df[QuantizedColumns.TIMESTAMP_DAY] = timestamps.dt.floor('D')
+    df[QuantizedColumns.QUANTIZED_TIMESTAMP_DAY] = timestamps.dt.floor('D')
     
     # Month level - normalize to first day of month
-    df[QuantizedColumns.TIMESTAMP_MONTH] = timestamps.dt.normalize().dt.to_period('M').dt.start_time
+    df[QuantizedColumns.QUANTIZED_TIMESTAMP_MONTH] = timestamps.dt.normalize().dt.to_period('M').dt.start_time
     
     # Year level - normalize to first day of year
-    df[QuantizedColumns.TIMESTAMP_YEAR] = timestamps.dt.normalize().dt.to_period('Y').dt.start_time
+    df[QuantizedColumns.QUANTIZED_TIMESTAMP_YEAR] = timestamps.dt.normalize().dt.to_period('Y').dt.start_time
     
     return df
 
@@ -110,7 +111,7 @@ def get_optimal_h3_level(df: pd.DataFrame, max_groups: int) -> Optional[int]:
     best_count = 0
     
     for level in H3_LEVELS:
-        col_name = f"{QuantizedColumns.H3_PREFIX}{level}"
+        col_name = get_h3_column_name(level)
         if col_name in df.columns:
             unique_count = df[col_name].nunique()
             if unique_count <= max_groups and unique_count > best_count:
@@ -158,7 +159,7 @@ def aggregate_by_h3(df: pd.DataFrame, h3_level: int) -> pd.DataFrame:
     Returns:
         Aggregated DataFrame with H3 cell, count, and representative lat/lon
     """
-    col_name = f"{QuantizedColumns.H3_PREFIX}{h3_level}"
+    col_name = get_h3_column_name(h3_level)
     if col_name not in df.columns:
         raise ValueError(f"H3 level {h3_level} not found in DataFrame")
     

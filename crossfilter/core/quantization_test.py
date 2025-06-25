@@ -17,7 +17,8 @@ from crossfilter.core.schema_constants import (
     SchemaColumns,
     QuantizedColumns,
     TemporalLevel,
-    DF_ID_COLUMN
+    DF_ID_COLUMN,
+    get_h3_column_name
 )
 
 
@@ -39,44 +40,36 @@ def sample_df():
     return df
 
 
-def test_add_quantized_columns_spatial(sample_df) -> None:
+def test_add_quantized_columns_spatial(sample_df, snapshot) -> None:
     """Test adding spatial quantization columns."""
     result = add_quantized_columns(sample_df)
     
     # Should have original columns plus quantized H3 columns
     assert len(result.columns) > len(sample_df.columns)
     
-    # Check that H3 columns were added
-    # THAD: Lean on pytest's syrupy plugin to check the contents of data (and types!) in a way that's easy to visually diff and keeps the test short.
-    for level in H3_LEVELS:
-        col_name = f"{QuantizedColumns.H3_PREFIX}{level}"
-        assert col_name in result.columns
-        # Should have string values (H3 cell IDs)
-        assert result[col_name].dtype == object
+    # Check that H3 columns were added and their contents
+    h3_columns = {col: result[col].tolist() for col in result.columns 
+                  if col.startswith('QUANTIZED_H3_L')}
+    assert h3_columns == snapshot
 
 
-def test_add_quantized_columns_temporal(sample_df) -> None:
+def test_add_quantized_columns_temporal(sample_df, snapshot) -> None:
     """Test adding temporal quantization columns."""
     result = add_quantized_columns(sample_df)
     
-    # Check that temporal columns were added
-    # THAD: Lean on pytest's syrupy plugin to check the contents of data (and types!) in a way that's easy to visually diff and keeps the test short.
-    expected_cols = [
-        QuantizedColumns.TIMESTAMP_SECOND,
-        QuantizedColumns.TIMESTAMP_MINUTE,
-        QuantizedColumns.TIMESTAMP_HOUR,
-        QuantizedColumns.TIMESTAMP_DAY,
-        QuantizedColumns.TIMESTAMP_MONTH,
-        QuantizedColumns.TIMESTAMP_YEAR
-    ]
-    
-    for col in expected_cols:
-        assert col in result.columns
-        # Should be datetime type
-        assert pd.api.types.is_datetime64_any_dtype(result[col])
+    # Check that temporal columns were added and their contents
+    temporal_columns = {
+        QuantizedColumns.QUANTIZED_TIMESTAMP_SECOND: result[QuantizedColumns.QUANTIZED_TIMESTAMP_SECOND].dt.strftime('%Y-%m-%d %H:%M:%S').tolist(),
+        QuantizedColumns.QUANTIZED_TIMESTAMP_MINUTE: result[QuantizedColumns.QUANTIZED_TIMESTAMP_MINUTE].dt.strftime('%Y-%m-%d %H:%M').tolist(),
+        QuantizedColumns.QUANTIZED_TIMESTAMP_HOUR: result[QuantizedColumns.QUANTIZED_TIMESTAMP_HOUR].dt.strftime('%Y-%m-%d %H:00').tolist(),
+        QuantizedColumns.QUANTIZED_TIMESTAMP_DAY: result[QuantizedColumns.QUANTIZED_TIMESTAMP_DAY].dt.strftime('%Y-%m-%d').tolist(),
+        QuantizedColumns.QUANTIZED_TIMESTAMP_MONTH: result[QuantizedColumns.QUANTIZED_TIMESTAMP_MONTH].dt.strftime('%Y-%m').tolist(),
+        QuantizedColumns.QUANTIZED_TIMESTAMP_YEAR: result[QuantizedColumns.QUANTIZED_TIMESTAMP_YEAR].dt.strftime('%Y').tolist()
+    }
+    assert temporal_columns == snapshot
 
 
-def test_add_quantized_columns_missing_spatial() -> None:
+def test_add_quantized_columns_missing_spatial(snapshot) -> None:
     """Test quantization when spatial columns are missing."""
     df = pd.DataFrame({
         SchemaColumns.UUID_STRING: ["uuid_1"],
@@ -86,17 +79,16 @@ def test_add_quantized_columns_missing_spatial() -> None:
     
     result = add_quantized_columns(df)
     
-    # THAD: Lean on pytest's syrupy plugin to check the contents of data (and types!) in a way that's easy to visually diff and keeps the test short.
-    # Should have temporal columns but not H3 columns
-    assert QuantizedColumns.TIMESTAMP_HOUR in result.columns
-    
-    # Should not have H3 columns
-    for level in H3_LEVELS:
-        col_name = f"{QuantizedColumns.H3_PREFIX}{level}"
-        assert col_name not in result.columns
+    # Check column presence and content
+    column_info = {
+        'present_columns': sorted(result.columns.tolist()),
+        'temporal_hour_value': result[QuantizedColumns.QUANTIZED_TIMESTAMP_HOUR].dt.strftime('%Y-%m-%d %H:00').iloc[0],
+        'h3_columns_present': [col for col in result.columns if col.startswith('QUANTIZED_H3_L')]
+    }
+    assert column_info == snapshot
 
 
-def test_add_quantized_columns_missing_temporal() -> None:
+def test_add_quantized_columns_missing_temporal(snapshot) -> None:
     """Test quantization when temporal columns are missing."""
     df = pd.DataFrame({
         SchemaColumns.UUID_STRING: ["uuid_1"],
@@ -107,13 +99,14 @@ def test_add_quantized_columns_missing_temporal() -> None:
     
     result = add_quantized_columns(df)
     
-    # THAD: Lean on pytest's syrupy plugin to check the contents of data (and types!) in a way that's easy to visually diff and keeps the test short.
-    # Should have H3 columns but not temporal columns
-    col_name = f"{QuantizedColumns.H3_PREFIX}{H3_LEVELS[0]}"
-    assert col_name in result.columns
-    
-    # Should not have temporal columns
-    assert QuantizedColumns.TIMESTAMP_HOUR not in result.columns
+    # Check column presence and content
+    column_info = {
+        'present_columns': sorted(result.columns.tolist()),
+        'h3_columns_present': [col for col in result.columns if col.startswith('QUANTIZED_H3_L')],
+        'temporal_columns_present': [col for col in result.columns if col.startswith('QUANTIZED_TIMESTAMP')],
+        'h3_level_4_value': result[get_h3_column_name(H3_LEVELS[0])].iloc[0]
+    }
+    assert column_info == snapshot
 
 
 def test_get_optimal_h3_level(sample_df) -> None:
@@ -154,7 +147,7 @@ def test_aggregate_by_h3(sample_df) -> None:
     
     # Should have aggregated columns
     expected_cols = [
-        f"{QuantizedColumns.H3_PREFIX}{h3_level}",
+        get_h3_column_name(h3_level),
         'lat', 'count', 'lon', 'df_ids'
     ]
     for col in expected_cols:
@@ -230,7 +223,7 @@ def test_empty_dataframe() -> None:
     assert len(result) == 0
     
     # Should have quantized columns
-    assert f"{QuantizedColumns.H3_PREFIX}{H3_LEVELS[0]}" in result.columns
+    assert get_h3_column_name(H3_LEVELS[0]) in result.columns
 
 
 def test_null_coordinates() -> None:
@@ -249,10 +242,10 @@ def test_null_coordinates() -> None:
     result = add_quantized_columns(df)
     
     # H3 columns should have null for null coordinates
-    h3_col = f"{QuantizedColumns.H3_PREFIX}{H3_LEVELS[0]}"
+    h3_col = get_h3_column_name(H3_LEVELS[0])
     assert pd.notna(result.loc[0, h3_col])  # Valid coordinates
     assert pd.isna(result.loc[1, h3_col])   # Null coordinates
     
     # Temporal columns should work for both rows
-    assert pd.notna(result.loc[0, QuantizedColumns.TIMESTAMP_HOUR])
-    assert pd.notna(result.loc[1, QuantizedColumns.TIMESTAMP_HOUR])
+    assert pd.notna(result.loc[0, QuantizedColumns.QUANTIZED_TIMESTAMP_HOUR])
+    assert pd.notna(result.loc[1, QuantizedColumns.QUANTIZED_TIMESTAMP_HOUR])

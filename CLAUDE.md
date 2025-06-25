@@ -67,6 +67,9 @@ Crossfilter is a Python web application for interactive crossfiltering and analy
     - Use `syrupy` plugin for testing data content in a diff-friendly way
     - Always specify return type annotations for test functions
 16. **Proper Exception Handling**: Follow linter suggestions for proper exception re-raising patterns.
+17. **Avoid YAGNI and Weakly Typed Fields**: Don't add fields like `metadata: Dict[str, Any]` unless there's a specific, immediate need. Prefer strongly typed, specific fields.
+18. **Minimize Branching**: Avoid unnecessary `if/else` branches whenever possible. Use functions that handle edge cases (like empty collections) gracefully rather than checking for them explicitly.
+19. **Enhanced Logging**: Use f-string syntax with `=` for logging (e.g., `f"{variable=}"`) to provide better context and show empty strings clearly.
 
 ### Project Structure
 ```

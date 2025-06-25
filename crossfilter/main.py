@@ -315,8 +315,9 @@ def serve(
     
     # Use Uvicorn as the ASGI server - it's the recommended production server for FastAPI
     # providing high performance async request handling
+    # Pass the app instance directly to preserve the session state
     uvicorn.run(
-        "crossfilter.main:app",
+        app,
         host=host,
         port=port,
         reload=reload,

@@ -99,3 +99,47 @@ def test_serve_command_help():
     assert result.returncode == 0
     assert "--port" in result.stdout
     assert "--host" in result.stdout
+
+
+def test_cli_server_with_preload_jsonl(snapshot) -> None:
+    """Test that the CLI starts the server with --preload-jsonl and data is loaded."""
+    port = find_free_port()
+    host = "127.0.0.1"
+    jsonl_path = "test_data/sample_100.jsonl"
+    
+    # Start the server process with preload
+    process = subprocess.Popen([
+        "uv", "run", "python", "-m", "crossfilter.main", "serve", 
+        "--port", str(port), "--host", host, "--preload-jsonl", jsonl_path
+    ], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    
+    try:
+        # Wait for server to start
+        server_started = wait_for_server(host, port, timeout=15.0)
+        if not server_started:
+            process.terminate()
+            process.wait()
+            stderr = process.stderr.read() if process.stderr else ''
+            stdout = process.stdout.read() if process.stdout else ''
+            raise AssertionError(f"Server failed to start on {host}:{port}, stderr={stderr}, stdout={stdout}")
+        
+        # Give server a moment to fully initialize
+        time.sleep(1.0)
+        
+        # Make request to the session API to verify data was loaded
+        response = requests.get(f"http://{host}:{port}/api/session", timeout=5)
+        assert response.status_code == 200
+        
+        session_data = response.json()
+        
+        # Use snapshot to verify the complete session state
+        assert session_data == snapshot
+        
+    finally:
+        # Clean up: terminate the server process
+        process.terminate()
+        try:
+            process.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            process.kill()
+            process.wait()

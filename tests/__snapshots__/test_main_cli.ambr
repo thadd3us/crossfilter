@@ -1,0 +1,31 @@
+# serializer version: 1
+# name: test_cli_server_with_preload_jsonl
+  dict({
+    'columns': list([
+      'UUID_STRING',
+      'DATA_TYPE',
+      'NAME',
+      'CAPTION',
+      'SOURCE_FILE',
+      'TIMESTAMP_MAYBE_TIMEZONE_AWARE',
+      'TIMESTAMP_UTC',
+      'GPS_LATITUDE',
+      'GPS_LONGITUDE',
+      'RATING_0_TO_5',
+      'SIZE_IN_BYTES',
+    ]),
+    'filter_state': dict({
+      'can_undo': False,
+      'filter_ratio': 1.0,
+      'filtered_count': 100,
+      'total_count': 100,
+      'undo_stack_size': 0,
+    }),
+    'memory_usage': '0.03 MB',
+    'shape': list([
+      100,
+      11,
+    ]),
+    'status': 'loaded',
+  })
+# ---

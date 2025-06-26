@@ -303,6 +303,7 @@ async def test_responsive_design(page: Page, test_server: TestServer) -> None:
     assert await header.is_visible()
 
 
+
 @pytest.mark.e2e
 @pytest.mark.asyncio
 async def test_page_console_errors(page: Page, test_server: TestServer) -> None:

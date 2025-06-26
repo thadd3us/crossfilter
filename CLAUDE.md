@@ -72,6 +72,11 @@ Crossfilter is a Python web application for interactive crossfiltering and analy
 17. **Avoid YAGNI and Weakly Typed Fields**: Don't add fields like `metadata: Dict[str, Any]` unless there's a specific, immediate need. Prefer strongly typed, specific fields.
 18. **Minimize Branching**: Avoid unnecessary `if/else` branches whenever possible. Use functions that handle edge cases (like empty collections) gracefully rather than checking for them explicitly.
 19. **Enhanced Logging**: Use f-string syntax with `=` for logging (e.g., `f"{variable=}"`) to provide better context and show empty strings clearly.
+20. **Start with the Simplest Solution**: Always begin with the most straightforward approach that meets the requirements. Don't copy complex patterns when simple ones will suffice.
+21. **Question Infrastructure Needs**: Before adding servers, databases, or complex frameworks, ask "Is this actually needed?" For example, testing a static HTML file doesn't require a web server - use `file://` URLs instead.
+22. **Prefer Synchronous over Asynchronous**: Use async/await only when truly needed for concurrency. Simple, synchronous code is easier to understand and debug.
+23. **Don't Cargo-Cult Code**: Just because existing code is complex doesn't mean new code needs to be. Evaluate each situation independently and choose the appropriate level of complexity.
+24. **Focus on Actual Requirements**: Implement exactly what's needed, not what might be needed. A "hello world" test should be simple, not a copy of a full application test suite.
 
 ### Project Structure
 ```

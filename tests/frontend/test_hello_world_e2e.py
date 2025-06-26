@@ -10,9 +10,7 @@ from playwright.sync_api import Page
 def test_hello_world_page(page: Page) -> None:
     """Test that the hello world page loads and displays correct content."""
     # Get the path to the static HTML file
-    hello_html_path = (
-        Path(__file__).parent.parent / "crossfilter" / "static" / "hello.html"
-    )
+    hello_html_path = Path(__file__).parent / "test_data" / "hello.html"
     file_url = f"file://{hello_html_path.absolute()}"
 
     page.goto(file_url)

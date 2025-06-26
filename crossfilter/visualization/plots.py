@@ -1,20 +1,20 @@
 """Visualization components for geographic and temporal crossfilter plots."""
 
-from typing import Any, Dict, List
+from typing import Any
 
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 
 
-def create_temporal_cdf(df: pd.DataFrame, title: str = "Temporal Distribution (CDF)") -> Dict[str, Any]:
+def create_temporal_cdf(df: pd.DataFrame, title: str = "Temporal Distribution (CDF)") -> dict[str, Any]:
         """
         Create a Plotly CDF plot for temporal data.
-        
+
         Args:
             df: DataFrame with temporal data and cumulative counts
             title: Plot title
-            
+
         Returns:
             Plotly figure as dictionary
         """
@@ -56,8 +56,8 @@ def create_temporal_cdf(df: pd.DataFrame, title: str = "Temporal Distribution (C
                         '<b>Cumulative Count:</b> %{y}<br>'
                         '<extra></extra>'
                     ),
-                    line=dict(color='blue', width=2),
-                    marker=dict(size=4)
+                    line={"color": 'blue', "width": 2},
+                    marker={"size": 4}
                 ))
 
         # Common layout settings
@@ -68,7 +68,7 @@ def create_temporal_cdf(df: pd.DataFrame, title: str = "Temporal Distribution (C
             hovermode='closest',
             showlegend=False,
             height=400,
-            margin=dict(l=50, r=50, t=50, b=50)
+            margin={"l": 50, "r": 50, "t": 50, "b": 50}
         )
 
         # Configure x-axis for time formatting
@@ -81,13 +81,13 @@ def create_temporal_cdf(df: pd.DataFrame, title: str = "Temporal Distribution (C
         return fig.to_dict()
 
 
-def create_kepler_config(df: pd.DataFrame) -> Dict[str, Any]:
+def create_kepler_config(df: pd.DataFrame) -> dict[str, Any]:
         """
         Create Kepler.gl configuration for geographic heatmap.
-        
+
         Args:
             df: DataFrame with geographic data
-            
+
         Returns:
             Kepler.gl configuration dictionary
         """
@@ -266,13 +266,13 @@ def create_kepler_config(df: pd.DataFrame) -> Dict[str, Any]:
         return config
 
 
-def prepare_kepler_data(df: pd.DataFrame) -> List[Dict[str, Any]]:
+def prepare_kepler_data(df: pd.DataFrame) -> list[dict[str, Any]]:
         """
         Prepare data for Kepler.gl visualization.
-        
+
         Args:
             df: DataFrame with geographic data
-            
+
         Returns:
             List of data rows for Kepler.gl
         """
@@ -283,14 +283,14 @@ def prepare_kepler_data(df: pd.DataFrame) -> List[Dict[str, Any]]:
         return df.to_dict('records')
 
 
-def create_fallback_scatter_geo(df: pd.DataFrame, title: str = "Geographic Distribution") -> Dict[str, Any]:
+def create_fallback_scatter_geo(df: pd.DataFrame, title: str = "Geographic Distribution") -> dict[str, Any]:
         """
         Create a fallback Plotly scatter_geo plot if Kepler.gl is not available.
-        
+
         Args:
             df: DataFrame with geographic data
             title: Plot title
-            
+
         Returns:
             Plotly figure as dictionary
         """
@@ -332,7 +332,7 @@ def create_fallback_scatter_geo(df: pd.DataFrame, title: str = "Geographic Distr
 
         fig.update_layout(
             height=500,
-            margin=dict(l=0, r=0, t=50, b=0)
+            margin={"l": 0, "r": 0, "t": 50, "b": 0}
         )
 
         return fig.to_dict()

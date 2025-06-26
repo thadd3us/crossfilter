@@ -4,7 +4,7 @@ import signal
 import sys
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 import typer
 import uvicorn
@@ -52,7 +52,7 @@ if static_path.exists():
 @app.post("/api/data/load")
 async def load_data_endpoint(
     file_path: str, session_state: SessionState = Depends(get_session_state)
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Load data from a JSONL file into the session state."""
     try:
         jsonl_path = Path(file_path)
@@ -109,17 +109,17 @@ async def get_session_status(
 class FilterRequest(BaseModel):
     """Request model for applying filters."""
 
-    uuids: List[int]
+    uuids: list[int]
     operation_type: OperationType  # 'spatial' or 'temporal'
     description: str
-    metadata: Optional[Dict[str, Any]] = None
+    metadata: Optional[dict[str, Any]] = None
 
 
 @app.get("/api/plots/spatial")
 async def get_spatial_plot_data(
     max_groups: int = Query(100000, ge=1, le=1000000),
     session_state: SessionState = Depends(get_session_state),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Get data for the spatial heatmap plot."""
     if not session_state.has_data():
         raise HTTPException(status_code=404, detail="No data loaded")
@@ -154,7 +154,7 @@ async def get_spatial_plot_data(
 async def get_temporal_plot_data(
     max_groups: int = Query(100000, ge=1, le=1000000),
     session_state: SessionState = Depends(get_session_state),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Get data for the temporal CDF plot."""
     if not session_state.has_data():
         raise HTTPException(status_code=404, detail="No data loaded")
@@ -183,7 +183,7 @@ async def get_temporal_plot_data(
 async def apply_filter(
     filter_request: FilterRequest,
     session_state: SessionState = Depends(get_session_state),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Apply a spatial or temporal filter."""
     if not session_state.has_data():
         raise HTTPException(status_code=404, detail="No data loaded")
@@ -222,7 +222,7 @@ async def apply_filter(
 async def intersect_filter(
     filter_request: FilterRequest,
     session_state: SessionState = Depends(get_session_state),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Intersect current filter with new selection."""
     if not session_state.has_data():
         raise HTTPException(status_code=404, detail="No data loaded")
@@ -248,7 +248,7 @@ async def intersect_filter(
 @app.post("/api/filters/reset")
 async def reset_filters(
     session_state: SessionState = Depends(get_session_state),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Reset all filters to show all data."""
     if not session_state.has_data():
         raise HTTPException(status_code=404, detail="No data loaded")
@@ -269,7 +269,7 @@ async def reset_filters(
 @app.post("/api/filters/undo")
 async def undo_filter(
     session_state: SessionState = Depends(get_session_state),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Undo the last filter operation."""
     if not session_state.has_data():
         raise HTTPException(status_code=404, detail="No data loaded")
@@ -289,7 +289,7 @@ async def undo_filter(
 @app.get("/api/filters/history")
 async def get_filter_history(
     session_state: SessionState = Depends(get_session_state),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Get the filter operation history."""
     if not session_state.has_data():
         raise HTTPException(status_code=404, detail="No data loaded")

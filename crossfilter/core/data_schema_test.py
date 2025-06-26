@@ -6,7 +6,7 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from crossfilter.core.data_schema import DataSchema, DataType, load_jsonl_to_dataframe
+from crossfilter.core.data_schema import DataType, load_jsonl_to_dataframe
 from crossfilter.core.schema_constants import DF_ID_COLUMN, SchemaColumns
 
 

@@ -1,23 +1,23 @@
 """Tests for quantization module."""
 
-import pytest
+
 import pandas as pd
-from datetime import datetime
+import pytest
 from syrupy import SnapshotAssertion
 
 from crossfilter.core.quantization import (
-    add_quantized_columns,
-    get_optimal_h3_level,
-    get_optimal_temporal_level,
-    aggregate_by_h3,
-    aggregate_by_temporal,
     H3_LEVELS,
     TEMPORAL_LEVELS,
+    add_quantized_columns,
+    aggregate_by_h3,
+    aggregate_by_temporal,
+    get_optimal_h3_level,
+    get_optimal_temporal_level,
 )
 from crossfilter.core.schema_constants import (
+    DF_ID_COLUMN,
     SchemaColumns,
     TemporalLevel,
-    DF_ID_COLUMN,
     get_h3_column_name,
     get_temporal_column_name,
 )

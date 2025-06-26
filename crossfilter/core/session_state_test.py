@@ -1,10 +1,10 @@
 """Tests for session state management."""
 
-import pytest
 import pandas as pd
+import pytest
 
+from crossfilter.core.schema_constants import DF_ID_COLUMN, SchemaColumns
 from crossfilter.core.session_state import SessionState
-from crossfilter.core.schema_constants import SchemaColumns, DF_ID_COLUMN
 
 
 @pytest.fixture

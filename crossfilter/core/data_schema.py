@@ -1,12 +1,13 @@
-from enum import StrEnum
-from pathlib import Path
-import pandas as pd
-import pandera.pandas as pa
-from pandera.typing import DataFrame, Series
 import json
 import logging
+from enum import StrEnum
+from pathlib import Path
 
-from crossfilter.core.schema_constants import SchemaColumns, DF_ID_COLUMN
+import pandas as pd
+import pandera.pandas as pa
+from pandera.typing import Series
+
+from crossfilter.core.schema_constants import DF_ID_COLUMN, SchemaColumns
 
 logger = logging.getLogger(__name__)
 
@@ -60,7 +61,7 @@ def load_jsonl_to_dataframe(jsonl_path: Path) -> pd.DataFrame:
 
     # Read JSONL file
     records = []
-    with open(jsonl_path, "r", encoding="utf-8") as f:
+    with open(jsonl_path, encoding="utf-8") as f:
         for line_num, line in enumerate(f, 1):
             line = line.strip()
             if not line:

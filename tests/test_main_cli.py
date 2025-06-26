@@ -5,7 +5,6 @@ import subprocess
 import time
 from contextlib import closing
 
-import pytest
 import requests
 
 

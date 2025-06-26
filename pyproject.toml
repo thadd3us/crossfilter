@@ -71,7 +71,7 @@ select = [
 ignore = [
     "E501", # line too long (handled by black)
     "C901", # too complex
-    "W0621", # redefined-outer-name
+    #"W0621", # redefined-outer-name
 ]
 
 [tool.ruff.per-file-ignores]

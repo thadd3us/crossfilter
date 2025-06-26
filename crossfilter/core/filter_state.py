@@ -1,11 +1,12 @@
 """Filter state management with undo stack for crossfilter operations."""
 
-from dataclasses import dataclass
-from typing import List, Set, Optional, Dict, Any
-import pandas as pd
 import logging
+from dataclasses import dataclass
+from typing import Any, Dict, List, Optional, Set
 
-from crossfilter.core.schema_constants import FilterOperationType, DF_ID_COLUMN
+import pandas as pd
+
+from crossfilter.core.schema_constants import FilterOperationType
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +27,7 @@ class FilterState:
     filters applied through the visualization interface. Uses DataFrame index (df_id)
     for tracking rows.
     """
-    
+
     def __init__(self, max_undo_steps: int = 50):
         """
         Initialize filter state.
@@ -38,7 +39,7 @@ class FilterState:
         self._undo_stack: List[FilterOperation] = []
         self._current_filtered_df_ids: Optional[Set[int]] = None
         self._all_df_ids: Set[int] = set()
-        
+
     def initialize_with_data(self, df: pd.DataFrame) -> None:
         """
         Initialize the filter state with a dataset.
@@ -50,34 +51,34 @@ class FilterState:
         self._current_filtered_df_ids = self._all_df_ids.copy()
         self._undo_stack.clear()
         logger.info(f"Initialized filter state with {len(self._all_df_ids)} data points")
-        
+
     @property
     def filtered_df_ids(self) -> Set[int]:
         """Get the currently filtered df_ids."""
         if self._current_filtered_df_ids is None:
             return set()
         return self._current_filtered_df_ids.copy()
-    
+
     @property
     def all_df_ids(self) -> Set[int]:
         """Get all available df_ids in the dataset."""
         return self._all_df_ids.copy()
-    
+
     @property
     def filter_count(self) -> int:
         """Get the number of currently filtered items."""
         return len(self._current_filtered_df_ids) if self._current_filtered_df_ids else 0
-    
+
     @property
     def total_count(self) -> int:
         """Get the total number of items in the dataset."""
         return len(self._all_df_ids)
-    
+
     @property
     def can_undo(self) -> bool:
         """Check if undo is possible."""
         return len(self._undo_stack) > 0
-    
+
     def apply_spatial_filter(self, filtered_df_ids: Set[int], description: str) -> None:
         """
         Apply a spatial filter operation.
@@ -89,7 +90,7 @@ class FilterState:
         self._push_current_state(FilterOperationType.SPATIAL, description)
         self._current_filtered_df_ids = filtered_df_ids & self._all_df_ids
         logger.info(f"Applied spatial filter: {len(self._current_filtered_df_ids)} points remain")
-        
+
     def apply_temporal_filter(self, filtered_df_ids: Set[int], description: str) -> None:
         """
         Apply a temporal filter operation.
@@ -101,7 +102,7 @@ class FilterState:
         self._push_current_state(FilterOperationType.TEMPORAL, description)
         self._current_filtered_df_ids = filtered_df_ids & self._all_df_ids
         logger.info(f"Applied temporal filter: {len(self._current_filtered_df_ids)} points remain")
-        
+
     def intersect_with_filter(self, new_filtered_df_ids: Set[int], operation_type: FilterOperationType,
                             description: str) -> None:
         """
@@ -118,14 +119,14 @@ class FilterState:
         else:
             self._current_filtered_df_ids = new_filtered_df_ids & self._all_df_ids
         logger.info(f"Applied intersect filter: {len(self._current_filtered_df_ids)} points remain")
-            
+
     def reset_filters(self) -> None:
         """Reset all filters to show all data."""
         if self._current_filtered_df_ids != self._all_df_ids:
             self._push_current_state(FilterOperationType.RESET, 'Reset all filters')
             self._current_filtered_df_ids = self._all_df_ids.copy()
             logger.info("Reset all filters - all points now visible")
-            
+
     def undo(self) -> bool:
         """
         Undo the last filter operation.
@@ -135,12 +136,12 @@ class FilterState:
         """
         if not self.can_undo:
             return False
-            
+
         last_operation = self._undo_stack.pop()
         self._current_filtered_df_ids = last_operation.filtered_df_ids.copy()
         logger.info(f"Undid filter operation: {len(self._current_filtered_df_ids)} points now visible")
         return True
-        
+
     def get_undo_stack_info(self) -> List[Dict[str, Any]]:
         """
         Get information about operations in the undo stack.
@@ -156,7 +157,7 @@ class FilterState:
             }
             for op in reversed(self._undo_stack)
         ]
-        
+
     def get_filtered_dataframe(self, df: pd.DataFrame) -> pd.DataFrame:
         """
         Get a DataFrame filtered by the current filter state.
@@ -169,9 +170,9 @@ class FilterState:
         """
         if self._current_filtered_df_ids is None:
             return df.iloc[0:0]  # Empty DataFrame
-            
+
         return df.loc[df.index.isin(self._current_filtered_df_ids)].copy()
-        
+
     def _push_current_state(self, operation_type: FilterOperationType, description: str) -> None:
         """Push the current state onto the undo stack."""
         if self._current_filtered_df_ids is not None:
@@ -181,11 +182,11 @@ class FilterState:
                 description=description
             )
             self._undo_stack.append(operation)
-            
+
             # Limit stack size
             if len(self._undo_stack) > self.max_undo_steps:
                 self._undo_stack.pop(0)
-                
+
     def get_summary(self) -> Dict[str, Any]:
         """Get a summary of the current filter state."""
         return {

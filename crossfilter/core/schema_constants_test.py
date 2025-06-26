@@ -1,16 +1,12 @@
 """Tests for schema constants and enums."""
 
 import pytest
+
 from crossfilter.core.schema_constants import (
-    SchemaColumns,
-    FilterOperationType,
     TemporalLevel,
-    DF_ID_COLUMN,
     get_h3_column_name,
     get_temporal_column_name,
 )
-
-
 
 
 def test_h3_column_name_construction() -> None:

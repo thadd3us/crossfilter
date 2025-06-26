@@ -1,19 +1,19 @@
 """Session state management for single-session Crossfilter application."""
 
-import pandas as pd
 import logging
 
+import pandas as pd
+
+from crossfilter.core.filter_state import FilterState
 from crossfilter.core.quantization import (
+    H3_LEVELS,
     add_quantized_columns,
-    get_optimal_h3_level,
-    get_optimal_temporal_level,
     aggregate_by_h3,
     aggregate_by_temporal,
-    H3_LEVELS,
-    TEMPORAL_LEVELS,
+    get_optimal_h3_level,
+    get_optimal_temporal_level,
 )
-from crossfilter.core.filter_state import FilterState
-from crossfilter.core.schema_constants import SchemaColumns, TemporalLevel, DF_ID_COLUMN
+from crossfilter.core.schema_constants import DF_ID_COLUMN, SchemaColumns, TemporalLevel
 
 logger = logging.getLogger(__name__)
 

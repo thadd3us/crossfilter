@@ -1,20 +1,17 @@
 """End-to-end frontend tests using Playwright."""
 
-import asyncio
 import multiprocessing
 import time
+from collections.abc import AsyncGenerator, Generator
 from pathlib import Path
-from typing import AsyncGenerator, Generator
 
 import pytest
 import pytest_asyncio
 import requests
 import uvicorn
-from playwright.async_api import async_playwright, Page, Browser, BrowserContext
+from playwright.async_api import Browser, BrowserContext, Page, async_playwright
 
 from crossfilter.main import app
-from crossfilter.core.data_schema import load_jsonl_to_dataframe
-from crossfilter.main import _session_state_instance
 
 
 class TestServer:

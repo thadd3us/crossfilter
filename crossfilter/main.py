@@ -1,30 +1,26 @@
 """Main CLI application for Crossfilter."""
 
-import asyncio
 import signal
 import sys
+from enum import Enum
 from pathlib import Path
-from typing import Optional
-from contextlib import asynccontextmanager
+from typing import Any, Dict, List, Optional
 
 import typer
 import uvicorn
-from fastapi import FastAPI, HTTPException, Query, Depends
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi import Depends, FastAPI, HTTPException, Query
+from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
-from typing import List, Dict, Any, Optional
-from enum import Enum
 
-from crossfilter.core.session_state import SessionState
 from crossfilter.core.data_schema import load_jsonl_to_dataframe
+from crossfilter.core.session_state import SessionState
 from crossfilter.visualization.plots import (
-    create_temporal_cdf,
-    create_kepler_config,
-    prepare_kepler_data,
     create_fallback_scatter_geo,
+    create_kepler_config,
+    create_temporal_cdf,
+    prepare_kepler_data,
 )
-
 
 # Create a single session state instance for dependency injection
 _session_state_instance = SessionState()

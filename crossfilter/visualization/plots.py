@@ -1,10 +1,10 @@
 """Visualization components for geographic and temporal crossfilter plots."""
 
+from typing import Any, Dict, List
+
 import pandas as pd
-import plotly.graph_objects as go
 import plotly.express as px
-from typing import Dict, Any, Optional, List
-import json
+import plotly.graph_objects as go
 
 
 def create_temporal_cdf(df: pd.DataFrame, title: str = "Temporal Distribution (CDF)") -> Dict[str, Any]:
@@ -33,19 +33,19 @@ def create_temporal_cdf(df: pd.DataFrame, title: str = "Temporal Distribution (C
                 if col.startswith('QUANTIZED_TIMESTAMP') or col == 'TIMESTAMP_UTC':
                     timestamp_col = col
                     break
-            
+
             if timestamp_col is None:
                 # Fallback - create a simple plot
                 fig = go.Figure()
                 fig.add_annotation(
                     text="No timestamp data found",
-                    xref="paper", yref="paper", 
+                    xref="paper", yref="paper",
                     x=0.5, y=0.5, showarrow=False
                 )
             else:
                 # Create CDF plot
                 fig = go.Figure()
-                
+
                 fig.add_trace(go.Scatter(
                     x=df[timestamp_col],
                     y=df['cumulative_count'],
@@ -59,7 +59,7 @@ def create_temporal_cdf(df: pd.DataFrame, title: str = "Temporal Distribution (C
                     line=dict(color='blue', width=2),
                     marker=dict(size=4)
                 ))
-        
+
         # Common layout settings
         fig.update_layout(
             title=title,
@@ -70,14 +70,14 @@ def create_temporal_cdf(df: pd.DataFrame, title: str = "Temporal Distribution (C
             height=400,
             margin=dict(l=50, r=50, t=50, b=50)
         )
-        
+
         # Configure x-axis for time formatting
         fig.update_xaxes(
             type='date',
             tickformat='%Y-%m-%d %H:%M',
             tickangle=45
         )
-        
+
         return fig.to_dict()
 
 
@@ -110,10 +110,10 @@ def create_kepler_config(df: pd.DataFrame) -> Dict[str, Any]:
                     }
                 }
             }
-        
+
         # Determine if we have aggregated or individual points
         has_count_col = 'count' in df.columns
-        
+
         # Create layer configuration
         if has_count_col:
             # Heatmap layer for aggregated data
@@ -136,7 +136,7 @@ def create_kepler_config(df: pd.DataFrame) -> Dict[str, Any]:
                             "type": "sequential",
                             "category": "Uber",
                             "colors": [
-                                "#5A1846", "#900C3F", "#C70039", 
+                                "#5A1846", "#900C3F", "#C70039",
                                 "#E3611C", "#F1920E", "#FFC300"
                             ]
                         },
@@ -180,7 +180,7 @@ def create_kepler_config(df: pd.DataFrame) -> Dict[str, Any]:
                         },
                         "strokeColorRange": {
                             "name": "Global Warming",
-                            "type": "sequential", 
+                            "type": "sequential",
                             "category": "Uber",
                             "colors": [
                                 "#5A1846", "#900C3F", "#C70039",
@@ -193,21 +193,21 @@ def create_kepler_config(df: pd.DataFrame) -> Dict[str, Any]:
                     }
                 }
             }
-        
+
         # Calculate map bounds
         if has_count_col:
             lat_col, lon_col = 'lat', 'lon'
         else:
             lat_col, lon_col = 'GPS_LATITUDE', 'GPS_LONGITUDE'
-            
+
         center_lat = df[lat_col].mean()
         center_lon = df[lon_col].mean()
-        
+
         # Estimate zoom level based on data spread
         lat_range = df[lat_col].max() - df[lat_col].min()
         lon_range = df[lon_col].max() - df[lon_col].min()
         max_range = max(lat_range, lon_range)
-        
+
         if max_range > 10:
             zoom = 3
         elif max_range > 1:
@@ -216,7 +216,7 @@ def create_kepler_config(df: pd.DataFrame) -> Dict[str, Any]:
             zoom = 9
         else:
             zoom = 12
-        
+
         config = {
             "version": "v1",
             "config": {
@@ -262,7 +262,7 @@ def create_kepler_config(df: pd.DataFrame) -> Dict[str, Any]:
                 }
             }
         }
-        
+
         return config
 
 
@@ -278,7 +278,7 @@ def prepare_kepler_data(df: pd.DataFrame) -> List[Dict[str, Any]]:
         """
         if df.empty:
             return []
-        
+
         # Convert DataFrame to list of dictionaries
         return df.to_dict('records')
 
@@ -313,7 +313,7 @@ def create_fallback_scatter_geo(df: pd.DataFrame, title: str = "Geographic Distr
                 lat_col, lon_col = 'GPS_LATITUDE', 'GPS_LONGITUDE'
                 size_col = None
                 hover_data = ['UUID_LONG']
-            
+
             fig = px.scatter_geo(
                 df,
                 lat=lat_col,
@@ -322,17 +322,17 @@ def create_fallback_scatter_geo(df: pd.DataFrame, title: str = "Geographic Distr
                 hover_data=hover_data,
                 title=title
             )
-            
+
             fig.update_geos(
                 projection_type="natural earth",
                 showland=True,
                 landcolor="rgb(243, 243, 243)",
                 coastlinecolor="rgb(204, 204, 204)"
             )
-        
+
         fig.update_layout(
             height=500,
             margin=dict(l=0, r=0, t=50, b=0)
         )
-        
+
         return fig.to_dict()

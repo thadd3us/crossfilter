@@ -69,6 +69,19 @@ Then open http://localhost:8000 in your browser.
 
 ## Development
 
+### Code Formatting
+
+```bash
+# Format and organize imports for all files (easy way)
+./dev/fix_format
+
+# Or run commands manually
+uv run --extra dev ruff check --fix . && uv run --extra dev black .
+
+# Check formatting without making changes
+uv run --extra dev ruff check . && uv run --extra dev black --check .
+```
+
 ### Testing
 ```bash
 # Run once.

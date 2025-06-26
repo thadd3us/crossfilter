@@ -1,0 +1,33 @@
+#!/bin/bash
+set -e
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
+echo -e "${YELLOW}🔧 Fixing imports and formatting...${NC}"
+
+# Change to the project root directory
+cd "$(dirname "$0")/.."
+
+# Run ruff to fix imports and other issues
+echo -e "${YELLOW}📦 Organizing imports with ruff...${NC}"
+if uv run --extra dev ruff check --fix .; then
+    echo -e "${GREEN}✅ Ruff fixes applied${NC}"
+else
+    echo -e "${RED}❌ Ruff encountered issues${NC}"
+    exit 1
+fi
+
+# Run black to format code
+echo -e "${YELLOW}🎨 Formatting code with black...${NC}"
+if uv run --extra dev black .; then
+    echo -e "${GREEN}✅ Black formatting applied${NC}"
+else
+    echo -e "${RED}❌ Black formatting failed${NC}"
+    exit 1
+fi
+
+echo -e "${GREEN}🎉 All formatting and import organization complete!${NC}"

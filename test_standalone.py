@@ -12,7 +12,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 try:
     from crossfilter.core.data_schema import load_jsonl_to_dataframe
     from crossfilter.core.session_state import SessionState
-    from crossfilter.visualization.plots import create_temporal_cdf
+    from crossfilter.visualization.temporal_cdf_plot import create_temporal_cdf
     
     print("✓ Successfully imported crossfilter modules")
     

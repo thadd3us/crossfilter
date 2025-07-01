@@ -18,9 +18,9 @@ from crossfilter.core.session_state import SessionState
 from crossfilter.visualization.plots import (
     create_fallback_scatter_geo,
     create_kepler_config,
-    create_temporal_cdf,
     prepare_kepler_data,
 )
+from crossfilter.visualization.temporal_cdf_plot import create_temporal_cdf
 
 # Create a single session state instance for dependency injection
 _session_state_instance = SessionState()

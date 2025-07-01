@@ -43,29 +43,66 @@ def create_temporal_cdf(df: pd.DataFrame, title: str = "Temporal Distribution (C
                     x=0.5, y=0.5, showarrow=False
                 )
             else:
-                # Create CDF plot
-                fig = go.Figure()
-
-                # Prepare customdata with df_id for selections
-                customdata = []
-                for idx in df.index:
-                    customdata.append({"df_id": idx})
-
-                fig.add_trace(go.Scatter(
-                    x=df[timestamp_col],
-                    y=df['cumulative_count'],
-                    mode='lines+markers',
-                    name='CDF',
-                    customdata=customdata,
-                    hovertemplate=(
+                # Create CDF plot using plotly express ecdf
+                # px.ecdf expects individual data points, not pre-aggregated cumulative counts
+                # So we need to expand the data back to individual points for px.ecdf
+                
+                if 'count' in df.columns:
+                    # This is aggregated data, expand it back to individual points
+                    expanded_data = []
+                    expanded_df_ids = []
+                    
+                    for _, row in df.iterrows():
+                        timestamp = row[timestamp_col]
+                        count = int(row['count'])
+                        df_ids = row.get('df_ids', [])
+                        
+                        # Add individual points for this timestamp
+                        for i in range(count):
+                            expanded_data.append(timestamp)
+                            if i < len(df_ids):
+                                expanded_df_ids.append(int(df_ids[i]))
+                            else:
+                                # Fallback if df_ids list is shorter than count
+                                expanded_df_ids.append(-1)
+                    
+                    # Create DataFrame for px.ecdf
+                    expanded_df = pd.DataFrame({
+                        timestamp_col: expanded_data,
+                        'df_id': expanded_df_ids
+                    })
+                    
+                    # Create ECDF plot
+                    fig = px.ecdf(expanded_df, x=timestamp_col, title=title)
+                    
+                    # Add customdata for interactivity
+                    customdata = [{"df_id": df_id} for df_id in expanded_df_ids]
+                    
+                else:
+                    # Individual points data - use directly with px.ecdf
+                    fig = px.ecdf(df, x=timestamp_col, title=title)
+                    
+                    # Prepare customdata with df_id for selections
+                    customdata = []
+                    if 'df_id' in df.columns:
+                        customdata = [{"df_id": int(df_id)} for df_id in df['df_id']]
+                    else:
+                        customdata = [{"df_id": int(idx)} for idx in df.index]
+                
+                # Convert numpy arrays to lists for JSON serialization
+                if fig.data:
+                    trace = fig.data[0]
+                    trace.x = trace.x.tolist() if hasattr(trace.x, 'tolist') else trace.x
+                    trace.y = trace.y.tolist() if hasattr(trace.y, 'tolist') else trace.y
+                    trace.customdata = customdata
+                    
+                    # Update hover template to show df_id
+                    trace.hovertemplate = (
                         '<b>Time:</b> %{x}<br>'
-                        '<b>Cumulative Count:</b> %{y}<br>'
+                        '<b>Cumulative Probability:</b> %{y}<br>'
                         '<b>Row ID:</b> %{customdata.df_id}<br>'
                         '<extra></extra>'
-                    ),
-                    line={"color": 'blue', "width": 2},
-                    marker={"size": 4}
-                ))
+                    )
 
         # Common layout settings
         fig.update_layout(
@@ -319,7 +356,8 @@ def create_fallback_scatter_geo(df: pd.DataFrame, title: str = "Geographic Distr
                 # Individual points
                 lat_col, lon_col = 'GPS_LATITUDE', 'GPS_LONGITUDE'
                 size_col = None
-                hover_data = ['UUID_LONG']
+                # Use df_id if available, otherwise no hover data
+                hover_data = ['df_id'] if 'df_id' in df.columns else None
 
             fig = px.scatter_geo(
                 df,

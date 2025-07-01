@@ -55,8 +55,21 @@ def test_load_jsonl_empty_file(tmp_path: Path) -> None:
     df = load_jsonl_to_dataframe(temp_file)
     assert len(df) == 0
     assert df.index.name == DF_ID_COLUMN
-    # Should have all schema columns
-    for col in SchemaColumns:
+    # Should have all required schema columns (COUNT is optional)
+    required_columns = [
+        SchemaColumns.UUID_STRING,
+        SchemaColumns.DATA_TYPE,
+        SchemaColumns.NAME,
+        SchemaColumns.CAPTION,
+        SchemaColumns.SOURCE_FILE,
+        SchemaColumns.TIMESTAMP_MAYBE_TIMEZONE_AWARE,
+        SchemaColumns.TIMESTAMP_UTC,
+        SchemaColumns.GPS_LATITUDE,
+        SchemaColumns.GPS_LONGITUDE,
+        SchemaColumns.RATING_0_TO_5,
+        SchemaColumns.SIZE_IN_BYTES,
+    ]
+    for col in required_columns:
         assert col in df.columns
 
 
@@ -116,8 +129,21 @@ def test_load_jsonl_missing_columns(tmp_path: Path) -> None:
     df = load_jsonl_to_dataframe(temp_file)
     assert len(df) == 1
 
-    # Check that all schema columns exist
-    for col in SchemaColumns:
+    # Check that all required schema columns exist (COUNT is optional)
+    required_columns = [
+        SchemaColumns.UUID_STRING,
+        SchemaColumns.DATA_TYPE,
+        SchemaColumns.NAME,
+        SchemaColumns.CAPTION,
+        SchemaColumns.SOURCE_FILE,
+        SchemaColumns.TIMESTAMP_MAYBE_TIMEZONE_AWARE,
+        SchemaColumns.TIMESTAMP_UTC,
+        SchemaColumns.GPS_LATITUDE,
+        SchemaColumns.GPS_LONGITUDE,
+        SchemaColumns.RATING_0_TO_5,
+        SchemaColumns.SIZE_IN_BYTES,
+    ]
+    for col in required_columns:
         assert col in df.columns
 
     # Missing columns should be null except the ones we provided
@@ -164,6 +190,45 @@ def test_load_jsonl_invalid_json(tmp_path: Path) -> None:
 
     with pytest.raises(ValueError, match="Invalid JSON on line 2"):
         load_jsonl_to_dataframe(temp_file)
+
+
+def test_count_column_optional(tmp_path: Path) -> None:
+    """Test that COUNT column is truly optional."""
+    # Test data without COUNT column
+    sample_data = [
+        {
+            "UUID_STRING": "test-uuid-1",
+            "GPS_LATITUDE": 37.7749,
+            "GPS_LONGITUDE": -122.4194,
+        }
+    ]
+
+    temp_file = tmp_path / "no_count.jsonl"
+    temp_file.write_text("\n".join(json.dumps(record) for record in sample_data) + "\n")
+
+    df = load_jsonl_to_dataframe(temp_file)
+    
+    # COUNT should not be in columns since it wasn't provided
+    assert SchemaColumns.COUNT not in df.columns
+
+    # Test data with COUNT column
+    sample_data_with_count = [
+        {
+            "UUID_STRING": "test-uuid-2",
+            "GPS_LATITUDE": 37.7849,
+            "GPS_LONGITUDE": -122.4094,
+            "COUNT": 5,
+        }
+    ]
+
+    temp_file_with_count = tmp_path / "with_count.jsonl"
+    temp_file_with_count.write_text("\n".join(json.dumps(record) for record in sample_data_with_count) + "\n")
+
+    df_with_count = load_jsonl_to_dataframe(temp_file_with_count)
+    
+    # COUNT should be present and have the correct value
+    assert SchemaColumns.COUNT in df_with_count.columns
+    assert df_with_count.loc[0, SchemaColumns.COUNT] == 5
 
 
 def test_df_id_stability(tmp_path: Path) -> None:

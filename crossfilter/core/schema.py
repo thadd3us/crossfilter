@@ -151,10 +151,6 @@ def load_jsonl_to_dataframe(jsonl_path: Path) -> pd.DataFrame:
         if col not in df.columns:
             df[col] = None
 
-    # Add COUNT column separately since it's optional in the schema
-    if SchemaColumns.COUNT not in df.columns:
-        df[SchemaColumns.COUNT] = None
-
     # Convert SOURCE_FILE from Path objects to strings, handling missing values
     df[SchemaColumns.SOURCE_FILE] = df[SchemaColumns.SOURCE_FILE].astype(str)
 

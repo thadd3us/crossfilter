@@ -17,6 +17,7 @@ class SchemaColumns(StrEnum):
     GPS_LONGITUDE = "GPS_LONGITUDE"
     RATING_0_TO_5 = "RATING_0_TO_5"
     SIZE_IN_BYTES = "SIZE_IN_BYTES"
+    COUNT = "COUNT"
 
 
 class FilterOperationType(StrEnum):

@@ -45,6 +45,7 @@ dev = [
     "mypy>=1.6.0",
     "types-aiofiles>=23.2.0",
     "httpx",
+    "ipykernel",
 ]
 
 [project.scripts]

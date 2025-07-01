@@ -407,6 +407,7 @@ dependencies = [
 dev = [
     { name = "black" },
     { name = "httpx" },
+    { name = "ipykernel" },
     { name = "mypy" },
     { name = "playwright" },
     { name = "pytest" },
@@ -428,6 +429,7 @@ requires-dist = [
     { name = "gpxpy", specifier = ">=1.5.0" },
     { name = "h3", specifier = ">=3.7.0" },
     { name = "httpx", marker = "extra == 'dev'" },
+    { name = "ipykernel", marker = "extra == 'dev'" },
     { name = "jinja2", specifier = ">=3.1.0" },
     { name = "keplergl", marker = "extra == 'kepler'", specifier = ">=0.3.2" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.6.0" },

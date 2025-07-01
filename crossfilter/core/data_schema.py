@@ -2,6 +2,7 @@ import json
 import logging
 from enum import StrEnum
 from pathlib import Path
+from typing import Optional
 
 import pandas as pd
 import pandera.pandas as pa
@@ -35,6 +36,11 @@ class DataSchema(pa.DataFrameModel):
     GPS_LONGITUDE: Series[float] = pa.Field(nullable=True, ge=-180, le=180)
     RATING_0_TO_5: Series[pd.Int64Dtype] = pa.Field(nullable=True, ge=0, le=5)
     SIZE_IN_BYTES: Series[pd.Int64Dtype] = pa.Field(nullable=True, ge=0)
+
+    # For aggregated data, the COUNT column says how many rows are aggregated into the bucket.
+    # Some of the other columns may still be present, coming from a single row sample of the data aggregated into the bucket.
+    # For single point data, COUNT is missing and implied to be 1.
+    COUNT: Optional[Series[pd.Int64Dtype]]  # = pa.Field(nullable=True, ge=0)
 
     class Config:
         strict = True

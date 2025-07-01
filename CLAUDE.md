@@ -46,7 +46,7 @@ Crossfilter is a Python web application for interactive crossfiltering and analy
 3. **Preserve Performance Focus**: Remember this is designed for large datasets (millions of points)
 4. **Use Existing Dependencies**: Pandas, NumPy, H3, Plotly, FastAPI, Typer, Pydantic
 5. **Test Commands**: `uv run --extra dev pytest` for testing
-6. **THAD TODOs**: Before getting started with any task, look through the whole codebase for lines containing `THAD: ` and address the TODOs mentioned there first.
+6. **THAD TODOs**: If you see any lines marked with `THAD:`, please address the todo-item mentioned on the rest of the line!
 
 
 ### Code Style Guidelines:

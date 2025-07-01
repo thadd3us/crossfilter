@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crossfilter - Temporal CDF Analysis</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .header {
+            margin-bottom: 20px;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 10px;
+        }
+        .status {
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            border-left: 4px solid #007bff;
+        }
+        .controls {
+            margin: 20px 0;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        .controls button {
+            padding: 8px 16px;
+            border: 1px solid #ddd;
+            background-color: #fff;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .controls button:hover {
+            background-color: #f8f9fa;
+        }
+        .controls button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        .plot-container {
+            height: 400px;
+            margin: 20px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .error {
+            color: #dc3545;
+            background-color: #f8d7da;
+            padding: 10px;
+            border-radius: 4px;
+            border: 1px solid #f5c6cb;
+        }
+        .info {
+            color: #0c5460;
+            background-color: #d1ecf1;
+            padding: 10px;
+            border-radius: 4px;
+            border: 1px solid #bee5eb;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Crossfilter - Temporal CDF Analysis</h1>
+            <p>Interactive temporal analysis with cumulative distribution functions</p>
+        </div>
+
+        <div class="status" id="status">
+            <strong>Status:</strong> Loading...
+        </div>
+
+        <div class="controls">
+            <button id="loadDataBtn" onclick="loadSampleData()">Load Sample Data</button>
+            <button id="refreshBtn" onclick="refreshPlot()" disabled>Refresh Plot</button>
+            <button id="resetFiltersBtn" onclick="resetFilters()" disabled>Reset Filters</button>
+            <span id="selectionInfo"></span>
+        </div>
+
+        <div class="plot-container" id="plotContainer">
+            <div style="display: flex; align-items: center; justify-content: center; height: 100%; color: #666;">
+                No data loaded. Click "Load Sample Data" to begin.
+            </div>
+        </div>
+
+        <div id="messages"></div>
+    </div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>

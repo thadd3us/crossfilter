@@ -46,14 +46,21 @@ def create_temporal_cdf(df: pd.DataFrame, title: str = "Temporal Distribution (C
                 # Create CDF plot
                 fig = go.Figure()
 
+                # Prepare customdata with df_id for selections
+                customdata = []
+                for idx in df.index:
+                    customdata.append({"df_id": idx})
+
                 fig.add_trace(go.Scatter(
                     x=df[timestamp_col],
                     y=df['cumulative_count'],
                     mode='lines+markers',
                     name='CDF',
+                    customdata=customdata,
                     hovertemplate=(
                         '<b>Time:</b> %{x}<br>'
                         '<b>Cumulative Count:</b> %{y}<br>'
+                        '<b>Row ID:</b> %{customdata.df_id}<br>'
                         '<extra></extra>'
                     ),
                     line={"color": 'blue', "width": 2},

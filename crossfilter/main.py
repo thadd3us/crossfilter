@@ -49,15 +49,20 @@ if static_path.exists():
     app.mount("/static", StaticFiles(directory=str(static_path)), name="static")
 
 
+class LoadDataRequest(BaseModel):
+    """Request model for loading data."""
+    file_path: str
+
+
 @app.post("/api/data/load")
 async def load_data_endpoint(
-    file_path: str, session_state: SessionState = Depends(get_session_state)
+    request: LoadDataRequest, session_state: SessionState = Depends(get_session_state)
 ) -> dict[str, Any]:
     """Load data from a JSONL file into the session state."""
     try:
-        jsonl_path = Path(file_path)
+        jsonl_path = Path(request.file_path)
         if not jsonl_path.exists():
-            raise HTTPException(status_code=404, detail=f"File not found: {file_path}")
+            raise HTTPException(status_code=404, detail=f"File not found: {request.file_path}")
 
         df = load_jsonl_to_dataframe(jsonl_path)
         session_state.load_dataframe(df)
@@ -101,7 +106,22 @@ async def get_session_status(
 ) -> dict:
     """Get the current session state status."""
     summary = session_state.get_summary()
-    print(f"DEBUG: Session status requested - has_data: {session_state.has_data()}")
+    
+    # Add filter-specific fields for frontend compatibility
+    if session_state.has_data():
+        filter_summary = session_state.filter_state.get_summary()
+        summary.update({
+            "has_data": True,
+            "row_count": filter_summary["total_count"],
+            "filtered_count": filter_summary["filtered_count"],
+        })
+    else:
+        summary.update({
+            "has_data": False,
+            "row_count": 0,
+            "filtered_count": 0,
+        })
+    
     return summary
 
 
@@ -109,7 +129,7 @@ async def get_session_status(
 class FilterRequest(BaseModel):
     """Request model for applying filters."""
 
-    uuids: list[int]
+    row_indices: list[int]  # df_id values (DataFrame index)
     operation_type: OperationType  # 'spatial' or 'temporal'
     description: str
     metadata: Optional[dict[str, Any]] = None
@@ -192,15 +212,13 @@ async def apply_filter(
         # Apply filter based on type
         if filter_request.operation_type == OperationType.SPATIAL:
             session_state.filter_state.apply_spatial_filter(
-                set(filter_request.uuids),
+                set(filter_request.row_indices),
                 filter_request.description,
-                filter_request.metadata,
             )
         elif filter_request.operation_type == OperationType.TEMPORAL:
             session_state.filter_state.apply_temporal_filter(
-                set(filter_request.uuids),
+                set(filter_request.row_indices),
                 filter_request.description,
-                filter_request.metadata,
             )
         else:
             raise HTTPException(
@@ -229,10 +247,9 @@ async def intersect_filter(
 
     try:
         session_state.filter_state.intersect_with_filter(
-            set(filter_request.uuids),
-            filter_request.operation_type.value,
+            set(filter_request.row_indices),
+            filter_request.operation_type,
             filter_request.description,
-            filter_request.metadata,
         )
 
         return {

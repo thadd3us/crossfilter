@@ -170,7 +170,7 @@ async def apply_spatial_filter(request: SpatialFilterRequest):
 - **Selection Types**: Time range brushing, visible time window
 - **Update Strategy**: Full re-render with new aggregation or points.
 - **Data Format**: Temporal buckets with cumulative counts, or individual time points.  Ideally sent directly to Plotly's `ecdf` function, perhaps with a "color by" option.
-- **Selection Data**: Either bucket identifiers or point identifiers.
+- **Selection Data**: Either bucket identifiers, if aggregated, or individual timepoint identifiers.
 
 For all visualizations, even when they are aggregated into buckets, each bucket should know characteristics about a sample member of the bucket's UUID and other data, to make the bucket as a group interpretable.
 

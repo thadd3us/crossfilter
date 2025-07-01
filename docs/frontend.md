@@ -164,13 +164,15 @@ async def apply_spatial_filter(request: SpatialFilterRequest):
 - **Selection Types**: Bounding box, lasso selection, visible viewport
 - **Update Strategy**: Full re-render with new spatial aggregation
 - **Data Format**: H3 hexagon aggregations or individual points
-- **Selection Data**: `{"bbox": [lat_min, lat_max, lon_min, lon_max]}` or `{"lasso_points": [...]}`
+- **Selection Data**: Either H3 hexagon identifiers, if aggregated, or individual point identifiers.
 
 ### Temporal Component (CDF/Timeline)  
-- **Selection Types**: Time range brushing, visible time window, CDF quantile selection
-- **Update Strategy**: Incremental updates possible for CDF, full re-render for histograms
-- **Data Format**: Temporal buckets with cumulative counts
-- **Selection Data**: `{"time_range": [start_timestamp, end_timestamp]}` or `{"quantile_range": [0.1, 0.9]}`
+- **Selection Types**: Time range brushing, visible time window
+- **Update Strategy**: Full re-render with new aggregation or points.
+- **Data Format**: Temporal buckets with cumulative counts, or individual time points.  Ideally sent directly to Plotly's `ecdf` function, perhaps with a "color by" option.
+- **Selection Data**: Either bucket identifiers or point identifiers.
+
+For all visualizations, even when they are aggregated into buckets, each bucket should know characteristics about a sample member of the bucket's UUID and other data, to make the bucket as a group interpretable.
 
 ## State Management Flow
 

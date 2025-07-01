@@ -243,18 +243,25 @@ sequenceDiagram
 ## Open Questions
 
 1. **Real-time Data Updates**: How should the system handle streaming data or periodic data refreshes? Should this trigger automatic filter recalculation?
+  * There's currently no streaming or automatic refresh.
 
 2. **Filter Persistence**: Should filter state be persisted across browser sessions? If so, should this be URL-based or session storage?
+  * Since filter state involves potentially millions of points, it'll have to be session storage on the backend, but let's not implmement this yet.
 
 3. **Performance Thresholds**: At what dataset sizes should we switch from individual points to aggregated visualizations? Should this be user-configurable?
+  * Yes, this is selectable on the UI, perhaps even per-visualization component.
 
 4. **Error Handling**: How should the frontend handle temporary backend disconnections or SSE stream failures? Should it fall back to polling?
+  * I don't know much about this, but I dislike methods that "fallback", because they operate in a non-normal degraded state.  Let's not do this.  It's important to tell the user if something is wrong, though, for example if the backend is unreachable or returns an error.
 
 5. **Component Extensibility**: How should the architecture support adding new visualization types (e.g., histograms, scatter plots) without modifying core filtering logic?
+  * We'll probably have to modify the core filtering logic a bit for this.
 
 6. **Mobile Support**: Should the architecture consider mobile/touch interfaces for selection operations, or is this desktop-only?
+  * Desktop-only is OK for now.  Whatever Plotly supports out of the box is fine.
 
 7. **Export/Sharing**: Should filtered datasets be exportable? If so, should exports be generated on the backend or frontend?
+  * Yes, I'd like to be able to copy the UUIDs of the currently selected rows into the system clipboard as a comma-separated list, and show a little UI notification along the lines of "Copied N UUIDs to clipboard".
 
 ## Migration Path from Current Implementation
 

@@ -51,6 +51,7 @@ if static_path.exists():
 
 class LoadDataRequest(BaseModel):
     """Request model for loading data."""
+
     file_path: str
 
 
@@ -62,7 +63,9 @@ async def load_data_endpoint(
     try:
         jsonl_path = Path(request.file_path)
         if not jsonl_path.exists():
-            raise HTTPException(status_code=404, detail=f"File not found: {request.file_path}")
+            raise HTTPException(
+                status_code=404, detail=f"File not found: {request.file_path}"
+            )
 
         df = load_jsonl_to_dataframe(jsonl_path)
         session_state.load_dataframe(df)
@@ -106,22 +109,27 @@ async def get_session_status(
 ) -> dict:
     """Get the current session state status."""
     summary = session_state.get_summary()
-    
+
     # Add filter-specific fields for frontend compatibility
     if session_state.has_data():
         filter_summary = session_state.filter_state.get_summary()
-        summary.update({
-            "has_data": True,
-            "row_count": filter_summary["total_count"],
-            "filtered_count": filter_summary["filtered_count"],
-        })
+        summary.update(
+            {
+                "has_data": True,
+                "row_count": filter_summary["total_count"],
+                "filtered_count": filter_summary["filtered_count"],
+            }
+        )
     else:
-        summary.update({
-            "has_data": False,
-            "row_count": 0,
-            "filtered_count": 0,
-        })
-    
+        # THAD: Delete this unneed branch -- an empty DataFrame should result in 0 rows.
+        summary.update(
+            {
+                "has_data": False,
+                "row_count": 0,
+                "filtered_count": 0,
+            }
+        )
+
     return summary
 
 

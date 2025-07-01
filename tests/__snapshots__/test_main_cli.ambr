@@ -21,7 +21,10 @@
       'total_count': 100,
       'undo_stack_size': 0,
     }),
+    'filtered_count': 100,
+    'has_data': True,
     'memory_usage': '0.03 MB',
+    'row_count': 100,
     'shape': list([
       100,
       11,

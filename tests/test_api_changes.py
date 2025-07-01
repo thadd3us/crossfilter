@@ -8,7 +8,7 @@ import pandas as pd
 from fastapi.testclient import TestClient
 
 from crossfilter.main import app, get_session_state
-from crossfilter.core.data_schema import load_jsonl_to_dataframe
+from crossfilter.core.schema import load_jsonl_to_dataframe
 
 # THAD: Add argument and return types for all functions in this file!
 

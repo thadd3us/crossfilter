@@ -1,4 +1,4 @@
-"""Tests for data schema module."""
+"""Tests for schema module."""
 
 import json
 from pathlib import Path
@@ -6,8 +6,15 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from crossfilter.core.data_schema import DataType, load_jsonl_to_dataframe
-from crossfilter.core.schema_constants import DF_ID_COLUMN, SchemaColumns
+from crossfilter.core.schema import (
+    DF_ID_COLUMN,
+    DataType,
+    SchemaColumns,
+    TemporalLevel,
+    get_h3_column_name,
+    get_temporal_column_name,
+    load_jsonl_to_dataframe,
+)
 
 
 def test_data_type_enum() -> None:
@@ -16,6 +23,28 @@ def test_data_type_enum() -> None:
     assert DataType.VIDEO == "VIDEO"
     assert DataType.GPX_TRACKPOINT == "GPX_TRACKPOINT"
     assert DataType.GPX_WAYPOINT == "GPX_WAYPOINT"
+
+
+def test_h3_column_name_construction() -> None:
+    """Test H3 column name construction."""
+    # Test the helper function
+    assert get_h3_column_name(7) == "QUANTIZED_H3_L7"
+    assert get_h3_column_name(0) == "QUANTIZED_H3_L0"
+    assert get_h3_column_name(15) == "QUANTIZED_H3_L15"
+
+    # Test that it raises for invalid levels
+    with pytest.raises(ValueError):
+        get_h3_column_name(-1)
+    with pytest.raises(ValueError):
+        get_h3_column_name(16)
+
+
+def test_temporal_column_name_construction() -> None:
+    """Test temporal column name construction."""
+    # Test that the temporal columns are constructed using TemporalLevel enum
+    assert get_temporal_column_name(TemporalLevel.HOUR) == "QUANTIZED_TIMESTAMP_HOUR"
+    assert get_temporal_column_name(TemporalLevel.SECOND) == "QUANTIZED_TIMESTAMP_SECOND"
+    assert get_temporal_column_name(TemporalLevel.YEAR) == "QUANTIZED_TIMESTAMP_YEAR"
 
 
 def test_load_jsonl_empty_file(tmp_path: Path) -> None:
@@ -67,7 +96,7 @@ def test_load_jsonl_sample_data(tmp_path: Path) -> None:
     assert df.loc[1, SchemaColumns.DATA_TYPE] == "GPX_TRACKPOINT"
 
     # Check timestamp conversion
-    assert pd.api.types.is_datetime64tz_dtype(df[SchemaColumns.TIMESTAMP_UTC])
+    assert isinstance(df[SchemaColumns.TIMESTAMP_UTC].dtype, pd.DatetimeTZDtype)
 
 
 def test_load_jsonl_missing_columns(tmp_path: Path) -> None:

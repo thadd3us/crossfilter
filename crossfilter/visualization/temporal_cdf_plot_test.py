@@ -8,7 +8,7 @@ import plotly
 import pytest
 from syrupy.extensions.single_file import SingleFileSnapshotExtension
 
-from crossfilter.core.data_schema import load_jsonl_to_dataframe
+from crossfilter.core.schema import load_jsonl_to_dataframe
 from crossfilter.core.session_state import SessionState
 from crossfilter.visualization.temporal_cdf_plot import create_temporal_cdf
 

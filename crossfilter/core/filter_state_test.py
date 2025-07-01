@@ -4,7 +4,7 @@ import pandas as pd
 import pytest
 
 from crossfilter.core.filter_state import FilterOperation, FilterState
-from crossfilter.core.schema_constants import DF_ID_COLUMN, FilterOperationType
+from crossfilter.core.schema import DF_ID_COLUMN, FilterOperationType
 
 
 @pytest.fixture

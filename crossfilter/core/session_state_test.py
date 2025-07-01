@@ -3,7 +3,7 @@
 import pandas as pd
 import pytest
 
-from crossfilter.core.schema_constants import DF_ID_COLUMN, SchemaColumns
+from crossfilter.core.schema import DF_ID_COLUMN, SchemaColumns
 from crossfilter.core.session_state import SessionState
 
 

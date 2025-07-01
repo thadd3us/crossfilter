@@ -6,7 +6,7 @@ from typing import Any, Optional
 
 import pandas as pd
 
-from crossfilter.core.schema_constants import FilterOperationType
+from crossfilter.core.schema import FilterOperationType
 
 logger = logging.getLogger(__name__)
 

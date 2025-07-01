@@ -1,3 +1,5 @@
+"""Schema definitions, constants, and enums for crossfilter data structures."""
+
 import json
 import logging
 from enum import StrEnum
@@ -8,9 +10,28 @@ import pandas as pd
 import pandera.pandas as pa
 from pandera.typing import Series
 
-from crossfilter.core.schema_constants import DF_ID_COLUMN, SchemaColumns
-
 logger = logging.getLogger(__name__)
+
+
+# Standard DataFrame ID column name
+DF_ID_COLUMN = "df_id"
+
+
+class SchemaColumns(StrEnum):
+    """Column names from the DataSchema."""
+
+    UUID_STRING = "UUID_STRING"
+    DATA_TYPE = "DATA_TYPE"
+    NAME = "NAME"
+    CAPTION = "CAPTION"
+    SOURCE_FILE = "SOURCE_FILE"
+    TIMESTAMP_MAYBE_TIMEZONE_AWARE = "TIMESTAMP_MAYBE_TIMEZONE_AWARE"
+    TIMESTAMP_UTC = "TIMESTAMP_UTC"
+    GPS_LATITUDE = "GPS_LATITUDE"
+    GPS_LONGITUDE = "GPS_LONGITUDE"
+    RATING_0_TO_5 = "RATING_0_TO_5"
+    SIZE_IN_BYTES = "SIZE_IN_BYTES"
+    COUNT = "COUNT"
 
 
 class DataType(StrEnum):
@@ -18,6 +39,25 @@ class DataType(StrEnum):
     VIDEO = "VIDEO"
     GPX_TRACKPOINT = "GPX_TRACKPOINT"
     GPX_WAYPOINT = "GPX_WAYPOINT"
+
+
+class FilterOperationType(StrEnum):
+    """Types of filter operations."""
+
+    SPATIAL = "spatial"
+    TEMPORAL = "temporal"
+    RESET = "reset"
+
+
+class TemporalLevel(StrEnum):
+    """Temporal quantization levels."""
+
+    SECOND = "SECOND"
+    MINUTE = "MINUTE"
+    HOUR = "HOUR"
+    DAY = "DAY"
+    MONTH = "MONTH"
+    YEAR = "YEAR"
 
 
 class DataSchema(pa.DataFrameModel):
@@ -45,6 +85,18 @@ class DataSchema(pa.DataFrameModel):
     class Config:
         strict = True
         coerce = True
+
+
+def get_h3_column_name(level: int) -> str:
+    """Get the H3 column name for a specific level (0-15)."""
+    if not 0 <= level <= 15:
+        raise ValueError(f"H3 level must be between 0 and 15, got {level}")
+    return f"QUANTIZED_H3_L{level}"
+
+
+def get_temporal_column_name(level: TemporalLevel) -> str:
+    """Get the temporal column name for a specific temporal level."""
+    return f"QUANTIZED_TIMESTAMP_{level}"
 
 
 def load_jsonl_to_dataframe(jsonl_path: Path) -> pd.DataFrame:
@@ -98,6 +150,10 @@ def load_jsonl_to_dataframe(jsonl_path: Path) -> pd.DataFrame:
     for col in required_columns:
         if col not in df.columns:
             df[col] = None
+
+    # Add COUNT column separately since it's optional in the schema
+    if SchemaColumns.COUNT not in df.columns:
+        df[SchemaColumns.COUNT] = None
 
     # Convert SOURCE_FILE from Path objects to strings, handling missing values
     df[SchemaColumns.SOURCE_FILE] = df[SchemaColumns.SOURCE_FILE].astype(str)

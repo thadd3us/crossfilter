@@ -6,7 +6,7 @@ from typing import Optional
 import h3
 import pandas as pd
 
-from crossfilter.core.schema_constants import (
+from crossfilter.core.schema import (
     SchemaColumns,
     TemporalLevel,
     get_h3_column_name,

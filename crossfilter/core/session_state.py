@@ -13,7 +13,7 @@ from crossfilter.core.quantization import (
     get_optimal_h3_level,
     get_optimal_temporal_level,
 )
-from crossfilter.core.schema_constants import DF_ID_COLUMN, SchemaColumns, TemporalLevel
+from crossfilter.core.schema import DF_ID_COLUMN, SchemaColumns, TemporalLevel
 
 logger = logging.getLogger(__name__)
 

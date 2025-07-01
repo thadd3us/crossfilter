@@ -4,8 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from crossfilter.core.data_schema import DataSchema, load_jsonl_to_dataframe
-from crossfilter.core.schema_constants import SchemaColumns
+from crossfilter.core.schema import DataSchema, SchemaColumns, load_jsonl_to_dataframe
 
 
 def test_sample_100_jsonl_loads() -> None:

@@ -391,6 +391,7 @@ dependencies = [
     { name = "gpxpy" },
     { name = "h3" },
     { name = "jinja2" },
+    { name = "nbformat" },
     { name = "numpy" },
     { name = "pandas" },
     { name = "pandera" },
@@ -398,7 +399,6 @@ dependencies = [
     { name = "pydantic" },
     { name = "python-multipart" },
     { name = "requests" },
-    { name = "syrupy" },
     { name = "typer" },
     { name = "uvicorn", extra = ["standard"] },
 ]
@@ -415,6 +415,7 @@ dev = [
     { name = "pytest-cov" },
     { name = "pytest-playwright" },
     { name = "ruff" },
+    { name = "syrupy" },
     { name = "types-aiofiles" },
 ]
 kepler = [
@@ -433,6 +434,7 @@ requires-dist = [
     { name = "jinja2", specifier = ">=3.1.0" },
     { name = "keplergl", marker = "extra == 'kepler'", specifier = ">=0.3.2" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.6.0" },
+    { name = "nbformat" },
     { name = "numpy", specifier = ">=1.24.0" },
     { name = "pandas", specifier = ">=2.0.0" },
     { name = "pandera", specifier = ">=0.17.0" },
@@ -446,7 +448,7 @@ requires-dist = [
     { name = "python-multipart", specifier = ">=0.0.6" },
     { name = "requests", specifier = ">=2.31.0" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.1.0" },
-    { name = "syrupy", specifier = ">=4.9.1" },
+    { name = "syrupy", marker = "extra == 'dev'", specifier = ">=4.9.1" },
     { name = "typer", specifier = ">=0.9.0" },
     { name = "types-aiofiles", marker = "extra == 'dev'", specifier = ">=23.2.0" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.24.0" },

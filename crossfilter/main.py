@@ -207,6 +207,36 @@ async def get_temporal_plot_data(
         )
 
 
+@app.get("/api/plots/temporal/html", response_class=HTMLResponse)
+async def get_temporal_plot_html(
+    max_groups: int = Query(100000, ge=1, le=1000000),
+    session_state: SessionState = Depends(get_session_state),
+) -> str:
+    """Get temporal CDF plot as ready-to-display HTML."""
+    if not session_state.has_data():
+        raise HTTPException(status_code=404, detail="No data loaded")
+
+    try:
+        # Get aggregated temporal data
+        temporal_data = session_state.get_temporal_aggregation(max_groups)
+
+        # Create Plotly CDF plot figure
+        fig = create_temporal_cdf(temporal_data, title="Temporal CDF Plot")
+
+        # Convert to HTML with CDN-hosted Plotly.js
+        html_content = fig.to_html(
+            include_plotlyjs="cdn",
+            div_id="temporal-cdf-plot",
+            config={"displayModeBar": True, "responsive": True}
+        )
+
+        return html_content
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Error generating temporal plot HTML: {str(e)}"
+        )
+
+
 @app.post("/api/filters/apply")
 async def apply_filter(
     filter_request: FilterRequest,

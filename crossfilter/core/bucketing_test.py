@@ -10,6 +10,7 @@ from crossfilter.core.bucketing import (
     add_quantized_columns_for_h3,
     add_quantized_columns_for_timestamp,
     bucket_by_target_column,
+    filter_df_to_selected_buckets,
     get_optimal_h3_level,
     get_optimal_temporal_level,
 )
@@ -35,6 +36,22 @@ def sample_df():
     # Convert timestamp to datetime
     df[C.TIMESTAMP_UTC] = pd.to_datetime(df[C.TIMESTAMP_UTC], utc=True)
     # Set stable df_id index
+    df.index.name = C.DF_ID
+    return df
+
+
+@pytest.fixture
+def simple_data_example():
+    """Create simple test data with multiple rows per bucket to show filtering clearly."""
+    df = pd.DataFrame(
+        {
+            C.UUID_STRING: ["uuid_1", "uuid_2", "uuid_3", "uuid_4", "uuid_5"],
+            C.GPS_LATITUDE: [37.77, 37.78, 37.77, 37.79, 37.78],
+            C.GPS_LONGITUDE: [-122.42, -122.43, -122.42, -122.44, -122.43],
+            "category": ["A", "B", "A", "C", "B"],
+            "value": [10, 20, 30, 40, 50],
+        }
+    )
     df.index.name = C.DF_ID
     return df
 
@@ -274,24 +291,164 @@ def test_bucket_by_target_column_temporal_column_preservation_snapshot(
     assert bucketed.to_dict(orient="records") == snapshot
 
 
-def test_bucket_by_target_column_simple_data_snapshot(snapshot: SnapshotAssertion) -> None:
+def test_bucket_by_target_column_simple_data_snapshot(
+    simple_data_example: pd.DataFrame, snapshot: SnapshotAssertion
+) -> None:
     """Test bucketing with simple test data to clearly show column preservation."""
-    # Create simple test data with multiple rows per bucket to show preservation
-    df = pd.DataFrame(
-        {
-            C.UUID_STRING: ["uuid_1", "uuid_2", "uuid_3", "uuid_4", "uuid_5"],
-            C.GPS_LATITUDE: [37.77, 37.78, 37.77, 37.79, 37.78],
-            C.GPS_LONGITUDE: [-122.42, -122.43, -122.42, -122.44, -122.43],
-            "category": ["A", "B", "A", "C", "B"],
-            "value": [10, 20, 30, 40, 50],
-        }
-    )
-    df.index.name = C.DF_ID
-
-    bucketed = bucket_by_target_column(df, "category")
+    bucketed = bucket_by_target_column(simple_data_example, "category")
     
     # Snapshot shows:
     # - Each unique category becomes one row
     # - Other columns get first values from each bucket
     # - COUNT shows how many original rows per bucket
     assert bucketed.to_dict(orient="records") == snapshot
+
+
+def test_filter_df_to_selected_buckets_basic(simple_data_example: pd.DataFrame) -> None:
+    """Test basic filtering of original data to selected buckets."""
+    # Create bucketed data
+    bucketed = bucket_by_target_column(simple_data_example, "category")
+    
+    # Select bucket index 0 (category "A") and 2 (category "C")
+    # Based on the data: A appears in rows 0,2 and C appears in row 3
+    selected_indices = [0, 2]
+    
+    filtered = filter_df_to_selected_buckets(
+        simple_data_example, bucketed, "category", selected_indices
+    )
+    
+    # Should get rows where category is "A" or "C"
+    expected_categories = {"A", "C"}
+    assert set(filtered["category"]) == expected_categories
+    assert len(filtered) == 3  # 2 rows for "A", 1 row for "C"
+    
+    # Check specific UUIDs are included
+    expected_uuids = {"uuid_1", "uuid_3", "uuid_4"}  # Rows 0, 2, 3 from original
+    assert set(filtered[C.UUID_STRING]) == expected_uuids
+
+
+def test_filter_df_to_selected_buckets_single_bucket(simple_data_example: pd.DataFrame) -> None:
+    """Test filtering to a single bucket."""
+    bucketed = bucket_by_target_column(simple_data_example, "category")
+    
+    # Select only bucket index 1 (category "B")
+    selected_indices = [1]
+    
+    filtered = filter_df_to_selected_buckets(
+        simple_data_example, bucketed, "category", selected_indices
+    )
+    
+    # Should get only rows where category is "B"
+    assert len(filtered) == 2  # 2 rows for "B"
+    assert all(filtered["category"] == "B")
+    expected_uuids = {"uuid_2", "uuid_5"}  # Rows 1, 4 from original
+    assert set(filtered[C.UUID_STRING]) == expected_uuids
+
+
+def test_filter_df_to_selected_buckets_all_buckets(simple_data_example: pd.DataFrame) -> None:
+    """Test filtering when all buckets are selected."""
+    bucketed = bucket_by_target_column(simple_data_example, "category")
+    
+    # Select all bucket indices
+    selected_indices = [0, 1, 2]  # All buckets
+    
+    filtered = filter_df_to_selected_buckets(
+        simple_data_example, bucketed, "category", selected_indices
+    )
+    
+    # Should get all original rows
+    assert len(filtered) == len(simple_data_example)
+    pd.testing.assert_frame_equal(filtered.sort_index(), simple_data_example.sort_index())
+
+
+def test_filter_df_to_selected_buckets_empty_selection(simple_data_example: pd.DataFrame) -> None:
+    """Test filtering with empty bucket selection."""
+    bucketed = bucket_by_target_column(simple_data_example, "category")
+    
+    # Select no buckets
+    selected_indices = []
+    
+    filtered = filter_df_to_selected_buckets(
+        simple_data_example, bucketed, "category", selected_indices
+    )
+    
+    # Should get empty DataFrame with same structure
+    assert len(filtered) == 0
+    assert list(filtered.columns) == list(simple_data_example.columns)
+    assert filtered.index.name == simple_data_example.index.name
+
+
+def test_filter_df_to_selected_buckets_with_nan_bucket_values() -> None:
+    """Test that filtering fails when selected bucket values contain NaN."""
+    # Create data with null category that will create NaN bucket values
+    df = pd.DataFrame(
+        {
+            C.UUID_STRING: ["uuid_1", "uuid_2", "uuid_3"],
+            "category": ["A", None, "B"],
+            "value": [10, 20, 30],
+        }
+    )
+    df.index.name = C.DF_ID
+    
+    bucketed = bucket_by_target_column(df, "category")
+    
+    # Find the index of the null bucket
+    null_bucket_idx = None
+    for idx, row in bucketed.iterrows():
+        if pd.isna(row["category"]):
+            null_bucket_idx = idx
+            break
+    
+    assert null_bucket_idx is not None
+    
+    # Should raise ValueError when trying to select a bucket with NaN value
+    with pytest.raises(ValueError, match="Selected bucket values cannot contain NaN"):
+        filter_df_to_selected_buckets(df, bucketed, "category", [null_bucket_idx])
+
+
+def test_filter_df_to_selected_buckets_invalid_indices(simple_data_example: pd.DataFrame) -> None:
+    """Test error handling for invalid bucket indices."""
+    bucketed = bucket_by_target_column(simple_data_example, "category")
+    
+    # Test negative index
+    with pytest.raises(ValueError, match="Invalid bucket indices: \\[-1\\]"):
+        filter_df_to_selected_buckets(simple_data_example, bucketed, "category", [-1])
+    
+    # Test index too large
+    with pytest.raises(ValueError, match="Invalid bucket indices: \\[5\\]"):
+        filter_df_to_selected_buckets(simple_data_example, bucketed, "category", [5])
+    
+    # Test multiple invalid indices
+    with pytest.raises(ValueError, match="Invalid bucket indices: \\[-1, 10\\]"):
+        filter_df_to_selected_buckets(simple_data_example, bucketed, "category", [-1, 1, 10])
+
+
+def test_filter_df_to_selected_buckets_missing_target_column(simple_data_example: pd.DataFrame) -> None:
+    """Test error handling when target column is missing."""
+    bucketed = bucket_by_target_column(simple_data_example, "category")
+    
+    # Test missing column in original data
+    with pytest.raises(ValueError, match="Target column 'missing_col' not found in original DataFrame"):
+        filter_df_to_selected_buckets(simple_data_example, bucketed, "missing_col", [0])
+    
+    # Test missing column in bucketed data - create bucketed df without the target column
+    bucketed_missing_col = bucketed.drop(columns=["category"])
+    with pytest.raises(ValueError, match="Target column 'category' not found in bucketed DataFrame"):
+        filter_df_to_selected_buckets(simple_data_example, bucketed_missing_col, "category", [0])
+
+
+def test_filter_df_to_selected_buckets_snapshot(
+    simple_data_example: pd.DataFrame, snapshot: SnapshotAssertion
+) -> None:
+    """Test filtering result with snapshot to show exact filtering behavior."""
+    bucketed = bucket_by_target_column(simple_data_example, "category")
+    
+    # Select buckets 0 and 2 (categories "A" and "C")
+    selected_indices = [0, 2]
+    
+    filtered = filter_df_to_selected_buckets(
+        simple_data_example, bucketed, "category", selected_indices
+    )
+    
+    # Snapshot the filtered result
+    assert filtered.to_dict(orient="records") == snapshot

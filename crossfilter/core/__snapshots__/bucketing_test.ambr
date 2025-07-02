@@ -712,3 +712,28 @@
     }),
   ])
 # ---
+# name: test_filter_df_to_selected_buckets_snapshot
+  list([
+    dict({
+      <SchemaColumns.GPS_LATITUDE: 'GPS_LATITUDE'>: 37.77,
+      <SchemaColumns.GPS_LONGITUDE: 'GPS_LONGITUDE'>: -122.42,
+      <SchemaColumns.UUID_STRING: 'UUID_STRING'>: 'uuid_1',
+      'category': 'A',
+      'value': 10,
+    }),
+    dict({
+      <SchemaColumns.GPS_LATITUDE: 'GPS_LATITUDE'>: 37.77,
+      <SchemaColumns.GPS_LONGITUDE: 'GPS_LONGITUDE'>: -122.42,
+      <SchemaColumns.UUID_STRING: 'UUID_STRING'>: 'uuid_3',
+      'category': 'A',
+      'value': 30,
+    }),
+    dict({
+      <SchemaColumns.GPS_LATITUDE: 'GPS_LATITUDE'>: 37.79,
+      <SchemaColumns.GPS_LONGITUDE: 'GPS_LONGITUDE'>: -122.44,
+      <SchemaColumns.UUID_STRING: 'UUID_STRING'>: 'uuid_4',
+      'category': 'C',
+      'value': 40,
+    }),
+  ])
+# ---

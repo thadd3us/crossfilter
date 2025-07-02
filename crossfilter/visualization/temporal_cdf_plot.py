@@ -38,10 +38,10 @@ def create_temporal_cdf(
 
     # TODO: This could be a cacheable amount of work.
     if not groupby:
-        df["groupby"] = "All"
         groupby = "Data"
+        df[groupby] = "All"
     df[groupby] = df[groupby].astype(str).fillna("Unknown")
-    df["groupby_count"] = df.groupby(groupby).transform("count")
+    df["groupby_count"] = df.groupby(groupby)[SchemaColumns.DF_ID].transform("count")
     df["group_and_count"] = df[groupby] + " (" + df["groupby_count"].astype(str) + ")"
     df = df.sort_values(by=["groupby_count", groupby], ascending=[False, True])
 

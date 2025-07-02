@@ -318,6 +318,9 @@ async def reset_filters(
 
     try:
         session_state.filter_state.reset_filters()
+        
+        # Broadcast filter reset event
+        session_state._broadcast_filter_change("filter_reset", ["temporal", "spatial"])
 
         return {
             "success": True,
@@ -409,6 +412,9 @@ async def filter_to_df_ids(
                 set(filtered_original_data.index),
                 request.description,
             )
+            
+            # Broadcast filter applied event
+            session_state._broadcast_filter_change("filter_applied", ["temporal", "spatial"])
 
             return {
                 "success": True,
@@ -434,6 +440,25 @@ async def filter_to_df_ids(
         raise HTTPException(
             status_code=500, detail=f"Error applying visible filter: {str(e)}"
         ) from e
+
+
+@app.get("/api/events/filter-changes")
+async def filter_change_stream(
+    session_state: SessionState = Depends(get_session_state),
+):
+    """Server-Sent Events stream for filter change notifications."""
+    from fastapi.responses import StreamingResponse
+    
+    return StreamingResponse(
+        session_state.filter_change_stream(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Headers": "Cache-Control",
+        }
+    )
 
 
 # https://github.com/fastapi/typer/issues/341

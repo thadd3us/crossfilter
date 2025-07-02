@@ -12,6 +12,8 @@ class CrossfilterApp {
         this.selectedRowIndices = new Set();
         this.plotData = null;
         this.hasData = false;
+        this.eventSource = null;
+        this.filterVersion = 0;
         this.initialize();
     }
 
@@ -19,6 +21,7 @@ class CrossfilterApp {
         console.log('CrossfilterApp: Initializing...');
         await this.checkSessionStatus();
         this.setupEventListeners();
+        this.setupSSEConnection();
         console.log('CrossfilterApp: Initialization complete');
     }
 
@@ -69,6 +72,83 @@ class CrossfilterApp {
 
     setupEventListeners() {
         // Plot selection handling will be set up when plot is created
+    }
+
+    setupSSEConnection() {
+        console.log('CrossfilterApp: Setting up SSE connection...');
+        
+        // Close existing connection if any
+        if (this.eventSource) {
+            this.eventSource.close();
+        }
+        
+        // Create new SSE connection
+        this.eventSource = new EventSource('/api/events/filter-changes');
+        
+        this.eventSource.onopen = () => {
+            console.log('CrossfilterApp: SSE connection opened');
+        };
+        
+        this.eventSource.onmessage = (event) => {
+            this.handleSSEEvent(event);
+        };
+        
+        this.eventSource.onerror = (error) => {
+            console.error('CrossfilterApp: SSE connection error:', error);
+            this.showError('Lost connection to server. Refresh page to reconnect.');
+        };
+    }
+
+    handleSSEEvent(event) {
+        try {
+            const data = JSON.parse(event.data);
+            console.log('CrossfilterApp: Received SSE event:', data);
+            
+            // Update filter version
+            this.filterVersion = data.version;
+            
+            switch (data.type) {
+                case 'connection_established':
+                    console.log('CrossfilterApp: SSE connection established');
+                    // Update status with current session state
+                    if (data.session_state) {
+                        this.updateStatus(data.session_state);
+                    }
+                    break;
+                    
+                case 'data_loaded':
+                    console.log('CrossfilterApp: Data loaded event received');
+                    this.hasData = data.session_state.has_data;
+                    this.updateStatus(data.session_state);
+                    if (this.hasData) {
+                        this.refreshPlot();
+                    }
+                    break;
+                    
+                case 'filter_applied':
+                    console.log('CrossfilterApp: Filter applied event received');
+                    this.updateStatus(data.session_state);
+                    this.refreshPlot();
+                    break;
+                    
+                case 'filter_reset':
+                    console.log('CrossfilterApp: Filter reset event received');
+                    this.clearSelection();
+                    this.updateStatus(data.session_state);
+                    this.refreshPlot();
+                    break;
+                    
+                case 'heartbeat':
+                    // Silent heartbeat, just log debug info
+                    console.debug('CrossfilterApp: SSE heartbeat');
+                    break;
+                    
+                default:
+                    console.warn('CrossfilterApp: Unknown SSE event type:', data.type);
+            }
+        } catch (error) {
+            console.error('CrossfilterApp: Error parsing SSE event:', error);
+        }
     }
 
     async loadSampleData() {
@@ -221,8 +301,8 @@ class CrossfilterApp {
 
             this.clearSelection();
             this.showInfo('Filters reset successfully');
-            await this.checkSessionStatus();
-            await this.refreshPlot();
+            
+            // SSE will handle the refresh automatically when the filter_reset event is received
         } catch (error) {
             this.showError('Failed to reset filters: ' + error.message);
         }
@@ -310,9 +390,7 @@ class CrossfilterApp {
             const result = await response.json();
             this.showInfo(`Filtered to selected ${displayName}: ${result.filtered_count} rows remaining`);
             
-            // Refresh session status and plot
-            await this.checkSessionStatus();
-            await this.refreshPlot();
+            // SSE will handle the refresh automatically when the filter_applied event is received
         } catch (error) {
             this.showError(`Failed to apply ${eventSource} selection filter: ` + error.message);
         }

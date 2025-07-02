@@ -1,6 +1,10 @@
 """Session state management for single-session Crossfilter application."""
 
+import asyncio
+import json
 import logging
+import time
+from typing import AsyncGenerator
 
 import pandas as pd
 
@@ -45,6 +49,11 @@ class SessionState:
         self._bucket_keys: dict[BucketingType, BucketKey] = {}
         self._bucketed_dataframes: dict[BucketingType, pd.DataFrame] = {}
         self._update_metadata()
+        
+        # SSE event broadcasting
+        self._filter_version = 0
+        self._event_queue: asyncio.Queue = asyncio.Queue()
+        self._sse_clients: set[asyncio.Queue] = set()
 
     @property
     def data(self) -> pd.DataFrame:
@@ -59,6 +68,9 @@ class SessionState:
         self._filter_state.initialize_with_data(bucketed_data)
         self._update_metadata()
         logger.info(f"Loaded dataset with {len(value)} rows into session state")
+        
+        # Broadcast data loaded event
+        self._broadcast_filter_change("data_loaded", ["temporal", "spatial"])
 
     def _update_metadata(self) -> None:
         """Update metadata based on current DataFrame."""
@@ -192,4 +204,71 @@ class SessionState:
         result["cumulative_count"] = result["count"].cumsum()
 
         return result
+
+    @property
+    def filter_version(self) -> int:
+        """Get the current filter version for change tracking."""
+        return self._filter_version
+
+    def _broadcast_filter_change(self, event_type: str, affected_components: list[str]) -> None:
+        """Broadcast filter change event to all SSE clients."""
+        self._filter_version += 1
+        event_data = {
+            "type": event_type,
+            "affected_components": affected_components,
+            "version": self._filter_version,
+            "timestamp": time.time(),
+            "session_state": {
+                "has_data": self.has_data(),
+                "row_count": len(self._data) if self.has_data() else 0,
+                "filtered_count": self._filter_state.filter_count if self.has_data() else 0,
+                "columns": list(self._data.columns) if self.has_data() else []
+            }
+        }
+        
+        # Queue the event for all connected SSE clients
+        for client_queue in self._sse_clients:
+            try:
+                client_queue.put_nowait(event_data)
+            except asyncio.QueueFull:
+                logger.warning("SSE client queue full, dropping event")
+
+    async def filter_change_stream(self) -> AsyncGenerator[str, None]:
+        """Generate Server-Sent Events stream for filter changes."""
+        client_queue: asyncio.Queue = asyncio.Queue(maxsize=100)
+        self._sse_clients.add(client_queue)
+        
+        try:
+            # Send initial connection event
+            initial_event = {
+                "type": "connection_established",
+                "affected_components": ["temporal", "spatial"],
+                "version": self._filter_version,
+                "timestamp": time.time(),
+                "session_state": {
+                    "has_data": self.has_data(),
+                    "row_count": len(self._data) if self.has_data() else 0,
+                    "filtered_count": self._filter_state.filter_count if self.has_data() else 0,
+                    "columns": list(self._data.columns) if self.has_data() else []
+                }
+            }
+            yield f"data: {json.dumps(initial_event)}\n\n"
+            
+            # Stream subsequent events
+            while True:
+                try:
+                    event_data = await asyncio.wait_for(client_queue.get(), timeout=30.0)
+                    yield f"data: {json.dumps(event_data)}\n\n"
+                except asyncio.TimeoutError:
+                    # Send periodic heartbeat to keep connection alive
+                    heartbeat = {
+                        "type": "heartbeat",
+                        "timestamp": time.time(),
+                        "version": self._filter_version
+                    }
+                    yield f"data: {json.dumps(heartbeat)}\n\n"
+        except asyncio.CancelledError:
+            logger.info("SSE client disconnected")
+        finally:
+            self._sse_clients.discard(client_queue)
 

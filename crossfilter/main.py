@@ -456,7 +456,7 @@ def main_callback(ctx: typer.Context) -> None:
 @cli.command("serve")
 def serve(
     port: int = typer.Option(8000, help="Port to serve on"),
-    host: str = typer.Option("127.0.0.1", help="Host to bind to"),
+    host: str = typer.Option("localhost", help="Host to bind to"),
     reload: bool = typer.Option(False, help="Enable auto-reload"),
     preload_jsonl: Optional[Path] = typer.Option(
         None, help="Path to JSONL file to preload into session state"

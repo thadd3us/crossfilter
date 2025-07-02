@@ -28,12 +28,15 @@ the data structure while maintaining full filtering capability.
 """
 
 import logging
+import uuid
+from dataclasses import dataclass
 from typing import Optional
 
 import h3
 import pandas as pd
 
 from crossfilter.core.schema import (
+    BucketingType,
     SchemaColumns,
     TemporalLevel,
     get_h3_column_name,
@@ -41,6 +44,27 @@ from crossfilter.core.schema import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass(frozen=True)
+class BucketKey:
+    """
+    Represents a specific bucketing configuration for data aggregation.
+    
+    When the frontend sends df_ids from bucketed data, this key identifies
+    which bucketing operation was used to ensure we apply the correct
+    filtering logic.
+    """
+    bucketing_type: BucketingType
+    target_column: str
+    identifier: str = ""
+    
+    def __post_init__(self) -> None:
+        """Generate a unique identifier if not provided."""
+        if not self.identifier:
+            # Generate a short UUID for this bucketing instance
+            object.__setattr__(self, 'identifier', str(uuid.uuid4())[:8])
+
 
 # H3 resolution levels to pre-compute (0-15, where higher = more granular)
 H3_LEVELS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
@@ -319,5 +343,25 @@ def add_bucketed_columns(df: pd.DataFrame) -> pd.DataFrame:
 
     logger.info(f"Added bucketed columns to DataFrame with {len(df)} rows")
     return df
+
+
+def bucket_dataframe(bucket_key: BucketKey, df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Create a bucketed DataFrame using the specified bucketing configuration.
+    
+    This function takes a BucketKey that specifies the bucketing type, target column,
+    and identifier, and returns a bucketed DataFrame that can be sent to the frontend.
+    
+    Args:
+        bucket_key: Configuration specifying how to bucket the data
+        df: DataFrame to bucket (should have quantized columns pre-computed)
+    
+    Returns:
+        Bucketed DataFrame with one row per unique bucket value
+        
+    Raises:
+        ValueError: If the target column is not found in the DataFrame
+    """
+    return bucket_by_target_column(df, bucket_key.target_column)
 
 

@@ -6,6 +6,7 @@ import pandas as pd
 
 from crossfilter.core.bucketing import (
     H3_LEVELS,
+    BucketKey,
     add_bucketed_columns,
     bucket_by_target_column,
     get_optimal_h3_level,
@@ -13,6 +14,7 @@ from crossfilter.core.bucketing import (
 )
 from crossfilter.core.filter_state import FilterState
 from crossfilter.core.schema import (
+    BucketingType,
     SchemaColumns,
     TemporalLevel,
     get_h3_column_name,
@@ -38,8 +40,10 @@ class SessionState:
     def __init__(self) -> None:
         """Initialize session state with empty DataFrame."""
         self._data = pd.DataFrame()
-        self._bucketed_data = pd.DataFrame()
         self._filter_state = FilterState()
+        # Track bucketing configurations presented to the frontend
+        self._bucket_keys: dict[BucketingType, BucketKey] = {}
+        self._bucketed_dataframes: dict[BucketingType, pd.DataFrame] = {}
         self._update_metadata()
 
     @property
@@ -51,8 +55,8 @@ class SessionState:
     def data(self, value: pd.DataFrame) -> None:
         """Set the current dataset."""
         self._data = value
-        self._bucketed_data = add_bucketed_columns(value)
-        self._filter_state.initialize_with_data(self._bucketed_data)
+        bucketed_data = add_bucketed_columns(value)
+        self._filter_state.initialize_with_data(bucketed_data)
         self._update_metadata()
         logger.info(f"Loaded dataset with {len(value)} rows into session state")
 
@@ -76,8 +80,9 @@ class SessionState:
     def clear(self) -> None:
         """Clear all data from the session state."""
         self._data = pd.DataFrame()
-        self._bucketed_data = pd.DataFrame()
         self._filter_state = FilterState()
+        self._bucket_keys = {}
+        self._bucketed_dataframes = {}
         self._update_metadata()
 
     def load_dataframe(self, df: pd.DataFrame) -> None:
@@ -101,10 +106,6 @@ class SessionState:
 
         return summary
 
-    @property
-    def bucketed_data(self) -> pd.DataFrame:
-        """Get the bucketed dataset."""
-        return self._bucketed_data
 
     @property
     def filter_state(self) -> FilterState:
@@ -113,7 +114,8 @@ class SessionState:
 
     def get_filtered_data(self) -> pd.DataFrame:
         """Get the currently filtered dataset."""
-        return self._filter_state.get_filtered_dataframe(self._bucketed_data)
+        bucketed_data = add_bucketed_columns(self._data)
+        return self._filter_state.get_filtered_dataframe(bucketed_data)
 
     def get_spatial_aggregation(self, max_groups: int) -> pd.DataFrame:
         """
@@ -190,3 +192,4 @@ class SessionState:
         result["cumulative_count"] = result["count"].cumsum()
 
         return result
+

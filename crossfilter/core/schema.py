@@ -48,6 +48,13 @@ class FilterOperationType(StrEnum):
     RESET = "reset"
 
 
+class BucketingType(StrEnum):
+    """Types of bucketing operations for aggregating data."""
+
+    H3 = "H3"
+    TEMPORAL = "TEMPORAL"
+
+
 class TemporalLevel(StrEnum):
     """Temporal quantization levels."""
 

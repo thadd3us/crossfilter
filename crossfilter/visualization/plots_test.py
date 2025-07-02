@@ -9,7 +9,6 @@ import pytest
 from crossfilter.core.schema import load_jsonl_to_dataframe
 from crossfilter.core.session_state import SessionState
 from crossfilter.visualization.plots import create_fallback_scatter_geo
-from crossfilter.visualization.temporal_cdf_plot import create_temporal_cdf
 
 
 @pytest.fixture

@@ -7,6 +7,7 @@ from syrupy import SnapshotAssertion
 from crossfilter.core.bucketing import (
     H3_LEVELS,
     TEMPORAL_LEVELS,
+    add_bucketed_columns,
     add_quantized_columns_for_h3,
     add_quantized_columns_for_timestamp,
     bucket_by_target_column,
@@ -16,6 +17,8 @@ from crossfilter.core.bucketing import (
 )
 from crossfilter.core.schema import (
     SchemaColumns as C,
+)
+from crossfilter.core.schema import (
     TemporalLevel,
     get_h3_column_name,
     get_temporal_column_name,
@@ -83,7 +86,7 @@ def test_add_quantized_columns_for_h3_missing_columns() -> None:
         }
     )
     df.index.name = C.DF_ID
-    
+
     with pytest.raises(ValueError, match="DataFrame must contain GPS_LATITUDE and GPS_LONGITUDE columns"):
         add_quantized_columns_for_h3(df)
 
@@ -271,7 +274,7 @@ def test_bucket_by_target_column_h3_column_preservation_snapshot(
     target_column = get_h3_column_name(h3_level)
 
     bucketed = bucket_by_target_column(quantized, target_column)
-    
+
     # Snapshot the bucketed result to show column preservation
     assert bucketed.to_dict(orient="records") == snapshot
 
@@ -286,7 +289,7 @@ def test_bucket_by_target_column_temporal_column_preservation_snapshot(
     target_column = get_temporal_column_name(temporal_level)
 
     bucketed = bucket_by_target_column(quantized, target_column)
-    
+
     # Snapshot the bucketed result to show column preservation
     assert bucketed.to_dict(orient="records") == snapshot
 
@@ -296,7 +299,7 @@ def test_bucket_by_target_column_simple_data_snapshot(
 ) -> None:
     """Test bucketing with simple test data to clearly show column preservation."""
     bucketed = bucket_by_target_column(simple_data_example, "category")
-    
+
     # Snapshot shows:
     # - Each unique category becomes one row
     # - Other columns get first values from each bucket
@@ -308,20 +311,20 @@ def test_filter_df_to_selected_buckets_basic(simple_data_example: pd.DataFrame) 
     """Test basic filtering of original data to selected buckets."""
     # Create bucketed data
     bucketed = bucket_by_target_column(simple_data_example, "category")
-    
+
     # Select bucket index 0 (category "A") and 2 (category "C")
     # Based on the data: A appears in rows 0,2 and C appears in row 3
     selected_indices = [0, 2]
-    
+
     filtered = filter_df_to_selected_buckets(
         simple_data_example, bucketed, "category", selected_indices
     )
-    
+
     # Should get rows where category is "A" or "C"
     expected_categories = {"A", "C"}
     assert set(filtered["category"]) == expected_categories
     assert len(filtered) == 3  # 2 rows for "A", 1 row for "C"
-    
+
     # Check specific UUIDs are included
     expected_uuids = {"uuid_1", "uuid_3", "uuid_4"}  # Rows 0, 2, 3 from original
     assert set(filtered[C.UUID_STRING]) == expected_uuids
@@ -330,14 +333,14 @@ def test_filter_df_to_selected_buckets_basic(simple_data_example: pd.DataFrame) 
 def test_filter_df_to_selected_buckets_single_bucket(simple_data_example: pd.DataFrame) -> None:
     """Test filtering to a single bucket."""
     bucketed = bucket_by_target_column(simple_data_example, "category")
-    
+
     # Select only bucket index 1 (category "B")
     selected_indices = [1]
-    
+
     filtered = filter_df_to_selected_buckets(
         simple_data_example, bucketed, "category", selected_indices
     )
-    
+
     # Should get only rows where category is "B"
     assert len(filtered) == 2  # 2 rows for "B"
     assert all(filtered["category"] == "B")
@@ -348,14 +351,14 @@ def test_filter_df_to_selected_buckets_single_bucket(simple_data_example: pd.Dat
 def test_filter_df_to_selected_buckets_all_buckets(simple_data_example: pd.DataFrame) -> None:
     """Test filtering when all buckets are selected."""
     bucketed = bucket_by_target_column(simple_data_example, "category")
-    
+
     # Select all bucket indices
     selected_indices = [0, 1, 2]  # All buckets
-    
+
     filtered = filter_df_to_selected_buckets(
         simple_data_example, bucketed, "category", selected_indices
     )
-    
+
     # Should get all original rows
     assert len(filtered) == len(simple_data_example)
     pd.testing.assert_frame_equal(filtered.sort_index(), simple_data_example.sort_index())
@@ -364,14 +367,14 @@ def test_filter_df_to_selected_buckets_all_buckets(simple_data_example: pd.DataF
 def test_filter_df_to_selected_buckets_empty_selection(simple_data_example: pd.DataFrame) -> None:
     """Test filtering with empty bucket selection."""
     bucketed = bucket_by_target_column(simple_data_example, "category")
-    
+
     # Select no buckets
     selected_indices = []
-    
+
     filtered = filter_df_to_selected_buckets(
         simple_data_example, bucketed, "category", selected_indices
     )
-    
+
     # Should get empty DataFrame with same structure
     assert len(filtered) == 0
     assert list(filtered.columns) == list(simple_data_example.columns)
@@ -389,18 +392,18 @@ def test_filter_df_to_selected_buckets_with_nan_bucket_values() -> None:
         }
     )
     df.index.name = C.DF_ID
-    
+
     bucketed = bucket_by_target_column(df, "category")
-    
+
     # Find the index of the null bucket
     null_bucket_idx = None
     for idx, row in bucketed.iterrows():
         if pd.isna(row["category"]):
             null_bucket_idx = idx
             break
-    
+
     assert null_bucket_idx is not None
-    
+
     # Should raise ValueError when trying to select a bucket with NaN value
     with pytest.raises(ValueError, match="Selected bucket values cannot contain NaN"):
         filter_df_to_selected_buckets(df, bucketed, "category", [null_bucket_idx])
@@ -409,15 +412,15 @@ def test_filter_df_to_selected_buckets_with_nan_bucket_values() -> None:
 def test_filter_df_to_selected_buckets_invalid_indices(simple_data_example: pd.DataFrame) -> None:
     """Test error handling for invalid bucket indices."""
     bucketed = bucket_by_target_column(simple_data_example, "category")
-    
+
     # Test negative index
     with pytest.raises(ValueError, match="Invalid bucket indices: \\[-1\\]"):
         filter_df_to_selected_buckets(simple_data_example, bucketed, "category", [-1])
-    
+
     # Test index too large
     with pytest.raises(ValueError, match="Invalid bucket indices: \\[5\\]"):
         filter_df_to_selected_buckets(simple_data_example, bucketed, "category", [5])
-    
+
     # Test multiple invalid indices
     with pytest.raises(ValueError, match="Invalid bucket indices: \\[-1, 10\\]"):
         filter_df_to_selected_buckets(simple_data_example, bucketed, "category", [-1, 1, 10])
@@ -426,11 +429,11 @@ def test_filter_df_to_selected_buckets_invalid_indices(simple_data_example: pd.D
 def test_filter_df_to_selected_buckets_missing_target_column(simple_data_example: pd.DataFrame) -> None:
     """Test error handling when target column is missing."""
     bucketed = bucket_by_target_column(simple_data_example, "category")
-    
+
     # Test missing column in original data
     with pytest.raises(ValueError, match="Target column 'missing_col' not found in original DataFrame"):
         filter_df_to_selected_buckets(simple_data_example, bucketed, "missing_col", [0])
-    
+
     # Test missing column in bucketed data - create bucketed df without the target column
     bucketed_missing_col = bucketed.drop(columns=["category"])
     with pytest.raises(ValueError, match="Target column 'category' not found in bucketed DataFrame"):
@@ -442,13 +445,107 @@ def test_filter_df_to_selected_buckets_snapshot(
 ) -> None:
     """Test filtering result with snapshot to show exact filtering behavior."""
     bucketed = bucket_by_target_column(simple_data_example, "category")
-    
+
     # Select buckets 0 and 2 (categories "A" and "C")
     selected_indices = [0, 2]
-    
+
     filtered = filter_df_to_selected_buckets(
         simple_data_example, bucketed, "category", selected_indices
     )
-    
+
     # Snapshot the filtered result
     assert filtered.to_dict(orient="records") == snapshot
+
+
+def test_add_bucketed_columns() -> None:
+    """Test the combined add_bucketed_columns function."""
+    # Create test data with both spatial and temporal columns
+    test_data = {
+        C.UUID_STRING: ["uuid1", "uuid2", "uuid3"],
+        C.GPS_LATITUDE: [37.7749, 37.7849, 37.7949],
+        C.GPS_LONGITUDE: [-122.4194, -122.4094, -122.3994],
+        C.TIMESTAMP_UTC: [
+            "2024-01-01 10:00:00",
+            "2024-01-01 11:00:00",
+            "2024-01-01 12:00:00",
+        ],
+    }
+    df = pd.DataFrame(test_data)
+    df.index.name = C.DF_ID
+
+    # Apply add_bucketed_columns
+    result = add_bucketed_columns(df)
+
+    # Check that original columns are preserved
+    for col in df.columns:
+        assert col in result.columns
+
+    # Check that H3 columns were added
+    h3_cols = [col for col in result.columns if col.startswith("QUANTIZED_H3_")]
+    assert len(h3_cols) > 0
+
+    # Check that temporal columns were added
+    temporal_cols = [col for col in result.columns if col.startswith("QUANTIZED_TIMESTAMP_")]
+    assert len(temporal_cols) > 0
+
+    # Check that we have the expected number of additional columns
+    assert len(result.columns) > len(df.columns)
+
+
+def test_add_bucketed_columns_spatial_only() -> None:
+    """Test add_bucketed_columns with only spatial data."""
+    test_data = {
+        C.UUID_STRING: ["uuid1", "uuid2"],
+        C.GPS_LATITUDE: [37.7749, 37.7849],
+        C.GPS_LONGITUDE: [-122.4194, -122.4094],
+    }
+    df = pd.DataFrame(test_data)
+    df.index.name = C.DF_ID
+
+    result = add_bucketed_columns(df)
+
+    # Should have H3 columns but no temporal columns
+    h3_cols = [col for col in result.columns if col.startswith("QUANTIZED_H3_")]
+    temporal_cols = [col for col in result.columns if col.startswith("QUANTIZED_TIMESTAMP_")]
+
+    assert len(h3_cols) > 0
+    assert len(temporal_cols) == 0
+
+
+def test_add_bucketed_columns_temporal_only() -> None:
+    """Test add_bucketed_columns with only temporal data."""
+    test_data = {
+        C.UUID_STRING: ["uuid1", "uuid2"],
+        C.TIMESTAMP_UTC: ["2024-01-01 10:00:00", "2024-01-01 11:00:00"],
+    }
+    df = pd.DataFrame(test_data)
+    df.index.name = C.DF_ID
+
+    result = add_bucketed_columns(df)
+
+    # Should have temporal columns but no H3 columns
+    h3_cols = [col for col in result.columns if col.startswith("QUANTIZED_H3_")]
+    temporal_cols = [col for col in result.columns if col.startswith("QUANTIZED_TIMESTAMP_")]
+
+    assert len(h3_cols) == 0
+    assert len(temporal_cols) > 0
+
+
+def test_add_bucketed_columns_neither() -> None:
+    """Test add_bucketed_columns with neither spatial nor temporal data."""
+    test_data = {
+        C.UUID_STRING: ["uuid1", "uuid2"],
+        "some_other_column": ["value1", "value2"],
+    }
+    df = pd.DataFrame(test_data)
+    df.index.name = C.DF_ID
+
+    result = add_bucketed_columns(df)
+
+    # Should have no additional columns
+    h3_cols = [col for col in result.columns if col.startswith("QUANTIZED_H3_")]
+    temporal_cols = [col for col in result.columns if col.startswith("QUANTIZED_TIMESTAMP_")]
+
+    assert len(h3_cols) == 0
+    assert len(temporal_cols) == 0
+    assert len(result.columns) == len(df.columns)

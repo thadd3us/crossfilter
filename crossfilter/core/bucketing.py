@@ -28,7 +28,7 @@ the data structure while maintaining full filtering capability.
 """
 
 import logging
-from typing import List, Optional
+from typing import Optional
 
 import h3
 import pandas as pd
@@ -71,7 +71,7 @@ def add_quantized_columns_for_h3(df: pd.DataFrame) -> pd.DataFrame:
         and SchemaColumns.GPS_LONGITUDE in df.columns
     ):
         raise ValueError("DataFrame must contain GPS_LATITUDE and GPS_LONGITUDE columns")
-    
+
     df = df.copy()
     df = _add_h3_columns(df)
     logger.info(f"Added H3 quantization columns to DataFrame with {len(df)} rows")
@@ -90,7 +90,7 @@ def add_quantized_columns_for_timestamp(df: pd.DataFrame) -> pd.DataFrame:
     """
     if SchemaColumns.TIMESTAMP_UTC not in df.columns:
         raise ValueError("DataFrame must contain TIMESTAMP_UTC column")
-    
+
     df = df.copy()
     df = _add_temporal_columns(df)
     logger.info(f"Added temporal quantization columns to DataFrame with {len(df)} rows")
@@ -164,24 +164,24 @@ def bucket_by_target_column(original_data: pd.DataFrame, target_column: str) -> 
     """
     if target_column not in original_data.columns:
         raise ValueError(f"Target column '{target_column}' not found in DataFrame")
-    
+
     # Group by target column and take first value for each column, plus count
     agg_dict = {}
     for col in original_data.columns:
         if col == target_column:
             continue  # Skip the groupby column
         agg_dict[col] = 'first'
-    
+
     # Get the grouped data, including nulls in groupby
     grouped = original_data.groupby(target_column, dropna=False).agg(agg_dict).reset_index()
-    
+
     # Add count column
     counts = original_data.groupby(target_column, dropna=False).size().reset_index(name='COUNT')
     bucketed = grouped.merge(counts, on=target_column)
-    
+
     # Set standard integer index for DF_ID
     bucketed.index.name = SchemaColumns.DF_ID
-    
+
     logger.debug(
         f"Bucketed {len(original_data)} rows into {len(bucketed)} buckets by column '{target_column}'"
     )
@@ -246,7 +246,7 @@ def filter_df_to_selected_buckets(
     original_data: pd.DataFrame,
     bucketed_df: pd.DataFrame,
     target_column: str,
-    bucket_indices_to_keep: List[int]
+    bucket_indices_to_keep: list[int]
 ) -> pd.DataFrame:
     """
     Filter original data to only contain rows from selected buckets.
@@ -266,26 +266,58 @@ def filter_df_to_selected_buckets(
     """
     if target_column not in original_data.columns:
         raise ValueError(f"Target column '{target_column}' not found in original DataFrame")
-    
+
     if target_column not in bucketed_df.columns:
         raise ValueError(f"Target column '{target_column}' not found in bucketed DataFrame")
-    
+
     # Validate bucket indices
     invalid_indices = [idx for idx in bucket_indices_to_keep if idx < 0 or idx >= len(bucketed_df)]
     if invalid_indices:
         raise ValueError(f"Invalid bucket indices: {invalid_indices}. Valid range is 0-{len(bucketed_df)-1}")
-    
+
     # Get the target column values for selected buckets as Series
     selected_bucket_values = bucketed_df.iloc[bucket_indices_to_keep][target_column]
-    
+
     # Check that none of the selected bucket values is NaN
     if selected_bucket_values.isna().any():
         raise ValueError("Selected bucket values cannot contain NaN. This indicates invalid bucketing.")
-    
+
     # Filter original data using isin
     mask = original_data[target_column].isin(selected_bucket_values)
     filtered_data = original_data[mask].copy()
-    
+
     return filtered_data
+
+
+
+
+def add_bucketed_columns(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Add all quantized columns to the DataFrame for bucketing operations.
+
+    This function combines both spatial (H3) and temporal quantization columns,
+    adding them conditionally based on the presence of required input columns.
+
+    Args:
+        df: Input DataFrame
+
+    Returns:
+        DataFrame with added quantized columns for both spatial and temporal data
+    """
+    df = df.copy()
+
+    # Add spatial quantization (H3 cells) if GPS coordinates are present
+    if (
+        SchemaColumns.GPS_LATITUDE in df.columns
+        and SchemaColumns.GPS_LONGITUDE in df.columns
+    ):
+        df = _add_h3_columns(df)
+
+    # Add temporal quantization if timestamp is present
+    if SchemaColumns.TIMESTAMP_UTC in df.columns:
+        df = _add_temporal_columns(df)
+
+    logger.info(f"Added bucketed columns to DataFrame with {len(df)} rows")
+    return df
 
 

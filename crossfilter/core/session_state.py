@@ -4,16 +4,20 @@ import logging
 
 import pandas as pd
 
-from crossfilter.core.filter_state import FilterState
-from crossfilter.core.quantization import (
+from crossfilter.core.bucketing import (
     H3_LEVELS,
-    add_quantized_columns,
-    aggregate_by_h3,
-    aggregate_by_temporal,
+    add_bucketed_columns,
+    bucket_by_target_column,
     get_optimal_h3_level,
     get_optimal_temporal_level,
 )
-from crossfilter.core.schema import SchemaColumns, TemporalLevel
+from crossfilter.core.filter_state import FilterState
+from crossfilter.core.schema import (
+    SchemaColumns,
+    TemporalLevel,
+    get_h3_column_name,
+    get_temporal_column_name,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +38,7 @@ class SessionState:
     def __init__(self) -> None:
         """Initialize session state with empty DataFrame."""
         self._data = pd.DataFrame()
-        self._quantized_data = pd.DataFrame()
+        self._bucketed_data = pd.DataFrame()
         self._filter_state = FilterState()
         self._update_metadata()
 
@@ -47,8 +51,8 @@ class SessionState:
     def data(self, value: pd.DataFrame) -> None:
         """Set the current dataset."""
         self._data = value
-        self._quantized_data = add_quantized_columns(value)
-        self._filter_state.initialize_with_data(self._quantized_data)
+        self._bucketed_data = add_bucketed_columns(value)
+        self._filter_state.initialize_with_data(self._bucketed_data)
         self._update_metadata()
         logger.info(f"Loaded dataset with {len(value)} rows into session state")
 
@@ -72,7 +76,7 @@ class SessionState:
     def clear(self) -> None:
         """Clear all data from the session state."""
         self._data = pd.DataFrame()
-        self._quantized_data = pd.DataFrame()
+        self._bucketed_data = pd.DataFrame()
         self._filter_state = FilterState()
         self._update_metadata()
 
@@ -98,9 +102,9 @@ class SessionState:
         return summary
 
     @property
-    def quantized_data(self) -> pd.DataFrame:
-        """Get the quantized dataset."""
-        return self._quantized_data
+    def bucketed_data(self) -> pd.DataFrame:
+        """Get the bucketed dataset."""
+        return self._bucketed_data
 
     @property
     def filter_state(self) -> FilterState:
@@ -109,7 +113,7 @@ class SessionState:
 
     def get_filtered_data(self) -> pd.DataFrame:
         """Get the currently filtered dataset."""
-        return self._filter_state.get_filtered_dataframe(self._quantized_data)
+        return self._filter_state.get_filtered_dataframe(self._bucketed_data)
 
     def get_spatial_aggregation(self, max_groups: int) -> pd.DataFrame:
         """
@@ -139,7 +143,12 @@ class SessionState:
             optimal_level = min(H3_LEVELS)
 
         # Aggregate by H3 cells
-        return aggregate_by_h3(filtered_data, optimal_level)
+        h3_column = get_h3_column_name(optimal_level)
+        bucketed = bucket_by_target_column(filtered_data, h3_column)
+
+        # Rename COUNT column to count for consistency
+        result = bucketed.rename(columns={"COUNT": "count"})
+        return result
 
     def get_temporal_aggregation(self, max_groups: int) -> pd.DataFrame:
         """
@@ -170,4 +179,14 @@ class SessionState:
             optimal_level = TemporalLevel.YEAR
 
         # Aggregate by temporal buckets
-        return aggregate_by_temporal(filtered_data, optimal_level)
+        temporal_column = get_temporal_column_name(optimal_level)
+        bucketed = bucket_by_target_column(filtered_data, temporal_column)
+
+        # Transform to match expected output format for CDF visualization
+        result = bucketed.rename(columns={"COUNT": "count"})
+
+        # Sort by timestamp and add cumulative count for CDF
+        result = result.sort_values(temporal_column)
+        result["cumulative_count"] = result["count"].cumsum()
+
+        return result

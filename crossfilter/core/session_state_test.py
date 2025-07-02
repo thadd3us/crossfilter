@@ -31,7 +31,7 @@ def test_session_state_initialization() -> None:
 
     assert not session.has_data()
     assert session.data.empty
-    assert session.quantized_data.empty
+    assert session.bucketed_data.empty
 
     summary = session.get_summary()
     assert summary["status"] == "empty"
@@ -47,15 +47,15 @@ def test_load_dataframe(sample_df: pd.DataFrame) -> None:
     assert len(session.data) == 20
     assert session.data.index.name == C.DF_ID
 
-    # Should have quantized data with additional columns
-    quantized = session.quantized_data
-    assert len(quantized) == 20
-    assert len(quantized.columns) > len(sample_df.columns)
+    # Should have bucketed data with additional columns
+    bucketed = session.bucketed_data
+    assert len(bucketed) == 20
+    assert len(bucketed.columns) > len(sample_df.columns)
 
     # Check that H3 and temporal columns were added
-    h3_cols = [col for col in quantized.columns if col.startswith("QUANTIZED_H3_")]
+    h3_cols = [col for col in bucketed.columns if col.startswith("QUANTIZED_H3_")]
     temporal_cols = [
-        col for col in quantized.columns if col.startswith("QUANTIZED_TIMESTAMP_")
+        col for col in bucketed.columns if col.startswith("QUANTIZED_TIMESTAMP_")
     ]
     assert len(h3_cols) > 0
     assert len(temporal_cols) > 0
@@ -126,10 +126,9 @@ def test_spatial_aggregation_aggregated(sample_df) -> None:
 
     # Should return aggregated data
     assert len(result) <= 5
-    assert "lat" in result.columns
-    assert "lon" in result.columns
+    assert C.GPS_LATITUDE in result.columns
+    assert C.GPS_LONGITUDE in result.columns
     assert "count" in result.columns
-    assert "df_ids" in result.columns
 
     # Total count should match original data
     assert result["count"].sum() == 20
@@ -168,7 +167,6 @@ def test_temporal_aggregation_aggregated(sample_df) -> None:
     assert len(result) <= 3
     assert "count" in result.columns
     assert "cumulative_count" in result.columns
-    assert "df_ids" in result.columns
 
     # Total count should match original data
     assert result["count"].sum() == 20
@@ -188,7 +186,7 @@ def test_clear_session_state(sample_df) -> None:
 
     assert not session.has_data()
     assert session.data.empty
-    assert session.quantized_data.empty
+    assert session.bucketed_data.empty
     assert session.filter_state.total_count == 0
 
     summary = session.get_summary()
@@ -204,9 +202,9 @@ def test_data_property_setter(sample_df) -> None:
 
     assert session.has_data()
     assert len(session.data) == 20
-    assert len(session.quantized_data) > len(
+    assert len(session.bucketed_data) > len(
         sample_df.columns
-    )  # Should have quantized columns
+    )  # Should have bucketed columns
 
 
 def test_filter_integration_with_aggregation(sample_df) -> None:

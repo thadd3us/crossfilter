@@ -59,7 +59,7 @@ uv sync
 
 ```bash
 # Start the development server
-uv run python -m crossfilter.main serve --port 8000 --preload_jsonl 
+uv run python -m crossfilter.main serve --port 8000 --preload_jsonl test_data/sample_100.jsonl 
 
 # Or using uvicorn directly
 uvicorn crossfilter.main:app serve --reload --port 8000

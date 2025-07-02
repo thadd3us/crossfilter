@@ -420,4 +420,5 @@ function filterTemporalToSelected() {
 // Initialize the application when the page loads
 document.addEventListener('DOMContentLoaded', () => {
     app = new CrossfilterApp();
+    window.app = app;  // Also expose on window for testing
 });

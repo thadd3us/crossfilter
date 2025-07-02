@@ -214,48 +214,11 @@ def test_filter_to_selected_ui_elements(
         "document.getElementById('plotControls').style.display === 'flex'", timeout=5000
     )
     
-    # Wait for the app object to be initialized and capture console logs for debugging
-    page.on("console", lambda msg: print(f"Console [{msg.type}]: {msg.text}"))
-    
-    try:
-        page.wait_for_function("!!window.app", timeout=5000)
-        print("✓ App object initialized successfully")
-    except Exception as e:
-        print(f"❌ App object initialization failed: {e}")
-        # Check what's in the global scope
-        global_debug = page.evaluate("""
-            () => {
-                return {
-                    hasApp: !!window.app,
-                    windowKeys: Object.keys(window).filter(k => k.includes('app') || k.includes('Cross')),
-                    documentReadyState: document.readyState,
-                    scriptsLoaded: document.scripts.length,
-                    appJsLoaded: !!document.querySelector('script[src*="app.js"]')
-                };
-            }
-        """)
-        print(f"Global debug info: {global_debug}")
-        
-        # Try to manually initialize the app for testing
-        manual_init = page.evaluate("""
-            () => {
-                try {
-                    if (typeof CrossfilterApp !== 'undefined') {
-                        window.app = new CrossfilterApp();
-                        return { success: true, message: 'Manually initialized app' };
-                    } else {
-                        return { success: false, message: 'CrossfilterApp class not available' };
-                    }
-                } catch (error) {
-                    return { success: false, message: error.message };
-                }
-            }
-        """)
-        print(f"Manual initialization: {manual_init}")
-        
-        # Wait a bit more if manual init worked
-        if manual_init.get('success'):
-            page.wait_for_timeout(1000)
+    # Wait for the app object to be initialized and ready
+    page.wait_for_function(
+        "!!window.app && window.app.hasData !== undefined", 
+        timeout=10000
+    )
 
     # Check that Filter to Selected button is initially disabled (no selection)
     filter_button = page.locator("#filterToSelectedBtn")

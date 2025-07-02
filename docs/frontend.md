@@ -91,7 +91,84 @@ GET /api/plots/spatial?max_groups=100000&version=${filterVersion}
 
 // Temporal component requests temporal aggregation  
 GET /api/plots/temporal?max_groups=100000&version=${filterVersion}
+
+// Alternative: Request ready-to-display HTML (for simpler integration)
+GET /api/plots/temporal/html?max_groups=100000
 ```
+
+## Plot Data Wire Formats
+
+The backend supports multiple wire formats for delivering plot data to the frontend, each optimized for different use cases:
+
+### JSON Format (Default)
+**Endpoint**: `GET /api/plots/temporal`
+
+Returns JSON-serialized Plotly figure data that requires client-side rendering:
+
+```json
+{
+  "plotly_plot": {
+    "data": [...],     // Plotly traces with points, customdata, etc.
+    "layout": {...}    // Plot layout, styling, and configuration
+  },
+  "data_type": "individual|aggregated",
+  "point_count": 100
+}
+```
+
+**Advantages:**
+- Full client-side control over plot rendering and interactions
+- Smaller payload size (no HTML markup overhead)
+- Can be easily manipulated or extended on the frontend
+- Supports complex plot selection and interaction callbacks
+
+**Usage Pattern:**
+```javascript
+const response = await fetch('/api/plots/temporal');
+const data = await response.json();
+Plotly.newPlot(container, data.plotly_plot.data, data.plotly_plot.layout, config);
+```
+
+### HTML Format (Ready-to-Display)
+**Endpoint**: `GET /api/plots/temporal/html`
+
+Returns complete, ready-to-display HTML with embedded Plotly visualization:
+
+```html
+<!DOCTYPE html>
+<html>
+<head>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+</head>
+<body>
+    <div id="temporal-cdf-plot" class="plotly-graph-div">
+        <!-- Fully rendered Plotly plot -->
+    </div>
+    <script>
+        // Plotly rendering code with CDN-hosted dependencies
+    </script>
+</body>
+</html>
+```
+
+**Advantages:**
+- Zero client-side JavaScript requirements for basic display
+- Useful for simple iframe embedding or static content generation
+- CDN-hosted Plotly.js reduces backend dependencies
+- Self-contained with all necessary dependencies
+
+**Usage Pattern:**
+```javascript
+const response = await fetch('/api/plots/temporal/html');
+const htmlContent = await response.text();
+document.getElementById('container').innerHTML = htmlContent;
+```
+
+### Wire Format Selection Guidelines
+
+- **Use JSON format** for interactive applications requiring plot manipulation, selection callbacks, or custom styling
+- **Use HTML format** for simple display scenarios, iframe embedding, or when minimizing client-side JavaScript complexity
+- **JSON format is preferred** for the main application as it provides full Plotly feature access
 
 ## Component Architecture
 
@@ -242,6 +319,67 @@ sequenceDiagram
 - Consider implementing incremental updates for temporal components
 - Leverage browser caching for static plot configurations
 
+## Testing Infrastructure
+
+### End-to-End Testing with Playwright
+
+The application includes comprehensive browser-based testing using Playwright to validate the complete user experience:
+
+```python
+@pytest.mark.e2e
+def test_temporal_cdf_plot_display(page: Page, backend_server_with_data: str, snapshot: SnapshotAssertion):
+    """Test that the temporal CDF plot loads and displays correctly."""
+    server_url = backend_server_with_data
+    
+    # Navigate to main application
+    page.goto(f"{server_url}/")
+    
+    # Wait for app initialization with pre-loaded data
+    page.wait_for_function("document.getElementById('refreshBtn').disabled === false")
+    
+    # Trigger plot refresh and wait for rendering
+    page.click("#refreshBtn")
+    page.wait_for_function("() => document.querySelector('.main-svg') !== null")
+    
+    # Visual regression testing with PNG snapshots
+    screenshot_bytes = page.screenshot(full_page=True)
+    assert screenshot_bytes == snapshot(extension_class=PNGImageSnapshotExtension)
+```
+
+**Testing Features:**
+- **Visual Regression**: PNG screenshot comparison detects UI changes automatically
+- **Backend Integration**: Tests start real backend server with pre-loaded data
+- **User Workflow**: Validates complete interaction flow (navigation → data detection → plot refresh)
+- **Plot Validation**: Confirms Plotly plots render correctly with expected DOM structure
+- **Headless Operation**: Runs in CI/CD without requiring display server
+
+**Test Coverage:**
+- Main application page loading and content validation
+- Data loading detection and status display  
+- Plot rendering and interaction (click → fetch → display)
+- Visual output consistency via screenshot comparison
+- Error handling and graceful degradation
+
+**Running Tests:**
+```bash
+# Run all frontend tests
+uv run --extra dev pytest tests/frontend/ -m e2e
+
+# Update visual regression baselines
+uv run --extra dev pytest tests/frontend/ -m e2e --snapshot-update
+
+# Run with visible browser (for debugging)
+uv run --extra dev pytest tests/frontend/ -m e2e --headed
+```
+
+### Test Architecture Benefits
+
+- **Catch Regressions**: Automatically detects when changes break the user interface
+- **Document Behavior**: Tests serve as executable documentation of expected functionality  
+- **Cross-Browser Support**: Playwright tests run on Chrome, Firefox, and Safari
+- **CI/CD Ready**: Headless execution suitable for automated build pipelines
+- **Visual Validation**: Screenshot comparison catches subtle layout/styling issues that unit tests miss
+
 ## Open Questions
 
 1. **Real-time Data Updates**: How should the system handle streaming data or periodic data refreshes? Should this trigger automatic filter recalculation?
@@ -264,6 +402,64 @@ sequenceDiagram
 
 7. **Export/Sharing**: Should filtered datasets be exportable? If so, should exports be generated on the backend or frontend?
   * Yes, I'd like to be able to copy the UUIDs of the currently selected rows into the system clipboard as a comma-separated list, and show a little UI notification along the lines of "Copied N UUIDs to clipboard".
+
+## Current Implementation Status
+
+### ✅ **Completed** (Phase 0: Foundation & Temporal CDF)
+
+**Backend API Endpoints:**
+- ✅ `/api/plots/temporal` - JSON format with full Plotly figure data
+- ✅ `/api/plots/temporal/html` - Ready-to-display HTML format
+- ✅ `/api/filters/apply` - General filter application endpoint 
+- ✅ `/api/filters/reset` - Filter reset functionality
+- ✅ JSON serialization handling for numpy arrays and Plotly figures
+
+**Frontend Interface:**
+- ✅ Vanilla JavaScript application with temporal CDF plotting
+- ✅ Plot interaction and selection handling via Plotly callbacks
+- ✅ Filter application workflow (plot selection → backend filter → UI update)
+- ✅ Responsive plot rendering with CDN-hosted Plotly.js
+
+**Testing Infrastructure:**
+- ✅ Comprehensive Playwright-based end-to-end testing
+- ✅ Visual regression testing with PNG screenshot comparison
+- ✅ Automated server startup with pre-loaded data for testing
+- ✅ CI/CD ready headless browser support
+
+**Data Processing:**
+- ✅ Temporal aggregation and individual point handling
+- ✅ CDF calculation with group-by support (e.g., by data type)
+- ✅ Proper handling of missing columns in plot generation
+- ✅ df_id tracking for row selection and filtering
+
+### 🔄 **Next Steps** (Phase 1: SSE & Component APIs)
+
+**Server-Sent Events:**
+- ⏳ Add `/api/events/filter-changes` SSE endpoint
+- ⏳ Modify `SessionState` to broadcast filter change events
+- ⏳ Add SSE client code to existing vanilla JS app
+
+**Component-Specific APIs:**
+- ⏳ Split filter API into `/api/filters/spatial` and `/api/filters/temporal`
+- ⏳ Add support for different selection types (bbox, lasso, time ranges)
+- ⏳ Enhance plot data endpoints with versioning support
+
+**Spatial Visualization:**
+- ⏳ Implement spatial plot endpoints (`/api/plots/spatial`)
+- ⏳ Add H3 hexagon aggregation for geographic data
+- ⏳ Create geographic selection and filtering workflow
+
+### 📋 **Future Phases**
+
+**Phase 2: React Migration**
+- Gradually migrate from vanilla JS to React components
+- Create reusable visualization components that embed Plotly
+- Implement proper state management with React hooks
+
+**Phase 3: Advanced Features**
+- Add support for filter intersections and unions
+- Implement undo/redo with proper state versioning
+- Add real-time collaboration features if needed
 
 ## Migration Path from Current Implementation
 

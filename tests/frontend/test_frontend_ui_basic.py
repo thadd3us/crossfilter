@@ -108,7 +108,7 @@ def test_temporal_cdf_plot_display(
     page.goto(f"{server_url}/")
 
     # Wait for the page title to be set
-    page.wait_for_function("document.title === 'Crossfilter - Temporal CDF Analysis'")
+    page.wait_for_function("document.title === 'Crossfilter'", timeout=5000)
 
     # Wait for the app to initialize, detect pre-loaded data, and auto-load the plot
     # The plot should render automatically when data is detected
@@ -119,7 +119,7 @@ def test_temporal_cdf_plot_display(
             return plotContainer && plotContainer.querySelector('.main-svg') !== null;
         }
     """,
-        timeout=30000,
+        timeout=5000,
     )
 
     # Wait a bit more for the plot to fully render
@@ -141,18 +141,15 @@ def test_temporal_cdf_plot_content(page: Page, backend_server_with_data: str) ->
     page.goto(f"{server_url}/")
 
     # Check the page title
-    assert page.title() == "Crossfilter - Temporal CDF Analysis"
+    assert page.title() == "Crossfilter"
 
     # Check the main heading
     heading = page.locator("h1").text_content()
-    assert heading == "Crossfilter - Temporal CDF Analysis"
+    assert heading == "Crossfilter"
 
     # Check the subtitle
     subtitle = page.locator("p").text_content()
-    assert (
-        subtitle
-        == "Interactive temporal analysis with cumulative distribution functions"
-    )
+    assert subtitle == "Interactive data exploration, filtering, and selection"
 
     # Wait for the app to initialize, detect pre-loaded data, and auto-load the plot
     # We wait for the plot to render instead of waiting for button state

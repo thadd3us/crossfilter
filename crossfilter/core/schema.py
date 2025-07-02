@@ -13,12 +13,11 @@ from pandera.typing import Series
 logger = logging.getLogger(__name__)
 
 
-# Standard DataFrame ID column name
-DF_ID_COLUMN = "df_id"
-
-
 class SchemaColumns(StrEnum):
     """Column names from the DataSchema."""
+
+    # Used to refer to the DataFrame integer index.
+    DF_ID = "df_id"
 
     UUID_STRING = "UUID_STRING"
     DATA_TYPE = "DATA_TYPE"

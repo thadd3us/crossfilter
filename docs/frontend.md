@@ -4,6 +4,34 @@
 
 This document outlines a reactive frontend/backend architecture that keeps state in the backend while providing efficient, real-time updates to visualization components.
 
+## ✅ Implemented Features
+
+### Filter to Selected Points
+A simplified implementation of frontend-to-backend communication for filtering plots to user-selected data points:
+
+- **Frontend UI**: "Filter to Selected" button positioned underneath plots, enabled only when points are selected
+- **Plot-Agnostic Design**: Uses `event_source` field with `FilterOperationType` to handle different plot types (temporal, spatial, etc.)
+- **Plotly Selection Integration**: Leverages Plotly's built-in selection mechanisms (lasso, box select) instead of complex viewport tracking
+- **Smart Filtering**: Converts plot-level df_ids (which may be buckets) to original dataframe point filtering
+- **Backend Processing**: Uses `filter_df_to_selected_buckets()` to correctly map plot df_ids to original dataframe rows
+- **Extensible Architecture**: Single endpoint handles all plot types with different event sources
+- **Simplified Testing**: Essential UI verification test ensures core functionality works
+
+#### Technical Details
+- **Backend Endpoint**: Single `/api/filters/df_ids` endpoint that accepts `event_source` parameter
+- **Frontend Enum**: `FilterOperationType` constant matching backend schema for type safety
+- **Simplified Implementation**: `filterToSelected(eventSource)` method uses existing selection tracking
+- **Temporal Convenience Method**: `filterTemporalToSelected()` wrapper for temporal plot filtering
+- **Button State Management**: Button disabled until user makes a selection, with selection count display
+- **Error Handling**: Returns 501 for spatial filtering (not yet implemented) and 400 for invalid event sources
+
+#### Architectural Benefits
+- **Much Simpler Code**: Removed ~80 lines of complex viewport tracking and visible point calculation
+- **Uses Plotly Strengths**: Leverages Plotly's robust selection events instead of reinventing them
+- **Better UX**: Users explicitly select what they want to filter to, making intent clear
+- **More Reliable**: Plotly's selection handling is more robust than manual coordinate calculations
+- **Easier Testing**: UI verification is simpler than simulating complex zoom/selection interactions
+
 ## Key Design Principles
 
 1. **Backend State Management**: All filtering state and large datasets remain on the backend

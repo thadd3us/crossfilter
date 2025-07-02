@@ -13,6 +13,11 @@ from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
+from crossfilter.core.bucketing import (
+    filter_df_to_selected_buckets,
+    get_optimal_temporal_level,
+    get_temporal_column_name,
+)
 from crossfilter.core.schema import FilterOperationType, load_jsonl_to_dataframe
 from crossfilter.core.session_state import SessionState
 from crossfilter.visualization.plots import (
@@ -134,6 +139,14 @@ class FilterRequest(BaseModel):
     filter_operation_type: FilterOperationType  # 'spatial' or 'temporal'
     description: str
     metadata: Optional[dict[str, Any]] = None
+
+
+class DfIdsFilterRequest(BaseModel):
+    """Request model for filtering to specific df_ids from a plot."""
+
+    df_ids: list[int]  # df_ids from the plot (could be from lasso selection, visible area, etc.)
+    event_source: FilterOperationType  # Which plot type this filtering comes from
+    description: str
 
 
 @app.get("/api/plots/spatial")
@@ -352,6 +365,75 @@ async def get_filter_history(
         raise HTTPException(
             status_code=500, detail=f"Error getting filter history: {str(e)}"
         )
+
+
+@app.post("/api/filters/df_ids")
+async def filter_to_df_ids(
+    request: DfIdsFilterRequest,
+    max_groups: int = Query(100000, ge=1, le=1000000),
+    session_state: SessionState = Depends(get_session_state),
+) -> dict[str, Any]:
+    """Filter data to only include points with specified df_ids from a plot."""
+    if not session_state.has_data():
+        raise HTTPException(status_code=404, detail="No data loaded")
+
+    try:
+        # Validate event source
+        if request.event_source == FilterOperationType.TEMPORAL:
+            # Get the current filtered data with bucketed columns
+            original_data = session_state.get_filtered_data()
+
+            # Get the temporal aggregation that matches what the frontend is using
+            temporal_data = session_state.get_temporal_aggregation(max_groups)
+
+            # Determine the temporal column that was used for bucketing
+            optimal_level = get_optimal_temporal_level(original_data, max_groups)
+            if optimal_level is None:
+                raise HTTPException(
+                    status_code=400,
+                    detail="No temporal columns available for filtering"
+                )
+
+            target_column = get_temporal_column_name(optimal_level)
+
+            # Convert bucket df_ids to original data df_ids using the bucketing function
+            filtered_original_data = filter_df_to_selected_buckets(
+                original_data,
+                temporal_data,
+                target_column,
+                request.df_ids
+            )
+
+            # Apply the temporal filter using the original df_ids
+            session_state.filter_state.apply_temporal_filter(
+                set(filtered_original_data.index),
+                request.description,
+            )
+
+            return {
+                "success": True,
+                "event_source": request.event_source.value,
+                "filtered_count": len(filtered_original_data),
+                "bucket_count": len(request.df_ids),
+                "filter_state": session_state.filter_state.get_summary(),
+            }
+
+        elif request.event_source == FilterOperationType.SPATIAL:
+            # Spatial visible filtering not yet implemented
+            raise HTTPException(
+                status_code=501,
+                detail="Spatial visible filtering not yet implemented"
+            )
+
+        else:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Unsupported event_source: {request.event_source}"
+            )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Error applying visible filter: {str(e)}"
+        ) from e
 
 
 # https://github.com/fastapi/typer/issues/341

@@ -50,7 +50,7 @@ logger = logging.getLogger(__name__)
 class BucketKey:
     """
     Represents a specific bucketing configuration for data aggregation.
-    
+
     When the frontend sends df_ids from bucketed data, this key identifies
     which bucketing operation was used to ensure we apply the correct
     filtering logic.
@@ -174,15 +174,15 @@ def _add_temporal_columns(df: pd.DataFrame) -> pd.DataFrame:
 def bucket_by_target_column(original_data: pd.DataFrame, target_column: str) -> pd.DataFrame:
     """
     Create a bucketed DataFrame by grouping on the target column.
-    
+
     Each row in the result represents one bucket (unique value in target_column).
     All original columns are preserved with values from the first row in each bucket.
     A COUNT column is added showing the number of original rows in each bucket.
-    
+
     Args:
         original_data: The original DataFrame to bucket
         target_column: Column name to group by (should be a quantized/discretized column)
-    
+
     Returns:
         Bucketed DataFrame with one row per unique target_column value
     """
@@ -274,17 +274,17 @@ def filter_df_to_selected_buckets(
 ) -> pd.DataFrame:
     """
     Filter original data to only contain rows from selected buckets.
-    
+
     This function implements the filtering workflow where the frontend sends
     integer row indices of selected buckets, and we filter the original data
     to only include rows that belong to those selected buckets.
-    
+
     Args:
         original_data: The original, unbucketed DataFrame
         bucketed_df: The bucketed DataFrame (output from bucket_by_target_column)
         target_column: Column name that was used for bucketing (present in both DataFrames)
         bucket_indices_to_keep: List of integer indices from bucketed_df to keep
-    
+
     Returns:
         Filtered DataFrame containing only rows from selected buckets
     """
@@ -348,17 +348,17 @@ def add_bucketed_columns(df: pd.DataFrame) -> pd.DataFrame:
 def bucket_dataframe(bucket_key: BucketKey, df: pd.DataFrame) -> pd.DataFrame:
     """
     Create a bucketed DataFrame using the specified bucketing configuration.
-    
+
     This function takes a BucketKey that specifies the bucketing type, target column,
     and identifier, and returns a bucketed DataFrame that can be sent to the frontend.
-    
+
     Args:
         bucket_key: Configuration specifying how to bucket the data
         df: DataFrame to bucket (should have quantized columns pre-computed)
-    
+
     Returns:
         Bucketed DataFrame with one row per unique bucket value
-        
+
     Raises:
         ValueError: If the target column is not found in the DataFrame
     """

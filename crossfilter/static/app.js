@@ -1,4 +1,12 @@
 // Crossfilter frontend application
+
+// FilterOperationType enum to match backend schema.py
+const FilterOperationType = {
+    SPATIAL: 'spatial',
+    TEMPORAL: 'temporal',
+    RESET: 'reset'
+};
+
 class CrossfilterApp {
     constructor() {
         this.selectedRowIndices = new Set();
@@ -127,6 +135,10 @@ class CrossfilterApp {
         plotContainer.on('plotly_deselect', () => {
             this.clearSelection();
         });
+
+        // Show plot controls now that plot is rendered
+        document.getElementById('plotControls').style.display = 'flex';
+        this.updateFilterButton();
     }
 
     handlePlotSelection(eventData) {
@@ -144,54 +156,12 @@ class CrossfilterApp {
         });
 
         this.selectedRowIndices = selectedIndices;
-        this.updateSelectionInfo();
-        
-        // Apply the filter to backend
-        if (selectedIndices.size > 0) {
-            this.applyTemporalFilter(Array.from(selectedIndices));
-        }
-    }
-
-    async applyTemporalFilter(rowIndices) {
-        try {
-            const response = await fetch('/api/filters/apply', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    row_indices: rowIndices,
-                    operation_type: 'temporal',
-                    description: `Selected ${rowIndices.length} points from temporal CDF`
-                })
-            });
-
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-
-            const result = await response.json();
-            this.showInfo(`Applied temporal filter: ${rowIndices.length} points selected`);
-            
-            // Refresh session status to show updated filter counts
-            await this.checkSessionStatus();
-        } catch (error) {
-            this.showError('Failed to apply temporal filter: ' + error.message);
-        }
+        this.updateFilterButton();
     }
 
     clearSelection() {
         this.selectedRowIndices.clear();
-        this.updateSelectionInfo();
-    }
-
-    updateSelectionInfo() {
-        const selectionInfo = document.getElementById('selectionInfo');
-        if (this.selectedRowIndices.size > 0) {
-            selectionInfo.textContent = `Selected: ${this.selectedRowIndices.size} points`;
-        } else {
-            selectionInfo.textContent = '';
-        }
+        this.updateFilterButton();
     }
 
     async resetFilters() {
@@ -243,6 +213,69 @@ class CrossfilterApp {
     clearMessages() {
         document.getElementById('messages').innerHTML = '';
     }
+
+    updateFilterButton() {
+        const filterButton = document.getElementById('filterToVisibleBtn');
+        const plotSelectionInfo = document.getElementById('plotSelectionInfo');
+        
+        if (this.selectedRowIndices.size > 0) {
+            filterButton.disabled = false;
+            plotSelectionInfo.textContent = `Selected: ${this.selectedRowIndices.size} points`;
+        } else {
+            filterButton.disabled = true;
+            plotSelectionInfo.textContent = '';
+        }
+    }
+
+    async filterToSelected(eventSource) {
+        const selectedIndices = Array.from(this.selectedRowIndices);
+        
+        if (selectedIndices.length === 0) {
+            this.showError('No points selected. Use lasso or box select to choose points first.');
+            return;
+        }
+
+        // Get display names for different event sources
+        const displayNames = {
+            [FilterOperationType.TEMPORAL]: 'temporal buckets',
+            [FilterOperationType.SPATIAL]: 'spatial regions'
+        };
+        
+        const displayName = displayNames[eventSource] || 'points';
+
+        try {
+            this.showInfo(`Filtering to ${selectedIndices.length} selected ${displayName}...`);
+            
+            const response = await fetch('/api/filters/df_ids', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    df_ids: selectedIndices,
+                    event_source: eventSource,
+                    description: `Filter to ${selectedIndices.length} selected ${displayName} from ${eventSource} plot`
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const result = await response.json();
+            this.showInfo(`Filtered to selected ${displayName}: ${result.filtered_count} rows remaining`);
+            
+            // Refresh session status and plot
+            await this.checkSessionStatus();
+            await this.refreshPlot();
+        } catch (error) {
+            this.showError(`Failed to apply ${eventSource} selection filter: ` + error.message);
+        }
+    }
+
+    async filterTemporalToSelected() {
+        return this.filterToSelected(FilterOperationType.TEMPORAL);
+    }
 }
 
 // Global functions for HTML onclick handlers
@@ -258,6 +291,10 @@ function refreshPlot() {
 
 function resetFilters() {
     app.resetFilters();
+}
+
+function filterTemporalToSelected() {
+    app.filterTemporalToSelected();
 }
 
 // Initialize the application when the page loads

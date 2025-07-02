@@ -177,3 +177,55 @@ def test_temporal_cdf_plot_content(
     plot_container = page.locator("#plotContainer")
     assert plot_container.count() > 0
     assert plot_container.locator(".main-svg").count() > 0
+
+
+@pytest.mark.e2e
+def test_filter_to_selected_ui_elements(
+    page: Page,
+    backend_server_with_data: str
+) -> None:
+    """Test that Filter to Selected UI elements are present and work correctly."""
+    server_url = backend_server_with_data
+
+    # Navigate to the main application page
+    page.goto(f"{server_url}/")
+
+    # Wait for the app to initialize and detect pre-loaded data
+    page.wait_for_function("document.getElementById('refreshBtn').disabled === false", timeout=10000)
+
+    # Click the refresh plot button to load the temporal CDF plot
+    page.click("#refreshBtn")
+
+    # Wait for the plot to be rendered
+    page.wait_for_function("""
+        () => {
+            const plotContainer = document.getElementById('plotContainer');
+            return plotContainer && plotContainer.querySelector('.main-svg') !== null;
+        }
+    """, timeout=30000)
+
+    # Wait for plot controls to appear
+    page.wait_for_function("document.getElementById('plotControls').style.display === 'flex'", timeout=5000)
+
+    # Check that Filter to Selected button is initially disabled (no selection)
+    filter_button = page.locator("#filterToVisibleBtn")
+    assert filter_button.is_disabled()
+
+    # Verify button text is correct
+    button_text = filter_button.text_content()
+    assert button_text == "Filter to Selected"
+
+    # Verify plot selection info element exists and is initially empty
+    plot_selection_info = page.locator("#plotSelectionInfo")
+    assert plot_selection_info.count() > 0
+    assert plot_selection_info.text_content() == ""
+
+    # Verify the button uses the correct onclick handler
+    onclick_attr = filter_button.get_attribute("onclick")
+    assert onclick_attr == "filterTemporalToSelected()"
+
+    # Get initial row count to verify data is loaded
+    initial_status = page.locator("#status").text_content()
+    assert "100 rows" in initial_status
+
+

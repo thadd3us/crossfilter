@@ -13,7 +13,7 @@ from crossfilter.core.quantization import (
     get_optimal_h3_level,
     get_optimal_temporal_level,
 )
-from crossfilter.core.schema import DF_ID_COLUMN, SchemaColumns, TemporalLevel
+from crossfilter.core.schema import SchemaColumns, TemporalLevel
 
 logger = logging.getLogger(__name__)
 
@@ -128,7 +128,7 @@ class SessionState:
             columns = [SchemaColumns.GPS_LATITUDE, SchemaColumns.GPS_LONGITUDE]
             result = filtered_data[columns].copy()
             # Add df_id column for consistency
-            result[DF_ID_COLUMN] = filtered_data.index
+            result[SchemaColumns.DF_ID] = filtered_data.index
             return result
 
         # Find optimal H3 level
@@ -159,7 +159,7 @@ class SessionState:
             df = df.sort_values(SchemaColumns.TIMESTAMP_UTC)
             df["cumulative_count"] = range(1, len(df) + 1)
             # Add df_id column for consistency
-            df[DF_ID_COLUMN] = df.index
+            df[SchemaColumns.DF_ID] = df.index
             return df
 
         # Find optimal temporal level

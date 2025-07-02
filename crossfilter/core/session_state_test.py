@@ -3,7 +3,7 @@
 import pandas as pd
 import pytest
 
-from crossfilter.core.schema import DF_ID_COLUMN, SchemaColumns
+from crossfilter.core.schema import SchemaColumns as C
 from crossfilter.core.session_state import SessionState
 
 
@@ -12,20 +12,16 @@ def sample_df() -> pd.DataFrame:
     """Create a sample DataFrame for testing."""
     df = pd.DataFrame(
         {
-            SchemaColumns.UUID_STRING: [f"uuid_{i}" for i in range(20)],
-            SchemaColumns.GPS_LATITUDE: [37.7749 + i * 0.001 for i in range(20)],
-            SchemaColumns.GPS_LONGITUDE: [-122.4194 + i * 0.001 for i in range(20)],
-            SchemaColumns.TIMESTAMP_UTC: [
-                f"2024-01-01T{10 + i // 4}:00:00Z" for i in range(20)
-            ],
+            C.UUID_STRING: [f"uuid_{i}" for i in range(20)],
+            C.GPS_LATITUDE: [37.7749 + i * 0.001 for i in range(20)],
+            C.GPS_LONGITUDE: [-122.4194 + i * 0.001 for i in range(20)],
+            C.TIMESTAMP_UTC: [f"2024-01-01T{10 + i // 4}:00:00Z" for i in range(20)],
         }
     )
     # Convert timestamp to datetime
-    df[SchemaColumns.TIMESTAMP_UTC] = pd.to_datetime(
-        df[SchemaColumns.TIMESTAMP_UTC], utc=True
-    )
+    df[C.TIMESTAMP_UTC] = pd.to_datetime(df[C.TIMESTAMP_UTC], utc=True)
     # Set stable df_id index
-    df.index.name = DF_ID_COLUMN
+    df.index.name = C.DF_ID
     return df
 
 
@@ -49,7 +45,7 @@ def test_load_dataframe(sample_df: pd.DataFrame) -> None:
 
     assert session.has_data()
     assert len(session.data) == 20
-    assert session.data.index.name == DF_ID_COLUMN
+    assert session.data.index.name == C.DF_ID
 
     # Should have quantized data with additional columns
     quantized = session.quantized_data
@@ -73,8 +69,8 @@ def test_session_state_metadata(sample_df) -> None:
 
     metadata = session.metadata
     assert metadata["shape"] == (20, 4)  # Original columns only
-    assert SchemaColumns.GPS_LATITUDE in metadata["columns"]
-    assert SchemaColumns.TIMESTAMP_UTC in metadata["columns"]
+    assert C.GPS_LATITUDE in metadata["columns"]
+    assert C.TIMESTAMP_UTC in metadata["columns"]
 
     summary = session.get_summary()
     assert summary["status"] == "loaded"
@@ -115,9 +111,9 @@ def test_spatial_aggregation_individual_points(sample_df) -> None:
 
     # Should return individual points
     assert len(result) == 20
-    assert SchemaColumns.GPS_LATITUDE in result.columns
-    assert SchemaColumns.GPS_LONGITUDE in result.columns
-    assert DF_ID_COLUMN in result.columns
+    assert C.GPS_LATITUDE in result.columns
+    assert C.GPS_LONGITUDE in result.columns
+    assert C.DF_ID in result.columns
 
 
 def test_spatial_aggregation_aggregated(sample_df) -> None:
@@ -149,12 +145,12 @@ def test_temporal_aggregation_individual_points(sample_df) -> None:
 
     # Should return individual points
     assert len(result) == 20
-    assert SchemaColumns.TIMESTAMP_UTC in result.columns
+    assert C.TIMESTAMP_UTC in result.columns
     assert "cumulative_count" in result.columns
-    assert DF_ID_COLUMN in result.columns
+    assert C.DF_ID in result.columns
 
     # Should be sorted by timestamp
-    assert result[SchemaColumns.TIMESTAMP_UTC].is_monotonic_increasing
+    assert result[C.TIMESTAMP_UTC].is_monotonic_increasing
 
     # Cumulative count should go from 1 to 20
     assert list(result["cumulative_count"]) == list(range(1, 21))
@@ -237,8 +233,8 @@ def test_filter_integration_with_aggregation(sample_df) -> None:
     assert len(filtered_temporal) == 10
 
     # All df_ids should be in the filtered set
-    assert all(df_id in filtered_df_ids for df_id in filtered_spatial[DF_ID_COLUMN])
-    assert all(df_id in filtered_df_ids for df_id in filtered_temporal[DF_ID_COLUMN])
+    assert all(df_id in filtered_df_ids for df_id in filtered_spatial[C.DF_ID])
+    assert all(df_id in filtered_df_ids for df_id in filtered_temporal[C.DF_ID])
 
 
 def test_empty_dataframe_handling() -> None:
@@ -246,12 +242,12 @@ def test_empty_dataframe_handling() -> None:
     session = SessionState()
     empty_df = pd.DataFrame(
         columns=[
-            SchemaColumns.GPS_LATITUDE,
-            SchemaColumns.GPS_LONGITUDE,
-            SchemaColumns.TIMESTAMP_UTC,
+            C.GPS_LATITUDE,
+            C.GPS_LONGITUDE,
+            C.TIMESTAMP_UTC,
         ]
     )
-    empty_df.index.name = DF_ID_COLUMN
+    empty_df.index.name = C.DF_ID
 
     session.load_dataframe(empty_df)
 

@@ -4,17 +4,19 @@ import pandas as pd
 import pytest
 
 from crossfilter.core.filter_state import FilterOperation, FilterState
-from crossfilter.core.schema import DF_ID_COLUMN, FilterOperationType
+from crossfilter.core.schema import SchemaColumns as C, FilterOperationType
 
 
 @pytest.fixture
 def sample_df():
     """Create a sample DataFrame for testing."""
-    df = pd.DataFrame({
-        'col1': [f"value_{i}" for i in range(100)],
-        'col2': [i * 10 for i in range(100)]
-    })
-    df.index.name = DF_ID_COLUMN
+    df = pd.DataFrame(
+        {
+            "col1": [f"value_{i}" for i in range(100)],
+            "col2": [i * 10 for i in range(100)],
+        }
+    )
+    df.index.name = C.DF_ID
     return df
 
 
@@ -57,9 +59,9 @@ def test_apply_spatial_filter(sample_df) -> None:
     # Check undo stack
     history = filter_state.get_undo_stack_info()
     assert len(history) == 1
-    assert history[0]['operation_type'] == FilterOperationType.SPATIAL
-    assert history[0]['description'] == "Spatial filter test"
-    assert history[0]['count'] == 100  # Previous state had all points
+    assert history[0]["operation_type"] == FilterOperationType.SPATIAL
+    assert history[0]["description"] == "Spatial filter test"
+    assert history[0]["count"] == 100  # Previous state had all points
 
 
 def test_apply_temporal_filter(sample_df) -> None:
@@ -89,9 +91,7 @@ def test_intersect_with_filter(sample_df) -> None:
     # Intersect with: points 40-80
     second_filter = set(range(40, 80))
     filter_state.intersect_with_filter(
-        second_filter,
-        FilterOperationType.TEMPORAL,
-        "Intersect filter"
+        second_filter, FilterOperationType.TEMPORAL, "Intersect filter"
     )
 
     # Should have intersection: 40-59 (20 points)
@@ -126,7 +126,7 @@ def test_reset_filters(sample_df) -> None:
     # Should have 3 operations in undo stack
     history = filter_state.get_undo_stack_info()
     assert len(history) == 3
-    assert history[0]['operation_type'] == FilterOperationType.RESET
+    assert history[0]["operation_type"] == FilterOperationType.RESET
 
 
 def test_undo_operations(sample_df) -> None:
@@ -168,8 +168,8 @@ def test_undo_operations(sample_df) -> None:
 def test_undo_stack_limit() -> None:
     """Test that undo stack respects maximum size."""
     filter_state = FilterState(max_undo_steps=3)
-    df = pd.DataFrame({'col': range(10)})
-    df.index.name = DF_ID_COLUMN
+    df = pd.DataFrame({"col": range(10)})
+    df.index.name = C.DF_ID
     filter_state.initialize_with_data(df)
 
     # Apply 5 filters (more than max_undo_steps)
@@ -182,9 +182,9 @@ def test_undo_stack_limit() -> None:
     assert len(history) == 3
 
     # Should be the last 3 operations
-    assert history[0]['description'] == "Filter 4"
-    assert history[1]['description'] == "Filter 3"
-    assert history[2]['description'] == "Filter 2"
+    assert history[0]["description"] == "Filter 4"
+    assert history[1]["description"] == "Filter 3"
+    assert history[2]["description"] == "Filter 2"
 
 
 def test_get_filtered_dataframe(sample_df) -> None:
@@ -231,21 +231,21 @@ def test_get_summary(sample_df) -> None:
     filter_state.initialize_with_data(sample_df)
 
     summary = filter_state.get_summary()
-    assert summary['total_count'] == 100
-    assert summary['filtered_count'] == 100
-    assert summary['filter_ratio'] == 1.0
-    assert not summary['can_undo']
-    assert summary['undo_stack_size'] == 0
+    assert summary["total_count"] == 100
+    assert summary["filtered_count"] == 100
+    assert summary["filter_ratio"] == 1.0
+    assert not summary["can_undo"]
+    assert summary["undo_stack_size"] == 0
 
     # Apply filter and check summary
     filter_state.apply_spatial_filter(set(range(25)), "Quarter filter")
 
     summary = filter_state.get_summary()
-    assert summary['total_count'] == 100
-    assert summary['filtered_count'] == 25
-    assert summary['filter_ratio'] == 0.25
-    assert summary['can_undo']
-    assert summary['undo_stack_size'] == 1
+    assert summary["total_count"] == 100
+    assert summary["filtered_count"] == 25
+    assert summary["filter_ratio"] == 0.25
+    assert summary["can_undo"]
+    assert summary["undo_stack_size"] == 1
 
 
 def test_filter_operation_dataclass() -> None:
@@ -254,7 +254,7 @@ def test_filter_operation_dataclass() -> None:
     operation = FilterOperation(
         operation_type=FilterOperationType.SPATIAL,
         filtered_df_ids=df_ids,
-        description="Test operation"
+        description="Test operation",
     )
 
     assert operation.operation_type == FilterOperationType.SPATIAL
@@ -265,8 +265,8 @@ def test_filter_operation_dataclass() -> None:
 def test_multiple_resets() -> None:
     """Test that multiple resets don't add unnecessary undo entries."""
     filter_state = FilterState()
-    df = pd.DataFrame({'col': range(10)})
-    df.index.name = DF_ID_COLUMN
+    df = pd.DataFrame({"col": range(10)})
+    df.index.name = C.DF_ID
     filter_state.initialize_with_data(df)
 
     # Apply a filter
@@ -281,15 +281,15 @@ def test_multiple_resets() -> None:
     # Should only have 2 operations: initial filter + one reset
     history = filter_state.get_undo_stack_info()
     assert len(history) == 2
-    assert history[0]['operation_type'] == FilterOperationType.RESET
-    assert history[1]['operation_type'] == FilterOperationType.SPATIAL
+    assert history[0]["operation_type"] == FilterOperationType.RESET
+    assert history[1]["operation_type"] == FilterOperationType.SPATIAL
 
 
 def test_empty_dataframe() -> None:
     """Test filter state with empty DataFrame."""
     filter_state = FilterState()
     empty_df = pd.DataFrame()
-    empty_df.index.name = DF_ID_COLUMN
+    empty_df.index.name = C.DF_ID
 
     filter_state.initialize_with_data(empty_df)
 

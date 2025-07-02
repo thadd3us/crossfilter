@@ -1,6 +1,5 @@
 """Tests for quantization module."""
 
-
 import pandas as pd
 import pytest
 from syrupy import SnapshotAssertion
@@ -15,8 +14,7 @@ from crossfilter.core.quantization import (
     get_optimal_temporal_level,
 )
 from crossfilter.core.schema import (
-    DF_ID_COLUMN,
-    SchemaColumns,
+    SchemaColumns as C,
     TemporalLevel,
     get_h3_column_name,
     get_temporal_column_name,
@@ -41,7 +39,7 @@ def sample_df():
         df[SchemaColumns.TIMESTAMP_UTC], utc=True
     )
     # Set stable df_id index
-    df.index.name = DF_ID_COLUMN
+    df.index.name = C.DF_ID
     return df
 
 
@@ -76,7 +74,7 @@ def test_add_quantized_columns_missing_spatial(snapshot) -> None:
             ],
         }
     )
-    df.index.name = DF_ID_COLUMN
+    df.index.name = C.DF_ID
     result = add_quantized_columns(df)
 
     # THAD: Prefer this concise form of snapshot testing.
@@ -93,7 +91,7 @@ def test_add_quantized_columns_missing_temporal(snapshot) -> None:
             SchemaColumns.GPS_LONGITUDE: [-122.4194],
         }
     )
-    df.index.name = DF_ID_COLUMN
+    df.index.name = C.DF_ID
 
     result = add_quantized_columns(df)
 
@@ -209,7 +207,7 @@ def test_empty_dataframe() -> None:
             SchemaColumns.TIMESTAMP_UTC,
         ]
     )
-    df.index.name = DF_ID_COLUMN
+    df.index.name = C.DF_ID
 
     result = add_quantized_columns(df)
 
@@ -233,7 +231,7 @@ def test_null_coordinates() -> None:
             ],
         }
     )
-    df.index.name = DF_ID_COLUMN
+    df.index.name = C.DF_ID
 
     result = add_quantized_columns(df)
 

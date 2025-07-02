@@ -7,9 +7,8 @@ import pandas as pd
 import pytest
 
 from crossfilter.core.schema import (
-    DF_ID_COLUMN,
     DataType,
-    SchemaColumns,
+    SchemaColumns as C,
     TemporalLevel,
     get_h3_column_name,
     get_temporal_column_name,
@@ -43,7 +42,9 @@ def test_temporal_column_name_construction() -> None:
     """Test temporal column name construction."""
     # Test that the temporal columns are constructed using TemporalLevel enum
     assert get_temporal_column_name(TemporalLevel.HOUR) == "QUANTIZED_TIMESTAMP_HOUR"
-    assert get_temporal_column_name(TemporalLevel.SECOND) == "QUANTIZED_TIMESTAMP_SECOND"
+    assert (
+        get_temporal_column_name(TemporalLevel.SECOND) == "QUANTIZED_TIMESTAMP_SECOND"
+    )
     assert get_temporal_column_name(TemporalLevel.YEAR) == "QUANTIZED_TIMESTAMP_YEAR"
 
 
@@ -54,7 +55,7 @@ def test_load_jsonl_empty_file(tmp_path: Path) -> None:
 
     df = load_jsonl_to_dataframe(temp_file)
     assert len(df) == 0
-    assert df.index.name == DF_ID_COLUMN
+    assert df.index.name == C.DF_ID
     # Should have all required schema columns (COUNT is optional)
     required_columns = [
         SchemaColumns.UUID_STRING,
@@ -100,7 +101,7 @@ def test_load_jsonl_sample_data(tmp_path: Path) -> None:
 
     # Basic structure checks
     assert len(df) == 2
-    assert df.index.name == DF_ID_COLUMN
+    assert df.index.name == C.DF_ID
     assert list(df.index) == [0, 1]  # df_id should be 0, 1
 
     # Check specific values
@@ -207,7 +208,7 @@ def test_count_column_optional(tmp_path: Path) -> None:
     temp_file.write_text("\n".join(json.dumps(record) for record in sample_data) + "\n")
 
     df = load_jsonl_to_dataframe(temp_file)
-    
+
     # COUNT should not be in columns since it wasn't provided
     assert SchemaColumns.COUNT not in df.columns
 
@@ -222,10 +223,12 @@ def test_count_column_optional(tmp_path: Path) -> None:
     ]
 
     temp_file_with_count = tmp_path / "with_count.jsonl"
-    temp_file_with_count.write_text("\n".join(json.dumps(record) for record in sample_data_with_count) + "\n")
+    temp_file_with_count.write_text(
+        "\n".join(json.dumps(record) for record in sample_data_with_count) + "\n"
+    )
 
     df_with_count = load_jsonl_to_dataframe(temp_file_with_count)
-    
+
     # COUNT should be present and have the correct value
     assert SchemaColumns.COUNT in df_with_count.columns
     assert df_with_count.loc[0, SchemaColumns.COUNT] == 5
@@ -246,7 +249,7 @@ def test_df_id_stability(tmp_path: Path) -> None:
 
     # df_id should be stable integer index
     assert list(df.index) == [0, 1, 2]
-    assert df.index.name == DF_ID_COLUMN
+    assert df.index.name == C.DF_ID
 
     # Test that we can reference rows by df_id
     assert df.loc[1, SchemaColumns.UUID_STRING] == "uuid-2"

@@ -171,7 +171,7 @@ def load_jsonl_to_dataframe(jsonl_path: Path) -> pd.DataFrame:
 
     # Set stable df_id index using pandas int64 index
     result_df = result_df.reset_index(drop=True)
-    result_df.index.name = DF_ID_COLUMN
+    result_df.index.name = SchemaColumns.DF_ID
 
     logger.info(f"Loaded {len(result_df)} records from {jsonl_path=}")
 

@@ -1,4 +1,30 @@
-"""Data quantization utilities for spatial and temporal aggregation."""
+"""
+Data bucketing utilities for spatial and temporal aggregation.
+
+This module provides functionality to:
+1. Add precomputed quantized columns (H3 spatial cells, temporal buckets) to DataFrames
+2. Create bucketed DataFrames by groupby operations on target columns
+
+## Bucketing Design
+
+The core bucketing operation takes original data and a target column (which could be
+a precomputed quantized column) and produces a bucketed DataFrame where:
+
+- Each row represents one bucket (unique value in the target column)
+- All original columns are preserved, filled with values from the first row in each bucket
+- A COUNT column is added showing how many original rows fell into this bucket
+- DF_ID uses standard Pandas int index (not the original df_ids)
+
+## Filtering Workflow
+
+When the frontend reports that certain bucket rows are selected:
+1. Frontend sends integer row indices of selected buckets
+2. We look up the corresponding target column values from the bucketed DataFrame
+3. We filter the original data using: original_data[target_column].isin(selected_values)
+
+This approach eliminates the need to track df_ids lists per bucket, simplifying
+the data structure while maintaining full filtering capability.
+"""
 
 import logging
 from typing import Optional
@@ -29,30 +55,44 @@ TEMPORAL_LEVELS = [
 ]
 
 
-def add_quantized_columns(df: pd.DataFrame) -> pd.DataFrame:
+def add_quantized_columns_for_h3(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Add all quantized columns to the DataFrame.
+    Add H3 spatial quantization columns to the DataFrame.
 
     Args:
-        df: Input DataFrame
+        df: Input DataFrame with GPS_LATITUDE and GPS_LONGITUDE columns
 
     Returns:
-        DataFrame with added quantized columns
+        DataFrame with added H3 quantization columns
     """
-    df = df.copy()
-
-    # Add spatial quantization (H3 cells)
-    if (
+    if not (
         SchemaColumns.GPS_LATITUDE in df.columns
         and SchemaColumns.GPS_LONGITUDE in df.columns
     ):
-        df = _add_h3_columns(df)
+        raise ValueError("DataFrame must contain GPS_LATITUDE and GPS_LONGITUDE columns")
+    
+    df = df.copy()
+    df = _add_h3_columns(df)
+    logger.info(f"Added H3 quantization columns to DataFrame with {len(df)} rows")
+    return df
 
-    # Add temporal quantization
-    if SchemaColumns.TIMESTAMP_UTC in df.columns:
-        df = _add_temporal_columns(df)
 
-    logger.info(f"Added quantized columns to DataFrame with {len(df)} rows")
+def add_quantized_columns_for_timestamp(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Add temporal quantization columns to the DataFrame.
+
+    Args:
+        df: Input DataFrame with TIMESTAMP_UTC column
+
+    Returns:
+        DataFrame with added temporal quantization columns
+    """
+    if SchemaColumns.TIMESTAMP_UTC not in df.columns:
+        raise ValueError("DataFrame must contain TIMESTAMP_UTC column")
+    
+    df = df.copy()
+    df = _add_temporal_columns(df)
+    logger.info(f"Added temporal quantization columns to DataFrame with {len(df)} rows")
     return df
 
 
@@ -104,6 +144,47 @@ def _add_temporal_columns(df: pd.DataFrame) -> pd.DataFrame:
     )
 
     return df
+
+
+def bucket_by_target_column(original_data: pd.DataFrame, target_column: str) -> pd.DataFrame:
+    """
+    Create a bucketed DataFrame by grouping on the target column.
+    
+    Each row in the result represents one bucket (unique value in target_column).
+    All original columns are preserved with values from the first row in each bucket.
+    A COUNT column is added showing the number of original rows in each bucket.
+    
+    Args:
+        original_data: The original DataFrame to bucket
+        target_column: Column name to group by (should be a quantized/discretized column)
+    
+    Returns:
+        Bucketed DataFrame with one row per unique target_column value
+    """
+    if target_column not in original_data.columns:
+        raise ValueError(f"Target column '{target_column}' not found in DataFrame")
+    
+    # Group by target column and take first value for each column, plus count
+    agg_dict = {}
+    for col in original_data.columns:
+        if col == target_column:
+            continue  # Skip the groupby column
+        agg_dict[col] = 'first'
+    
+    # Get the grouped data, including nulls in groupby
+    grouped = original_data.groupby(target_column, dropna=False).agg(agg_dict).reset_index()
+    
+    # Add count column
+    counts = original_data.groupby(target_column, dropna=False).size().reset_index(name='COUNT')
+    bucketed = grouped.merge(counts, on=target_column)
+    
+    # Set standard integer index for DF_ID
+    bucketed.index.name = SchemaColumns.DF_ID
+    
+    logger.debug(
+        f"Bucketed {len(original_data)} rows into {len(bucketed)} buckets by column '{target_column}'"
+    )
+    return bucketed
 
 
 def get_optimal_h3_level(df: pd.DataFrame, max_groups: int) -> Optional[int]:
@@ -160,83 +241,3 @@ def get_optimal_temporal_level(
     return best_level
 
 
-def aggregate_by_h3(df: pd.DataFrame, h3_level: int) -> pd.DataFrame:
-    """
-    Aggregate data by H3 cells at the specified level.
-
-    Args:
-        df: DataFrame with H3 columns
-        h3_level: H3 resolution level to aggregate by
-
-    Returns:
-        Aggregated DataFrame with H3 cell, count, and representative lat/lon
-    """
-    col_name = get_h3_column_name(h3_level)
-    if col_name not in df.columns:
-        raise ValueError(f"H3 level {h3_level} not found in DataFrame")
-
-    # Group by H3 cell and aggregate
-    grouped = (
-        df.groupby(col_name)
-        .agg(
-            {
-                SchemaColumns.GPS_LATITUDE: ["mean", "count"],
-                SchemaColumns.GPS_LONGITUDE: "mean",
-            }
-        )
-        .reset_index()
-    )
-
-    # Flatten column names
-    grouped.columns = [col_name, "lat", "count", "lon"]
-
-    # Add df_ids for the aggregated groups
-    df_id_groups = (
-        df.groupby(col_name)
-        .apply(lambda x: list(x.index), include_groups=False)
-        .reset_index(name="df_ids")
-    )
-    grouped = grouped.merge(df_id_groups, on=col_name)
-
-    logger.debug(
-        f"Aggregated {len(df)} rows into {len(grouped)} H3 groups at level {h3_level}"
-    )
-    return grouped
-
-
-def aggregate_by_temporal(
-    df: pd.DataFrame, temporal_level: TemporalLevel
-) -> pd.DataFrame:
-    """
-    Aggregate data by temporal buckets at the specified level.
-
-    Args:
-        df: DataFrame with temporal quantization columns
-        temporal_level: Temporal level to aggregate by
-
-    Returns:
-        Aggregated DataFrame with timestamp bucket, count, and cumulative count
-    """
-    col_name = get_temporal_column_name(temporal_level)
-    if col_name not in df.columns:
-        raise ValueError(f"Temporal level {temporal_level} not found in DataFrame")
-
-    # Group by temporal bucket and aggregate
-    grouped = df.groupby(col_name).size().reset_index(name="count")
-
-    # Add df_ids for the aggregated groups
-    df_id_groups = (
-        df.groupby(col_name)
-        .apply(lambda x: list(x.index), include_groups=False)
-        .reset_index(name="df_ids")
-    )
-    grouped = grouped.merge(df_id_groups, on=col_name)
-
-    # Sort by timestamp and add cumulative count for CDF
-    grouped = grouped.sort_values(col_name)
-    grouped["cumulative_count"] = grouped["count"].cumsum()
-
-    logger.debug(
-        f"Aggregated {len(df)} rows into {len(grouped)} temporal groups at level {temporal_level}"
-    )
-    return grouped

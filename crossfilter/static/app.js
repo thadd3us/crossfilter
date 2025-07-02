@@ -16,20 +16,27 @@ class CrossfilterApp {
     }
 
     async initialize() {
+        console.log('CrossfilterApp: Initializing...');
         await this.checkSessionStatus();
         this.setupEventListeners();
+        console.log('CrossfilterApp: Initialization complete');
     }
 
     async checkSessionStatus() {
         try {
+            console.log('CrossfilterApp: Checking session status...');
             const response = await fetch('/api/session');
             const status = await response.json();
+            console.log('CrossfilterApp: Session status:', status);
             this.hasData = status.has_data;
             this.updateStatus(status);
             
             // Auto-load plot if data is already present
             if (this.hasData) {
+                console.log('CrossfilterApp: Data found, loading plot...');
                 await this.refreshPlot();
+            } else {
+                console.log('CrossfilterApp: No data found');
             }
         } catch (error) {
             this.showError('Failed to check session status: ' + error.message);
@@ -92,12 +99,14 @@ class CrossfilterApp {
     }
 
     async refreshPlot() {
+        console.log('CrossfilterApp: refreshPlot() called, hasData:', this.hasData);
         if (!this.hasData) {
             this.showError('No data loaded');
             return;
         }
 
         try {
+            console.log('CrossfilterApp: Fetching plot data...');
             this.showInfo('Loading temporal CDF plot...');
             const response = await fetch('/api/plots/temporal?max_groups=10000');
             
@@ -106,28 +115,34 @@ class CrossfilterApp {
             }
 
             const result = await response.json();
+            console.log('CrossfilterApp: Plot data received:', result);
             this.plotData = result;
             this.renderTemporalCDF(result);
             this.clearMessages();
+            console.log('CrossfilterApp: Plot rendering complete');
         } catch (error) {
             this.showError('Failed to load plot data: ' + error.message);
         }
     }
 
     renderTemporalCDF(plotData) {
+        console.log('CrossfilterApp: renderTemporalCDF() called with data:', plotData);
         const plotContainer = document.getElementById('plotContainer');
         
         if (!plotContainer) {
+            console.error('CrossfilterApp: Plot container not found!');
             this.showError('Plot container not found');
             return;
         }
         
         try {
+            console.log('CrossfilterApp: Clearing plot container and rendering...');
             // Clear any existing content (including the "No data loaded" message)
             plotContainer.innerHTML = '';
             
             // Create the plot using Plotly
             const figure = plotData.plotly_plot;
+            console.log('CrossfilterApp: Plotly figure data:', figure);
             
             // Add selection handling to the plot
             const layout = {
@@ -148,6 +163,7 @@ class CrossfilterApp {
             };
 
             Plotly.newPlot(plotContainer, figure.data, layout, config);
+            console.log('CrossfilterApp: Plotly.newPlot() completed successfully');
 
             // Handle plot selection events
             plotContainer.on('plotly_selected', (eventData) => {

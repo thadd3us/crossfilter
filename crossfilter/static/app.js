@@ -260,7 +260,7 @@ class CrossfilterApp {
     }
 
     updateFilterButton() {
-        const filterButton = document.getElementById('filterToVisibleBtn');
+        const filterButton = document.getElementById('filterToSelectedBtn');
         const plotSelectionInfo = document.getElementById('plotSelectionInfo');
         
         if (this.selectedRowIndices.size > 0) {

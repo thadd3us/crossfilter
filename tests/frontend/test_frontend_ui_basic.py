@@ -194,7 +194,7 @@ def test_filter_to_selected_ui_elements(
             return plotContainer && plotContainer.querySelector('.main-svg') !== null;
         }
     """,
-        timeout=30000,
+        timeout=5000,
     )
 
     # Wait for plot controls to appear
@@ -203,7 +203,7 @@ def test_filter_to_selected_ui_elements(
     )
 
     # Check that Filter to Selected button is initially disabled (no selection)
-    filter_button = page.locator("#filterToVisibleBtn")
+    filter_button = page.locator("#filterToSelectedBtn")
     assert filter_button.is_disabled()
 
     # Verify button text is correct

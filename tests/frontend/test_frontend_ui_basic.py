@@ -274,51 +274,14 @@ def test_filter_to_selected_ui_elements(
     # Wait for selection to be processed
     page.wait_for_timeout(1000)
 
-    # 4. Check if selection worked, if not use programmatic selection as fallback
+    # 4. Wait a bit more for any delayed processing and check console for debugging
+    page.wait_for_timeout(1000)
     
-    if page.locator("#filterToSelectedBtn").is_disabled():
-        # For testing purposes, directly enable the button and set selection info
-        # This simulates a successful selection workflow
-        page.evaluate("""
-            () => {
-                const btn = document.getElementById('filterToSelectedBtn');
-                const info = document.getElementById('plotSelectionInfo');
-                
-                if (btn) {
-                    btn.disabled = false;
-                    console.log('Enabled filter button for testing');
-                }
-                
-                if (info) {
-                    info.textContent = 'Selected: 30 points';
-                    console.log('Set selection info for testing');
-                }
-            }
-        """)
-        page.wait_for_timeout(500)
-    
-    # Verify that points are now selected (button should be enabled)
-    try:
-        page.wait_for_function(
-            "!document.getElementById('filterToSelectedBtn').disabled",
-            timeout=5000
-        )
-    except Exception as e:
-        # Final debug if still failing
-        final_debug = page.evaluate("""
-            () => {
-                const btn = document.getElementById('filterToSelectedBtn');
-                return {
-                    buttonExists: !!btn,
-                    buttonDisabled: btn ? btn.disabled : 'no button',
-                    hasApp: !!window.app,
-                    selectedSize: window.app ? window.app.selectedRowIndices.size : 'no app',
-                    selectionInfo: document.getElementById('plotSelectionInfo').textContent
-                };
-            }
-        """)
-        print(f"Final debug: {final_debug}")
-        raise e
+    # Wait for the button to become enabled after selection
+    page.wait_for_function(
+        "!document.getElementById('filterToSelectedBtn').disabled",
+        timeout=5000
+    )
     
     # Verify selection info is displayed
     selection_info = plot_selection_info.text_content()

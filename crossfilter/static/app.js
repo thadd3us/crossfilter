@@ -224,6 +224,7 @@ class CrossfilterApp {
             const figure = plotData.plotly_plot;
             console.log('CrossfilterApp: Plotly figure data:', figure);
             
+            
             // Add selection handling to the plot
             const layout = {
                 ...figure.layout,
@@ -274,9 +275,20 @@ class CrossfilterApp {
         // Extract row indices from selected points
         // The backend should provide df_id (row index) in the customdata
         const selectedIndices = new Set();
-        eventData.points.forEach(point => {
+        eventData.points.forEach((point, index) => {
+            let df_id = null;
+            
+            // Try to get df_id from customdata first
             if (point.customdata && point.customdata.df_id !== undefined) {
-                selectedIndices.add(point.customdata.df_id);
+                df_id = point.customdata.df_id;
+            } 
+            // Fallback: For individual points, pointNumber should correspond to df_id
+            else if (point.pointNumber !== undefined) {
+                df_id = point.pointNumber;
+            }
+            
+            if (df_id !== null) {
+                selectedIndices.add(df_id);
             }
         });
 

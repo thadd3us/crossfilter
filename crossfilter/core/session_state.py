@@ -199,6 +199,9 @@ class SessionState:
         # Transform to match expected output format for CDF visualization
         result = bucketed.rename(columns={"COUNT": "count"})
 
+        # Add df_id column for consistency with individual points
+        result[SchemaColumns.DF_ID] = result.index
+
         # Sort by timestamp and add cumulative count for CDF
         result = result.sort_values(temporal_column)
         result["cumulative_count"] = result["count"].cumsum()

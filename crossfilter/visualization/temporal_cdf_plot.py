@@ -42,11 +42,11 @@ def create_temporal_cdf(
         df[groupby] = "All"
     df[groupby] = df[groupby].astype(str).fillna("Unknown")
     df["groupby_count"] = df.groupby(groupby)[SchemaColumns.DF_ID].transform("count")
-    df["group_and_count"] = df[groupby] + " (" + df["groupby_count"].astype(str) + ")"
+    df["Group (Count)"] = df[groupby] + " (" + df["groupby_count"].astype(str) + ")"
     df = df.sort_values(by=["groupby_count", groupby], ascending=[False, True])
 
     groups = []
-    for _, group in df.groupby("group_and_count"):
+    for _, group in df.groupby("Group (Count)"):
         group = group.sort_values(by=time_column)
         group["CDF"] = np.arange(1, len(group) + 1) / len(group)
         groups.append(group)
@@ -57,12 +57,12 @@ def create_temporal_cdf(
     for col in [SchemaColumns.NAME, SchemaColumns.UUID_STRING]:
         if col in plot_df.columns:
             hover_data_columns.append(col)
-    
+
     fig = px.scatter(
         plot_df,
         x=time_column,
         y="CDF",
-        color="group_and_count",
+        color="Group (Count)",
         custom_data=[SchemaColumns.DF_ID],
         hover_data=hover_data_columns,
         # hover_data={"label": True},

@@ -191,8 +191,10 @@ async def get_temporal_plot_data(
         # Get aggregated temporal data
         temporal_data = session_state.get_temporal_aggregation(max_groups)
 
-        # Create Plotly CDF plot
-        plotly_plot = create_temporal_cdf(temporal_data)
+        # Create Plotly CDF plot figure and convert to JSON-serializable dict
+        fig = create_temporal_cdf(temporal_data)
+        import json
+        plotly_plot = json.loads(fig.to_json())
 
         return {
             "plotly_plot": plotly_plot,

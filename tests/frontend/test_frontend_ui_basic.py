@@ -104,17 +104,28 @@ def test_temporal_cdf_plot_display(
     """Test that the temporal CDF plot loads and displays correctly."""
     server_url = backend_server_with_data
     
-    # Navigate to the temporal CDF page
-    page.goto(f"{server_url}/static/temporal-cdf.html")
+    # Navigate to the main application page
+    page.goto(f"{server_url}/")
     
     # Wait for the page title to be set
-    page.wait_for_function("document.title === 'Temporal CDF Plot'")
+    page.wait_for_function("document.title === 'Crossfilter - Temporal CDF Analysis'")
     
-    # Wait for the plot div to be created
-    page.wait_for_selector("#temporal-cdf-plot", state="attached", timeout=30000)
+    # Wait for the app to initialize and detect pre-loaded data
+    page.wait_for_function("document.getElementById('refreshBtn').disabled === false", timeout=10000)
     
-    # Wait for the fetch to complete and plot to be loaded
-    page.wait_for_timeout(3000)
+    # Click the refresh plot button to load the temporal CDF plot
+    page.click("#refreshBtn")
+    
+    # Wait for the plot to be rendered in the plot container
+    page.wait_for_function("""
+        () => {
+            const plotContainer = document.getElementById('plotContainer');
+            return plotContainer && plotContainer.querySelector('.main-svg') !== null;
+        }
+    """, timeout=30000)
+    
+    # Wait a bit more for the plot to fully render
+    page.wait_for_timeout(2000)
     
     # Take a screenshot of the entire page
     screenshot_bytes = page.screenshot(full_page=True)
@@ -128,29 +139,43 @@ def test_temporal_cdf_plot_content(
     page: Page, 
     backend_server_with_data: str
 ) -> None:
-    """Test that the temporal CDF plot page contains expected content."""
+    """Test that the main application page contains expected content and loads the plot."""
     server_url = backend_server_with_data
     
-    # Navigate to the temporal CDF page
-    page.goto(f"{server_url}/static/temporal-cdf.html")
+    # Navigate to the main application page
+    page.goto(f"{server_url}/")
     
     # Check the page title
-    assert page.title() == "Temporal CDF Plot"
+    assert page.title() == "Crossfilter - Temporal CDF Analysis"
     
     # Check the main heading
     heading = page.locator("h1").text_content()
-    assert heading == "Temporal CDF Plot"
+    assert heading == "Crossfilter - Temporal CDF Analysis"
     
     # Check the subtitle
     subtitle = page.locator("p").text_content()
-    assert subtitle == "Cumulative distribution function of temporal data"
+    assert subtitle == "Interactive temporal analysis with cumulative distribution functions"
     
-    # Wait for the plot div to be created
-    page.wait_for_selector("#temporal-cdf-plot", state="attached", timeout=30000)
+    # Wait for the app to initialize and detect pre-loaded data
+    page.wait_for_function("document.getElementById('refreshBtn').disabled === false", timeout=10000)
     
-    # Wait for the fetch to complete and plot to be loaded
-    page.wait_for_timeout(3000)
+    # Verify that status shows data is loaded
+    status_text = page.locator("#status").text_content()
+    assert "Data loaded" in status_text
+    assert "100 rows" in status_text
     
-    # Verify the plot container exists
-    plot_container = page.locator("#temporal-cdf-plot")
+    # Click the refresh plot button to load the temporal CDF plot
+    page.click("#refreshBtn")
+    
+    # Wait for the plot to be rendered in the plot container
+    page.wait_for_function("""
+        () => {
+            const plotContainer = document.getElementById('plotContainer');
+            return plotContainer && plotContainer.querySelector('.main-svg') !== null;
+        }
+    """, timeout=30000)
+    
+    # Verify the plot container exists and has content
+    plot_container = page.locator("#plotContainer")
     assert plot_container.count() > 0
+    assert plot_container.locator(".main-svg").count() > 0

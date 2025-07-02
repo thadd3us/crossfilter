@@ -60,17 +60,17 @@ def test_load_jsonl_empty_file(tmp_path: Path) -> None:
     assert df.index.name == C.DF_ID
     # Should have all required schema columns (COUNT is optional)
     required_columns = [
-        SchemaColumns.UUID_STRING,
-        SchemaColumns.DATA_TYPE,
-        SchemaColumns.NAME,
-        SchemaColumns.CAPTION,
-        SchemaColumns.SOURCE_FILE,
-        SchemaColumns.TIMESTAMP_MAYBE_TIMEZONE_AWARE,
-        SchemaColumns.TIMESTAMP_UTC,
-        SchemaColumns.GPS_LATITUDE,
-        SchemaColumns.GPS_LONGITUDE,
-        SchemaColumns.RATING_0_TO_5,
-        SchemaColumns.SIZE_IN_BYTES,
+        C.UUID_STRING,
+        C.DATA_TYPE,
+        C.NAME,
+        C.CAPTION,
+        C.SOURCE_FILE,
+        C.TIMESTAMP_MAYBE_TIMEZONE_AWARE,
+        C.TIMESTAMP_UTC,
+        C.GPS_LATITUDE,
+        C.GPS_LONGITUDE,
+        C.RATING_0_TO_5,
+        C.SIZE_IN_BYTES,
     ]
     for col in required_columns:
         assert col in df.columns
@@ -107,12 +107,12 @@ def test_load_jsonl_sample_data(tmp_path: Path) -> None:
     assert list(df.index) == [0, 1]  # df_id should be 0, 1
 
     # Check specific values
-    assert df.loc[0, SchemaColumns.UUID_STRING] == "test-uuid-1"
-    assert df.loc[0, SchemaColumns.GPS_LATITUDE] == 37.7749
-    assert df.loc[1, SchemaColumns.DATA_TYPE] == "GPX_TRACKPOINT"
+    assert df.loc[0, C.UUID_STRING] == "test-uuid-1"
+    assert df.loc[0, C.GPS_LATITUDE] == 37.7749
+    assert df.loc[1, C.DATA_TYPE] == "GPX_TRACKPOINT"
 
     # Check timestamp conversion
-    assert isinstance(df[SchemaColumns.TIMESTAMP_UTC].dtype, pd.DatetimeTZDtype)
+    assert isinstance(df[C.TIMESTAMP_UTC].dtype, pd.DatetimeTZDtype)
 
 
 def test_load_jsonl_missing_columns(tmp_path: Path) -> None:
@@ -134,25 +134,25 @@ def test_load_jsonl_missing_columns(tmp_path: Path) -> None:
 
     # Check that all required schema columns exist (COUNT is optional)
     required_columns = [
-        SchemaColumns.UUID_STRING,
-        SchemaColumns.DATA_TYPE,
-        SchemaColumns.NAME,
-        SchemaColumns.CAPTION,
-        SchemaColumns.SOURCE_FILE,
-        SchemaColumns.TIMESTAMP_MAYBE_TIMEZONE_AWARE,
-        SchemaColumns.TIMESTAMP_UTC,
-        SchemaColumns.GPS_LATITUDE,
-        SchemaColumns.GPS_LONGITUDE,
-        SchemaColumns.RATING_0_TO_5,
-        SchemaColumns.SIZE_IN_BYTES,
+        C.UUID_STRING,
+        C.DATA_TYPE,
+        C.NAME,
+        C.CAPTION,
+        C.SOURCE_FILE,
+        C.TIMESTAMP_MAYBE_TIMEZONE_AWARE,
+        C.TIMESTAMP_UTC,
+        C.GPS_LATITUDE,
+        C.GPS_LONGITUDE,
+        C.RATING_0_TO_5,
+        C.SIZE_IN_BYTES,
     ]
     for col in required_columns:
         assert col in df.columns
 
     # Missing columns should be null except the ones we provided
-    assert df.loc[0, SchemaColumns.UUID_STRING] == "test-uuid-1"
-    assert pd.isna(df.loc[0, SchemaColumns.NAME])
-    assert pd.isna(df.loc[0, SchemaColumns.TIMESTAMP_UTC])
+    assert df.loc[0, C.UUID_STRING] == "test-uuid-1"
+    assert pd.isna(df.loc[0, C.NAME])
+    assert pd.isna(df.loc[0, C.TIMESTAMP_UTC])
 
 
 def test_load_jsonl_extra_columns(tmp_path: Path) -> None:
@@ -212,7 +212,7 @@ def test_count_column_optional(tmp_path: Path) -> None:
     df = load_jsonl_to_dataframe(temp_file)
 
     # COUNT should not be in columns since it wasn't provided
-    assert SchemaColumns.COUNT not in df.columns
+    assert C.COUNT not in df.columns
 
     # Test data with COUNT column
     sample_data_with_count = [
@@ -232,8 +232,8 @@ def test_count_column_optional(tmp_path: Path) -> None:
     df_with_count = load_jsonl_to_dataframe(temp_file_with_count)
 
     # COUNT should be present and have the correct value
-    assert SchemaColumns.COUNT in df_with_count.columns
-    assert df_with_count.loc[0, SchemaColumns.COUNT] == 5
+    assert C.COUNT in df_with_count.columns
+    assert df_with_count.loc[0, C.COUNT] == 5
 
 
 def test_df_id_stability(tmp_path: Path) -> None:
@@ -254,7 +254,7 @@ def test_df_id_stability(tmp_path: Path) -> None:
     assert df.index.name == C.DF_ID
 
     # Test that we can reference rows by df_id
-    assert df.loc[1, SchemaColumns.UUID_STRING] == "uuid-2"
+    assert df.loc[1, C.UUID_STRING] == "uuid-2"
 
     # Test filtering by df_id
     filtered = df.loc[[0, 2]]

@@ -15,8 +15,6 @@ from crossfilter.core.quantization import (
 )
 from crossfilter.core.schema import (
     SchemaColumns as C,
-)
-from crossfilter.core.schema import (
     TemporalLevel,
     get_h3_column_name,
     get_temporal_column_name,
@@ -28,18 +26,14 @@ def sample_df():
     """Create a sample DataFrame for testing."""
     df = pd.DataFrame(
         {
-            SchemaColumns.UUID_STRING: [f"uuid_{i}" for i in range(10)],
-            SchemaColumns.GPS_LATITUDE: [37.7749 + i * 0.01 for i in range(10)],
-            SchemaColumns.GPS_LONGITUDE: [-122.4194 + i * 0.01 for i in range(10)],
-            SchemaColumns.TIMESTAMP_UTC: [
-                f"2024-01-01T{10 + i}:00:00Z" for i in range(10)
-            ],
+            C.UUID_STRING: [f"uuid_{i}" for i in range(10)],
+            C.GPS_LATITUDE: [37.7749 + i * 0.01 for i in range(10)],
+            C.GPS_LONGITUDE: [-122.4194 + i * 0.01 for i in range(10)],
+            C.TIMESTAMP_UTC: [f"2024-01-01T{10 + i}:00:00Z" for i in range(10)],
         }
     )
     # Convert timestamp to datetime
-    df[SchemaColumns.TIMESTAMP_UTC] = pd.to_datetime(
-        df[SchemaColumns.TIMESTAMP_UTC], utc=True
-    )
+    df[C.TIMESTAMP_UTC] = pd.to_datetime(df[C.TIMESTAMP_UTC], utc=True)
     # Set stable df_id index
     df.index.name = C.DF_ID
     return df
@@ -70,10 +64,8 @@ def test_add_quantized_columns_missing_spatial(snapshot) -> None:
     """Test quantization when spatial columns are missing."""
     df = pd.DataFrame(
         {
-            SchemaColumns.UUID_STRING: ["uuid_1"],
-            SchemaColumns.TIMESTAMP_UTC: [
-                pd.Timestamp("2024-01-01T10:00:00Z", tz="UTC")
-            ],
+            C.UUID_STRING: ["uuid_1"],
+            C.TIMESTAMP_UTC: [pd.Timestamp("2024-01-01T10:00:00Z", tz="UTC")],
         }
     )
     df.index.name = C.DF_ID
@@ -88,9 +80,9 @@ def test_add_quantized_columns_missing_temporal(snapshot) -> None:
     """Test quantization when temporal columns are missing."""
     df = pd.DataFrame(
         {
-            SchemaColumns.UUID_STRING: ["uuid_1"],
-            SchemaColumns.GPS_LATITUDE: [37.7749],
-            SchemaColumns.GPS_LONGITUDE: [-122.4194],
+            C.UUID_STRING: ["uuid_1"],
+            C.GPS_LATITUDE: [37.7749],
+            C.GPS_LONGITUDE: [-122.4194],
         }
     )
     df.index.name = C.DF_ID
@@ -204,9 +196,9 @@ def test_empty_dataframe() -> None:
     """Test quantization with empty DataFrame."""
     df = pd.DataFrame(
         columns=[
-            SchemaColumns.GPS_LATITUDE,
-            SchemaColumns.GPS_LONGITUDE,
-            SchemaColumns.TIMESTAMP_UTC,
+            C.GPS_LATITUDE,
+            C.GPS_LONGITUDE,
+            C.TIMESTAMP_UTC,
         ]
     )
     df.index.name = C.DF_ID
@@ -224,10 +216,10 @@ def test_null_coordinates() -> None:
     """Test quantization with null coordinates."""
     df = pd.DataFrame(
         {
-            SchemaColumns.UUID_STRING: ["uuid_1", "uuid_2"],
-            SchemaColumns.GPS_LATITUDE: [37.7749, None],
-            SchemaColumns.GPS_LONGITUDE: [-122.4194, None],
-            SchemaColumns.TIMESTAMP_UTC: [
+            C.UUID_STRING: ["uuid_1", "uuid_2"],
+            C.GPS_LATITUDE: [37.7749, None],
+            C.GPS_LONGITUDE: [-122.4194, None],
+            C.TIMESTAMP_UTC: [
                 pd.Timestamp("2024-01-01T10:00:00Z", tz="UTC"),
                 pd.Timestamp("2024-01-01T11:00:00Z", tz="UTC"),
             ],

@@ -4,6 +4,7 @@ Data bucketing utilities for spatial and temporal aggregation.
 This module provides functionality to:
 1. Add precomputed quantized columns (H3 spatial cells, temporal buckets) to DataFrames
 2. Create bucketed DataFrames by groupby operations on target columns
+3. Filter original data based on selected buckets from the frontend
 
 ## Bucketing Design
 
@@ -27,7 +28,7 @@ the data structure while maintaining full filtering capability.
 """
 
 import logging
-from typing import Optional
+from typing import List, Optional
 
 import h3
 import pandas as pd
@@ -239,5 +240,52 @@ def get_optimal_temporal_level(
 
     logger.debug(f"Optimal temporal level: {best_level} with {best_count} groups")
     return best_level
+
+
+def filter_df_to_selected_buckets(
+    original_data: pd.DataFrame,
+    bucketed_df: pd.DataFrame,
+    target_column: str,
+    bucket_indices_to_keep: List[int]
+) -> pd.DataFrame:
+    """
+    Filter original data to only contain rows from selected buckets.
+    
+    This function implements the filtering workflow where the frontend sends
+    integer row indices of selected buckets, and we filter the original data
+    to only include rows that belong to those selected buckets.
+    
+    Args:
+        original_data: The original, unbucketed DataFrame
+        bucketed_df: The bucketed DataFrame (output from bucket_by_target_column)
+        target_column: Column name that was used for bucketing (present in both DataFrames)
+        bucket_indices_to_keep: List of integer indices from bucketed_df to keep
+    
+    Returns:
+        Filtered DataFrame containing only rows from selected buckets
+    """
+    if target_column not in original_data.columns:
+        raise ValueError(f"Target column '{target_column}' not found in original DataFrame")
+    
+    if target_column not in bucketed_df.columns:
+        raise ValueError(f"Target column '{target_column}' not found in bucketed DataFrame")
+    
+    # Validate bucket indices
+    invalid_indices = [idx for idx in bucket_indices_to_keep if idx < 0 or idx >= len(bucketed_df)]
+    if invalid_indices:
+        raise ValueError(f"Invalid bucket indices: {invalid_indices}. Valid range is 0-{len(bucketed_df)-1}")
+    
+    # Get the target column values for selected buckets as Series
+    selected_bucket_values = bucketed_df.iloc[bucket_indices_to_keep][target_column]
+    
+    # Check that none of the selected bucket values is NaN
+    if selected_bucket_values.isna().any():
+        raise ValueError("Selected bucket values cannot contain NaN. This indicates invalid bucketing.")
+    
+    # Filter original data using isin
+    mask = original_data[target_column].isin(selected_bucket_values)
+    filtered_data = original_data[mask].copy()
+    
+    return filtered_data
 
 

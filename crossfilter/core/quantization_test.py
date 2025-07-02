@@ -15,6 +15,8 @@ from crossfilter.core.quantization import (
 )
 from crossfilter.core.schema import (
     SchemaColumns as C,
+)
+from crossfilter.core.schema import (
     TemporalLevel,
     get_h3_column_name,
     get_temporal_column_name,

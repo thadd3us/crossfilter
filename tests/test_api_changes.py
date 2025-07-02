@@ -1,14 +1,12 @@
 """Test API changes for row index support."""
 
-import json
 from pathlib import Path
 
 import pytest
-import pandas as pd
 from fastapi.testclient import TestClient
 
-from crossfilter.main import app, get_session_state
 from crossfilter.core.schema import load_jsonl_to_dataframe
+from crossfilter.main import app, get_session_state
 
 # THAD: Add argument and return types for all functions in this file!
 

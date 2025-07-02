@@ -8,11 +8,13 @@ import pytest
 
 from crossfilter.core.schema import (
     DataType,
-    SchemaColumns as C,
     TemporalLevel,
     get_h3_column_name,
     get_temporal_column_name,
     load_jsonl_to_dataframe,
+)
+from crossfilter.core.schema import (
+    SchemaColumns as C,
 )
 
 

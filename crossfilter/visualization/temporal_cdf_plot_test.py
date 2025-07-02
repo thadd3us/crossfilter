@@ -1,13 +1,11 @@
 """Tests for temporal CDF plot module."""
 
-import json
 from pathlib import Path
 
 import pandas as pd
-import plotly
 import pytest
-from syrupy.extensions.single_file import SingleFileSnapshotExtension
 from syrupy import SnapshotAssertion
+from syrupy.extensions.single_file import SingleFileSnapshotExtension
 
 from crossfilter.core.schema import SchemaColumns, load_jsonl_to_dataframe
 from crossfilter.core.session_state import SessionState

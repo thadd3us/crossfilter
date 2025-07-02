@@ -108,13 +108,8 @@ def test_temporal_cdf_plot_display(
     # Wait for the page title to be set
     page.wait_for_function("document.title === 'Crossfilter - Temporal CDF Analysis'")
 
-    # Wait for the app to initialize and detect pre-loaded data
-    page.wait_for_function("document.getElementById('refreshBtn').disabled === false", timeout=10000)
-
-    # Click the refresh plot button to load the temporal CDF plot
-    page.click("#refreshBtn")
-
-    # Wait for the plot to be rendered in the plot container
+    # Wait for the app to initialize, detect pre-loaded data, and auto-load the plot
+    # The plot should render automatically when data is detected
     page.wait_for_function("""
         () => {
             const plotContainer = document.getElementById('plotContainer');
@@ -154,24 +149,20 @@ def test_temporal_cdf_plot_content(
     subtitle = page.locator("p").text_content()
     assert subtitle == "Interactive temporal analysis with cumulative distribution functions"
 
-    # Wait for the app to initialize and detect pre-loaded data
-    page.wait_for_function("document.getElementById('refreshBtn').disabled === false", timeout=10000)
-
-    # Verify that status shows data is loaded
-    status_text = page.locator("#status").text_content()
-    assert "Data loaded" in status_text
-    assert "100 rows" in status_text
-
-    # Click the refresh plot button to load the temporal CDF plot
-    page.click("#refreshBtn")
-
-    # Wait for the plot to be rendered in the plot container
+    # Wait for the app to initialize, detect pre-loaded data, and auto-load the plot
+    # We wait for the plot to render instead of waiting for button state
     page.wait_for_function("""
         () => {
             const plotContainer = document.getElementById('plotContainer');
             return plotContainer && plotContainer.querySelector('.main-svg') !== null;
         }
     """, timeout=30000)
+
+    # Verify that status shows data is loaded
+    status_text = page.locator("#status").text_content()
+    assert "Data loaded" in status_text
+    assert "100 rows" in status_text
+
 
     # Verify the plot container exists and has content
     plot_container = page.locator("#plotContainer")
@@ -190,11 +181,7 @@ def test_filter_to_selected_ui_elements(
     # Navigate to the main application page
     page.goto(f"{server_url}/")
 
-    # Wait for the app to initialize and detect pre-loaded data
-    page.wait_for_function("document.getElementById('refreshBtn').disabled === false", timeout=10000)
-
-    # Click the refresh plot button to load the temporal CDF plot
-    page.click("#refreshBtn")
+    # Wait for the app to initialize, detect pre-loaded data, and auto-load the plot
 
     # Wait for the plot to be rendered
     page.wait_for_function("""

@@ -26,6 +26,11 @@ class CrossfilterApp {
             const status = await response.json();
             this.hasData = status.has_data;
             this.updateStatus(status);
+            
+            // Auto-load plot if data is already present
+            if (this.hasData) {
+                await this.refreshPlot();
+            }
         } catch (error) {
             this.showError('Failed to check session status: ' + error.message);
         }
@@ -38,11 +43,9 @@ class CrossfilterApp {
                 <strong>Status:</strong> Data loaded - ${status.row_count} rows, 
                 ${status.filtered_count} after filtering (${status.columns.length} columns)
             `;
-            document.getElementById('refreshBtn').disabled = false;
             document.getElementById('resetFiltersBtn').disabled = false;
         } else {
             statusElement.innerHTML = '<strong>Status:</strong> No data loaded';
-            document.getElementById('refreshBtn').disabled = true;
             document.getElementById('resetFiltersBtn').disabled = true;
         }
     }
@@ -285,9 +288,6 @@ function loadSampleData() {
     app.loadSampleData();
 }
 
-function refreshPlot() {
-    app.refreshPlot();
-}
 
 function resetFilters() {
     app.resetFilters();

@@ -1,8 +1,8 @@
 """Main CLI application for Crossfilter."""
 
+import json
 import signal
 import sys
-from enum import Enum
 from pathlib import Path
 from typing import Any, Optional
 
@@ -13,7 +13,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from crossfilter.core.schema import load_jsonl_to_dataframe
+from crossfilter.core.schema import FilterOperationType, load_jsonl_to_dataframe
 from crossfilter.core.session_state import SessionState
 from crossfilter.visualization.plots import (
     create_fallback_scatter_geo,
@@ -24,13 +24,6 @@ from crossfilter.visualization.temporal_cdf_plot import create_temporal_cdf
 
 # Create a single session state instance for dependency injection
 _session_state_instance = SessionState()
-
-
-class OperationType(Enum):
-    """Valid operation types for filters."""
-
-    SPATIAL = "spatial"
-    TEMPORAL = "temporal"
 
 
 def get_session_state() -> SessionState:
@@ -138,7 +131,7 @@ class FilterRequest(BaseModel):
     """Request model for applying filters."""
 
     row_indices: list[int]  # df_id values (DataFrame index)
-    operation_type: OperationType  # 'spatial' or 'temporal'
+    filter_operation_type: FilterOperationType  # 'spatial' or 'temporal'
     description: str
     metadata: Optional[dict[str, Any]] = None
 
@@ -193,7 +186,7 @@ async def get_temporal_plot_data(
 
         # Create Plotly CDF plot figure and convert to JSON-serializable dict
         fig = create_temporal_cdf(temporal_data)
-        import json
+
         plotly_plot = json.loads(fig.to_json())
 
         return {
@@ -229,7 +222,7 @@ async def get_temporal_plot_html(
         html_content = fig.to_html(
             include_plotlyjs="cdn",
             div_id="temporal-cdf-plot",
-            config={"displayModeBar": True, "responsive": True}
+            config={"displayModeBar": True, "responsive": True},
         )
 
         return html_content
@@ -250,12 +243,12 @@ async def apply_filter(
 
     try:
         # Apply filter based on type
-        if filter_request.operation_type == OperationType.SPATIAL:
+        if filter_request.filter_operation_type == FilterOperationType.SPATIAL:
             session_state.filter_state.apply_spatial_filter(
                 set(filter_request.row_indices),
                 filter_request.description,
             )
-        elif filter_request.operation_type == OperationType.TEMPORAL:
+        elif filter_request.filter_operation_type == FilterOperationType.TEMPORAL:
             session_state.filter_state.apply_temporal_filter(
                 set(filter_request.row_indices),
                 filter_request.description,
@@ -288,7 +281,7 @@ async def intersect_filter(
     try:
         session_state.filter_state.intersect_with_filter(
             set(filter_request.row_indices),
-            filter_request.operation_type,
+            filter_request.filter_operation_type,
             filter_request.description,
         )
 

@@ -58,7 +58,7 @@ class BucketKey:
     bucketing_type: BucketingType
     target_column: str
     identifier: str = ""
-    
+
     def __post_init__(self) -> None:
         """Generate a unique identifier if not provided."""
         if not self.identifier:

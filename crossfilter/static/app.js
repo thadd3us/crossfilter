@@ -38,15 +38,25 @@ class CrossfilterApp {
 
     updateStatus(status) {
         const statusElement = document.getElementById('status');
+        const resetFiltersBtn = document.getElementById('resetFiltersBtn');
+        
         if (status.has_data) {
-            statusElement.innerHTML = `
-                <strong>Status:</strong> Data loaded - ${status.row_count} rows, 
-                ${status.filtered_count} after filtering (${status.columns.length} columns)
-            `;
-            document.getElementById('resetFiltersBtn').disabled = false;
+            if (statusElement) {
+                statusElement.innerHTML = `
+                    <strong>Status:</strong> Data loaded - ${status.row_count} rows, 
+                    ${status.filtered_count} after filtering (${status.columns.length} columns)
+                `;
+            }
+            if (resetFiltersBtn) {
+                resetFiltersBtn.disabled = false;
+            }
         } else {
-            statusElement.innerHTML = '<strong>Status:</strong> No data loaded';
-            document.getElementById('resetFiltersBtn').disabled = true;
+            if (statusElement) {
+                statusElement.innerHTML = '<strong>Status:</strong> No data loaded';
+            }
+            if (resetFiltersBtn) {
+                resetFiltersBtn.disabled = true;
+            }
         }
     }
 
@@ -107,41 +117,57 @@ class CrossfilterApp {
     renderTemporalCDF(plotData) {
         const plotContainer = document.getElementById('plotContainer');
         
-        // Create the plot using Plotly
-        const figure = plotData.plotly_plot;
+        if (!plotContainer) {
+            this.showError('Plot container not found');
+            return;
+        }
         
-        // Add selection handling to the plot
-        const layout = {
-            ...figure.layout,
-            title: 'Temporal Distribution (CDF)',
-            xaxis: { title: 'Time' },
-            yaxis: { title: 'Cumulative Probability' },
-            hovermode: 'closest',
-            selectdirection: 'horizontal'
-        };
+        try {
+            // Clear any existing content (including the "No data loaded" message)
+            plotContainer.innerHTML = '';
+            
+            // Create the plot using Plotly
+            const figure = plotData.plotly_plot;
+            
+            // Add selection handling to the plot
+            const layout = {
+                ...figure.layout,
+                title: 'Temporal Distribution (CDF)',
+                xaxis: { title: 'Time' },
+                yaxis: { title: 'Cumulative Probability' },
+                hovermode: 'closest',
+                selectdirection: 'horizontal'
+            };
 
-        // Enable selection on the plot
-        const config = {
-            displayModeBar: true,
-            modeBarButtonsToAdd: ['select2d', 'lasso2d'],
-            modeBarButtonsToRemove: ['autoScale2d'],
-            displaylogo: false
-        };
+            // Enable selection on the plot
+            const config = {
+                displayModeBar: true,
+                modeBarButtonsToAdd: ['select2d', 'lasso2d'],
+                modeBarButtonsToRemove: ['autoScale2d'],
+                displaylogo: false
+            };
 
-        Plotly.newPlot(plotContainer, figure.data, layout, config);
+            Plotly.newPlot(plotContainer, figure.data, layout, config);
 
-        // Handle plot selection events
-        plotContainer.on('plotly_selected', (eventData) => {
-            this.handlePlotSelection(eventData);
-        });
+            // Handle plot selection events
+            plotContainer.on('plotly_selected', (eventData) => {
+                this.handlePlotSelection(eventData);
+            });
 
-        plotContainer.on('plotly_deselect', () => {
-            this.clearSelection();
-        });
+            plotContainer.on('plotly_deselect', () => {
+                this.clearSelection();
+            });
 
-        // Show plot controls now that plot is rendered
-        document.getElementById('plotControls').style.display = 'flex';
-        this.updateFilterButton();
+            // Show plot controls now that plot is rendered
+            const plotControls = document.getElementById('plotControls');
+            if (plotControls) {
+                plotControls.style.display = 'flex';
+            }
+            this.updateFilterButton();
+        } catch (error) {
+            this.showError('Failed to render plot: ' + error.message);
+            console.error('Plot rendering error:', error);
+        }
     }
 
     handlePlotSelection(eventData) {

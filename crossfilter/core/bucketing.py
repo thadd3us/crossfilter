@@ -36,7 +36,6 @@ import h3
 import pandas as pd
 
 from crossfilter.core.schema import (
-    BucketingType,
     SchemaColumns,
     TemporalLevel,
     get_h3_column_name,
@@ -55,7 +54,6 @@ class BucketKey:
     which bucketing operation was used to ensure we apply the correct
     filtering logic.
     """
-    bucketing_type: BucketingType
     target_column: str
     identifier: str = ""
 
@@ -194,20 +192,27 @@ def bucket_by_target_column(original_data: pd.DataFrame, target_column: str) -> 
         raise ValueError(f"Target column '{target_column}' not found in DataFrame")
 
     # Group by target column and take first value for each column, plus count
-    # Include the target column in the result to enable filtering operations
+    # Exclude the target column from aggregation since it becomes the index
     agg_dict = {}
     for col in original_data.columns:
-        agg_dict[col] = 'first'
+        if col != target_column:
+            agg_dict[col] = 'first'
 
     # Get the grouped data, including nulls in groupby
     logger.debug(f"Aggregation dictionary: {agg_dict}")
-    grouped = original_data.groupby(target_column, dropna=False).agg(agg_dict).reset_index()
+    grouped = original_data.groupby(target_column, dropna=False).agg(agg_dict)
     logger.debug(f"Grouped DataFrame columns: {list(grouped.columns)}")
-    logger.debug(f"Target column '{target_column}' in grouped DataFrame: {target_column in grouped.columns}")
+    logger.debug(f"Target column '{target_column}' in grouped DataFrame (index): {target_column in grouped.index.names}")
 
     # Add count column
-    counts = original_data.groupby(target_column, dropna=False).size().reset_index(name='COUNT')
-    bucketed = grouped.merge(counts, on=target_column)
+    counts = original_data.groupby(target_column, dropna=False).size()
+    
+    # Combine the grouped data with counts
+    bucketed = grouped.copy()
+    bucketed[SchemaColumns.COUNT] = counts
+    
+    # Reset index to make target_column a regular column
+    bucketed = bucketed.reset_index()
     logger.debug(f"Final bucketed DataFrame columns: {list(bucketed.columns)}")
     logger.debug(f"Target column '{target_column}' in final bucketed DataFrame: {target_column in bucketed.columns}")
 

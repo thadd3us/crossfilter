@@ -2,6 +2,7 @@
 
 import json
 import logging
+from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
 from typing import Optional
@@ -40,19 +41,20 @@ class DataType(StrEnum):
     GPX_WAYPOINT = "GPX_WAYPOINT"
 
 
-class FilterOperationType(StrEnum):
-    """Types of filter operations."""
+class ProjectionType(StrEnum):
+    """Types of data projections supported by crossfilter."""
 
-    SPATIAL = "spatial"
     TEMPORAL = "temporal"
-    RESET = "reset"
+    GEO = "geo"
+    CLIP_EMBEDDING = "clip_embedding"  # placeholder for future
 
 
-class BucketingType(StrEnum):
-    """Types of bucketing operations for aggregating data."""
-
-    H3 = "H3"
-    TEMPORAL = "TEMPORAL"
+@dataclass(frozen=True)
+class FilterEvent:
+    """Represents a filter event from a specific projection."""
+    
+    projection_type: ProjectionType
+    selected_df_ids: set[int]
 
 
 class TemporalLevel(StrEnum):

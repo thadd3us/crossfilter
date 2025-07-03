@@ -30,17 +30,19 @@ Crossfilter uses a **single-session architecture** where each instance of the we
 
 This pattern is ideal for data analysis applications where the primary use case is individual researchers working with their local datasets, similar to how one would use a traditional desktop application but with the flexibility and rich UI capabilities of modern web technologies.
 
-### Data Processing
+### Data Processing & Projections
 - **GPX parsing**: Extracts trackpoints with coordinates, timestamps, and metadata
 - **Spatial indexing**: H3 hexagonal indexing for efficient spatial queries and aggregation
 - **Temporal grouping**: Minute/hour/day/month aggregation for temporal analysis
+- **Data projections**: Multiple simultaneous views of the same underlying dataset
 - **Adaptive resolution**: Automatically adjusts visualization detail based on data size
 
-### Visualization
-- **Heatmap**: Geospatial density visualization using Plotly/Kepler.gl
-- **CDF plot**: Cumulative distribution function of timestamps
-- **Cross-filtering**: Bidirectional selection between spatial and temporal views
+### Data Projections & Visualization
+- **Geographic projection**: Spatial heatmaps and point clouds with H3 aggregation
+- **Temporal projection**: Cumulative distribution functions and timeline views
+- **Cross-filtering**: Bidirectional selection between different data projections
 - **Progressive detail**: Switch between aggregated and individual point views
+- **Projection state management**: Each projection maintains its own aggregation level and visualization state
 
 ### Performance Optimization
 - Lazy loading of GPX files
@@ -106,14 +108,16 @@ crossfilter/
 └── tests/         # Test suite
 ```
 
-## Data Flow
+## Data Flow & Projection Architecture
 
-1. **Load**: GPX files are parsed and trackpoints extracted
-2. **Index**: Points are spatially indexed using H3 and temporally grouped
-3. **Aggregate**: Initial view shows aggregated data at appropriate resolution
-4. **Filter**: User selections refine the active point set
-5. **Visualize**: Maps and plots update to show filtered results
-6. **Annotate**: Individual points can be selected and annotated when visible
+1. **Load**: GPX files are parsed and trackpoints extracted with pre-computed quantized columns
+2. **Index**: Points are spatially indexed using H3 and temporally grouped at multiple granularities
+3. **Project**: Data is projected into multiple visualization contexts (geographic, temporal, etc.)
+4. **Aggregate**: Each projection shows data at appropriate resolution based on max_rows thresholds
+5. **Filter**: User selections in any projection update the global filtered dataset
+6. **Update**: All projections automatically refresh to reflect the new filtered data
+7. **Visualize**: Maps and plots display projection-specific aggregated or individual point data
+8. **Cross-filter**: Selections propagate across all projections for coordinated views
 
 ## Configuration
 

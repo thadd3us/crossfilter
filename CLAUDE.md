@@ -4,6 +4,8 @@
 
 Crossfilter is a Python web application for interactive crossfiltering and analysis of geospatial and temporal data, with a focus on large collections of GPX files and other datasets. It uses a single-session architecture inspired by applications like Jupyter Notebook, ParaView, and VisIt.
 
+The application is built around a **projection-based architecture** where multiple simultaneous views (projections) of the same underlying dataset enable coordinated visualization and cross-filtering across different data dimensions.
+
 ## Architecture Pattern: Single-Session Web Application
 
 ### Design Philosophy
@@ -15,14 +17,18 @@ Crossfilter is a Python web application for interactive crossfiltering and analy
 ### Key Components
 
 #### 1. SessionState Class (`crossfilter/core/session_state.py`)
-- **Purpose**: Manages the current state of data loaded into the application
-- **Contains**: Pandas DataFrame for main dataset, metadata dictionary
+- **Purpose**: Manages the current state of data loaded into the application and coordinates data projections
+- **Contains**: 
+  - `all_rows`: Complete dataset with pre-computed quantized columns (H3, temporal buckets)
+  - `filtered_rows`: Current subset after filtering operations
+  - Multiple projection state instances (temporal, geographic, etc.)
 - **Location**: Global singleton instance in `main.py` as `session_state`
 - **Features**:
-  - Data loading and clearing
+  - Data loading and clearing with automatic projection updates
   - Metadata tracking (shape, columns, dtypes, memory usage)
-  - Status summaries
-  - Future-ready for Pandera schema validation
+  - Filter event coordination across projections
+  - Projection-specific aggregation management
+  - Status summaries including projection states
 
 #### 2. FastAPI Web Server (`crossfilter/main.py`)
 - **Framework**: FastAPI for REST API and web serving
@@ -32,11 +38,15 @@ Crossfilter is a Python web application for interactive crossfiltering and analy
   - `/api/session`: Session state status endpoint
 - **Server**: Uvicorn for ASGI serving (default: localhost:8000)
 
-#### 3. Data Processing Pipeline (Planned)
+#### 3. Data Processing & Projection Pipeline
 - **GPX Parsing**: Extract trackpoints with coordinates, timestamps, metadata
-- **Spatial Indexing**: H3 hexagonal indexing for efficient spatial queries
-- **Temporal Grouping**: Minute/hour/day/month aggregation
-- **Cross-filtering**: Bidirectional selection between spatial and temporal views
+- **Spatial Indexing**: H3 hexagonal indexing at multiple resolution levels for efficient spatial queries
+- **Temporal Grouping**: Pre-computed minute/hour/day/month/year quantization for all granularities
+- **Projection Architecture**: Multiple specialized projection states for different visualization contexts
+  - `TemporalProjectionState`: Manages temporal aggregation and CDF visualization
+  - `GeoProjectionState`: Manages spatial aggregation and heatmap visualization
+  - Future: `ClipEmbeddingProjectionState` for semantic similarity views
+- **Cross-filtering**: Coordinated filtering across all projections with automatic updates
 
 ## Development Guidelines
 

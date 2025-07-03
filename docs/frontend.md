@@ -2,7 +2,7 @@
 
 ## Design Overview
 
-This document outlines a reactive frontend/backend architecture that keeps state in the backend while providing efficient, real-time updates to visualization components.
+This document outlines a reactive frontend/backend architecture that keeps state in the backend while providing efficient, real-time updates to data projection visualization components. The architecture is built around the concept of **data projections** - specialized views of the underlying dataset that maintain their own aggregation state and coordinate cross-filtering operations.
 
 ## ✅ Implemented Features
 
@@ -10,7 +10,7 @@ This document outlines a reactive frontend/backend architecture that keeps state
 A simplified implementation of frontend-to-backend communication for filtering plots to user-selected data points:
 
 - **Frontend UI**: "Filter to Selected" button positioned underneath plots, enabled only when points are selected
-- **Plot-Agnostic Design**: Uses `event_source` field with `FilterOperationType` to handle different plot types (temporal, spatial, etc.)
+- **Projection-Agnostic Design**: Uses `event_source` field with `ProjectionType` to handle different data projections (temporal, geo, etc.)
 - **Plotly Selection Integration**: Leverages Plotly's built-in selection mechanisms (lasso, box select) instead of complex viewport tracking
 - **Smart Filtering**: Converts plot-level df_ids (which may be buckets) to original dataframe point filtering
 - **Backend Processing**: Uses `filter_df_to_selected_buckets()` to correctly map plot df_ids to original dataframe rows
@@ -19,7 +19,7 @@ A simplified implementation of frontend-to-backend communication for filtering p
 
 #### Technical Details
 - **Backend Endpoint**: Single `/api/filters/df_ids` endpoint that accepts `event_source` parameter
-- **Frontend Enum**: `FilterOperationType` constant matching backend schema for type safety
+- **Frontend Enum**: `ProjectionType` constant matching backend schema for type safety
 - **Simplified Implementation**: `filterToSelected(eventSource)` method uses existing selection tracking
 - **Temporal Convenience Method**: `filterTemporalToSelected()` wrapper for temporal plot filtering
 - **Button State Management**: Button disabled until user makes a selection, with selection count display
@@ -35,10 +35,11 @@ A simplified implementation of frontend-to-backend communication for filtering p
 ## Key Design Principles
 
 1. **Backend State Management**: All filtering state and large datasets remain on the backend
-2. **Reactive Updates**: When filters change, backend pushes notifications to frontend components  
-3. **Component-Specific APIs**: Different visualization types have tailored update mechanisms
-4. **Single Session**: Leverages the existing single-session architecture for simplicity
-5. **Progressive Enhancement**: Builds on existing FastAPI + Plotly foundation
+2. **Projection-Based Architecture**: Multiple data projections maintain specialized views of the same underlying dataset
+3. **Reactive Updates**: When filters change, backend coordinates updates across all projections and pushes notifications to frontend components  
+4. **Projection-Specific APIs**: Different projection types have tailored aggregation and filtering mechanisms
+5. **Single Session**: Leverages the existing single-session architecture for simplicity
+6. **Progressive Enhancement**: Builds on existing FastAPI + Plotly foundation
 
 ## Architecture Diagram
 
@@ -46,27 +47,33 @@ A simplified implementation of frontend-to-backend communication for filtering p
 graph TB
     subgraph "Frontend (React + Plotly)"
         UI[User Interface]
-        GeoComp[Geographic Component]
-        TempComp[Temporal Component]  
+        GeoComp[Geographic Projection Component]
+        TempComp[Temporal Projection Component]  
         StateManager[Client State Manager]
         EventListener[SSE Event Listener]
     end
     
     subgraph "Backend (FastAPI + SessionState)"
         FilterAPI[Filter API Endpoints]
-        PlotAPI[Plot Data Endpoints]
+        PlotAPI[Projection Data Endpoints]
         SessionState[Session State]
         EventBroadcaster[SSE Event Broadcaster]
+        GeoProj[GeoProjectionState]
+        TempProj[TemporalProjectionState]
     end
     
-    UI -->|Selection Events| FilterAPI
-    FilterAPI -->|Update Filters| SessionState
+    UI -->|Projection Selection Events| FilterAPI
+    FilterAPI -->|Apply Filter Event| SessionState
+    SessionState -->|Update Projections| GeoProj
+    SessionState -->|Update Projections| TempProj
     SessionState -->|Filter Changed| EventBroadcaster
     EventBroadcaster -->|Push Notification| EventListener
     EventListener -->|Trigger Refresh| StateManager
-    StateManager -->|Request New Data| PlotAPI
-    PlotAPI -->|Send Visualization Data| GeoComp
-    PlotAPI -->|Send Visualization Data| TempComp
+    StateManager -->|Request Projection Data| PlotAPI
+    PlotAPI -->|Get Geographic Data| GeoProj
+    PlotAPI -->|Get Temporal Data| TempProj
+    GeoProj -->|Send Spatial Visualization| GeoComp
+    TempProj -->|Send Temporal Visualization| TempComp
 ```
 
 ## Communication Patterns

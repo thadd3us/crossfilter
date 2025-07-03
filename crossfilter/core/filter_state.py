@@ -6,7 +6,7 @@ from typing import Any, Optional
 
 import pandas as pd
 
-from crossfilter.core.schema import FilterOperationType
+from crossfilter.core.schema import ProjectionType
 
 logger = logging.getLogger(__name__)
 
@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class FilterOperation:
     """Represents a single filter operation that can be undone."""
-    operation_type: FilterOperationType
+    operation_type: ProjectionType
     filtered_df_ids: set[int]  # df_ids that remain after filtering
     description: str  # Human-readable description
 
@@ -87,7 +87,7 @@ class FilterState:
             filtered_df_ids: Set of df_ids that should remain visible
             description: Description of the filter operation
         """
-        self._push_current_state(FilterOperationType.SPATIAL, description)
+        self._push_current_state(ProjectionType.GEO, description)
         self._current_filtered_df_ids = filtered_df_ids & self._all_df_ids
         logger.info(f"Applied spatial filter: {len(self._current_filtered_df_ids)} points remain")
 
@@ -99,11 +99,11 @@ class FilterState:
             filtered_df_ids: Set of df_ids that should remain visible
             description: Description of the filter operation
         """
-        self._push_current_state(FilterOperationType.TEMPORAL, description)
+        self._push_current_state(ProjectionType.TEMPORAL, description)
         self._current_filtered_df_ids = filtered_df_ids & self._all_df_ids
         logger.info(f"Applied temporal filter: {len(self._current_filtered_df_ids)} points remain")
 
-    def intersect_with_filter(self, new_filtered_df_ids: set[int], operation_type: FilterOperationType,
+    def intersect_with_filter(self, new_filtered_df_ids: set[int], operation_type: ProjectionType,
                             description: str) -> None:
         """
         Apply a filter by intersecting with current filter state.
@@ -123,7 +123,8 @@ class FilterState:
     def reset_filters(self) -> None:
         """Reset all filters to show all data."""
         if self._current_filtered_df_ids != self._all_df_ids:
-            self._push_current_state(FilterOperationType.RESET, 'Reset all filters')
+            # Note: Using TEMPORAL as placeholder since we removed RESET from ProjectionType
+            self._push_current_state(ProjectionType.TEMPORAL, 'Reset all filters')
             self._current_filtered_df_ids = self._all_df_ids.copy()
             logger.info("Reset all filters - all points now visible")
 
@@ -173,7 +174,7 @@ class FilterState:
 
         return df.loc[df.index.isin(self._current_filtered_df_ids)].copy()
 
-    def _push_current_state(self, operation_type: FilterOperationType, description: str) -> None:
+    def _push_current_state(self, operation_type: ProjectionType, description: str) -> None:
         """Push the current state onto the undo stack."""
         if self._current_filtered_df_ids is not None:
             operation = FilterOperation(

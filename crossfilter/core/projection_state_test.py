@@ -187,6 +187,6 @@ def test_projection_df_property(sample_data: pd.DataFrame) -> None:
     projection.projection_df = sample_data.copy()
     retrieved = projection.projection_df
 
-    # Should be a copy (not the same object)
+    # Should be the same object (direct attribute access)
     assert len(retrieved) == len(sample_data)
-    assert retrieved is not projection.projection_df
+    assert retrieved is projection.projection_df

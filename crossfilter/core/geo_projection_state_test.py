@@ -28,10 +28,10 @@ def test_geo_projection_initialization() -> None:
     """Test GeoProjectionState initialization."""
     projection = GeoProjectionState(max_rows=1000)
 
-    assert projection.max_rows == 1000
-    assert projection.projection_df.empty
+    assert projection.projection_state.max_rows == 1000
+    assert projection.projection_state.projection_df.empty
     assert projection.current_h3_level is None
-    assert projection.current_target_column is None
+    assert projection.projection_state.current_bucketing_column is None
 
 
 def test_update_projection_individual_points(sample_data: pd.DataFrame) -> None:
@@ -39,7 +39,7 @@ def test_update_projection_individual_points(sample_data: pd.DataFrame) -> None:
     projection = GeoProjectionState(max_rows=100)
     projection.update_projection(sample_data)
 
-    result = projection.projection_df
+    result = projection.projection_state.projection_df
 
     # Should return individual points
     assert len(result) == 20
@@ -50,7 +50,7 @@ def test_update_projection_individual_points(sample_data: pd.DataFrame) -> None:
 
     # H3 level should be None (individual points)
     assert projection.current_h3_level is None
-    assert projection.current_target_column is None
+    assert projection.projection_state.current_bucketing_column is None
 
 
 def test_update_projection_aggregated(sample_data: pd.DataFrame) -> None:
@@ -58,7 +58,7 @@ def test_update_projection_aggregated(sample_data: pd.DataFrame) -> None:
     projection = GeoProjectionState(max_rows=5)
     projection.update_projection(sample_data)
 
-    result = projection.projection_df
+    result = projection.projection_state.projection_df
 
     # Should return aggregated data
     assert len(result) <= 5
@@ -71,8 +71,8 @@ def test_update_projection_aggregated(sample_data: pd.DataFrame) -> None:
 
     # Should have H3 level and target column
     assert projection.current_h3_level is not None
-    assert projection.current_target_column is not None
-    assert projection.current_target_column.startswith("QUANTIZED_H3_L")
+    assert projection.projection_state.current_bucketing_column is not None
+    assert projection.projection_state.current_bucketing_column.startswith("QUANTIZED_H3_L")
     assert projection.current_h3_level >= 0
     assert projection.current_h3_level <= 15
 
@@ -84,9 +84,9 @@ def test_update_projection_empty_data() -> None:
 
     projection.update_projection(empty_df)
 
-    assert projection.projection_df.empty
+    assert projection.projection_state.projection_df.empty
     assert projection.current_h3_level is None
-    assert projection.current_target_column is None
+    assert projection.projection_state.current_bucketing_column is None
 
 
 def test_update_projection_no_gps(sample_data: pd.DataFrame) -> None:
@@ -97,9 +97,9 @@ def test_update_projection_no_gps(sample_data: pd.DataFrame) -> None:
     data_without_gps = sample_data.drop(columns=[C.GPS_LATITUDE, C.GPS_LONGITUDE])
     projection.update_projection(data_without_gps)
 
-    assert projection.projection_df.empty
+    assert projection.projection_state.projection_df.empty
     assert projection.current_h3_level is None
-    assert projection.current_target_column is None
+    assert projection.projection_state.current_bucketing_column is None
 
 
 def test_apply_filter_event_individual_points(sample_data: pd.DataFrame) -> None:
@@ -189,7 +189,7 @@ def test_max_rows_threshold_boundary(sample_data: pd.DataFrame) -> None:
     projection.update_projection(sample_data)
 
     # Should show individual points
-    result = projection.projection_df
+    result = projection.projection_state.projection_df
     assert len(result) == 20
     assert "count" not in result.columns
     assert projection.current_h3_level is None
@@ -199,7 +199,7 @@ def test_max_rows_threshold_boundary(sample_data: pd.DataFrame) -> None:
     projection.update_projection(sample_data)
 
     # Should aggregate
-    result = projection.projection_df
+    result = projection.projection_state.projection_df
     assert len(result) <= 19
     assert "count" in result.columns
     assert projection.current_h3_level is not None
@@ -223,7 +223,7 @@ def test_data_without_some_gps_coordinates() -> None:
     projection.update_projection(bucketed_data)
 
     # Should handle the data, even with some missing coordinates
-    result = projection.projection_df
+    result = projection.projection_state.projection_df
     assert len(result) == 5  # All rows included
     assert C.GPS_LATITUDE in result.columns
     assert C.GPS_LONGITUDE in result.columns

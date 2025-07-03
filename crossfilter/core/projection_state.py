@@ -28,18 +28,8 @@ class ProjectionState:
             max_rows: Maximum number of rows to display before aggregation
         """
         self.max_rows = max_rows
-        self._projection_df = pd.DataFrame()
+        self.projection_df = pd.DataFrame()
         self.current_bucketing_column: Optional[str] = None
-
-    @property
-    def projection_df(self) -> pd.DataFrame:
-        """Get the current projection DataFrame."""
-        return self._projection_df.copy()
-
-    @projection_df.setter
-    def projection_df(self, value: pd.DataFrame) -> None:
-        """Set the current projection DataFrame."""
-        self._projection_df = value
 
     def apply_filter_event(self, selected_df_ids: set[int], filtered_rows: pd.DataFrame) -> pd.DataFrame:
         """
@@ -72,7 +62,7 @@ class ProjectionState:
         selected_bucket_df_ids = list(selected_df_ids)
 
         # Make sure all selected ids are valid
-        valid_ids = [id for id in selected_bucket_df_ids if id < len(self._projection_df)]
+        valid_ids = [id for id in selected_bucket_df_ids if id < len(self.projection_df)]
         if len(valid_ids) != len(selected_bucket_df_ids):
             logger.warning(f"Some selected df_ids are invalid: {set(selected_bucket_df_ids) - set(valid_ids)}")
 
@@ -83,7 +73,7 @@ class ProjectionState:
         try:
             return filter_df_to_selected_buckets(
                 filtered_rows,
-                self._projection_df,
+                self.projection_df,
                 self.current_bucketing_column,
                 valid_ids
             )
@@ -95,7 +85,7 @@ class ProjectionState:
         """Get a summary of the current projection state."""
         return {
             "max_rows": self.max_rows,
-            "projection_rows": len(self._projection_df),
+            "projection_rows": len(self.projection_df),
             "current_bucketing_column": self.current_bucketing_column,
             "is_aggregated": self.current_bucketing_column is not None,
         }

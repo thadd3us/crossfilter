@@ -84,14 +84,14 @@ def test_projection_states(sample_df: pd.DataFrame) -> None:
 
     # Check temporal projection
     temporal_proj = session.temporal_projection
-    assert temporal_proj.max_rows == 100000  # default
-    assert len(temporal_proj.projection_df) == 20
+    assert temporal_proj.projection_state.max_rows == 100000  # default
+    assert len(temporal_proj.projection_state.projection_df) == 20
     assert temporal_proj.current_aggregation_level is None  # individual points
 
     # Check geo projection
     geo_proj = session.geo_projection
-    assert geo_proj.max_rows == 100000  # default
-    assert len(geo_proj.projection_df) == 20
+    assert geo_proj.projection_state.max_rows == 100000  # default
+    assert len(geo_proj.projection_state.projection_df) == 20
     assert geo_proj.current_h3_level is None  # individual points
 
 
@@ -118,7 +118,7 @@ def test_spatial_aggregation_aggregated(sample_df: pd.DataFrame) -> None:
     session.load_dataframe(sample_df)
 
     # Request fewer groups than we have points
-    session.geo_projection.max_rows = 5
+    session.geo_projection.projection_state.max_rows = 5
     session.geo_projection.update_projection(session.filtered_rows)
     result = session.get_geo_aggregation()
 
@@ -160,7 +160,7 @@ def test_temporal_aggregation_aggregated(sample_df: pd.DataFrame) -> None:
     session = SessionState()
     session.load_dataframe(sample_df)
 
-    session.temporal_projection.max_rows = 3
+    session.temporal_projection.projection_state.max_rows = 3
     session.temporal_projection.update_projection(session.filtered_rows)
     result = session.get_temporal_projection()
 
@@ -319,13 +319,13 @@ def test_projection_max_rows_updates(sample_df: pd.DataFrame) -> None:
     assert "count" not in temporal_result.columns  # Individual points
 
     # Change to force aggregation
-    session.temporal_projection.max_rows = 5
+    session.temporal_projection.projection_state.max_rows = 5
     session.temporal_projection.update_projection(session.filtered_rows)
     temporal_result = session.get_temporal_projection()
     assert "count" in temporal_result.columns  # Aggregated
 
     # Verify projection state was updated
-    assert session.temporal_projection.max_rows == 5
+    assert session.temporal_projection.projection_state.max_rows == 5
 
 
 def test_unknown_projection_type(sample_df: pd.DataFrame) -> None:

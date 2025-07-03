@@ -89,7 +89,8 @@ The application is built around a **projection-based architecture** where multip
 24. **Focus on Actual Requirements**: Implement exactly what's needed, not what might be needed. A "hello world" test should be simple, not a copy of a full application test suite.
 25. **No Silent Fallbacks**: Never silently fall back or ignore user requests when data/columns are missing. If a user requests a specific column or parameter that doesn't exist, raise a clear error instead of falling back to a default. This makes bugs visible immediately rather than causing silent incorrect behavior.
 26. **Don't enumerate arguments in docstrings**: Just use good names and type hints to make it clear what things are.
-27. **Read the docs in //docs/*.md**: And keep them up to date!
+27. **Never Use @property Decorators**: Avoid using `@property` decorators for getters and setters. Use direct naked attribute access instead. Properties add unnecessary verbosity and complexity without meaningful benefit. Just access and modify attributes directly (e.g., `obj.max_rows = 100` instead of property-based access).
+28. **Read the docs in //docs/*.md**: And keep them up to date!
 
 ### Project Structure
 ```

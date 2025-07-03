@@ -120,7 +120,7 @@ def test_spatial_aggregation_aggregated(sample_df) -> None:
     assert result["count"].sum() == 20
 
 
-def test_temporal_aggregation_individual_points(sample_df) -> None:
+def test_temporal_aggregation_individual_points(sample_df: pd.DataFrame) -> None:
     """Test temporal aggregation when under threshold."""
     session = SessionState()
     session.load_dataframe(sample_df)

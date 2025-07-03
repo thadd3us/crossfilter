@@ -1,10 +1,9 @@
 // Crossfilter frontend application
 
-// FilterOperationType enum to match backend schema.py
-const FilterOperationType = {
-    SPATIAL: 'spatial',
-    TEMPORAL: 'temporal',
-    RESET: 'reset'
+// ProjectionType enum to match backend schema.py
+const ProjectionType = {
+    GEO: 'geo',
+    TEMPORAL: 'temporal'
 };
 
 class CrossfilterApp {
@@ -374,8 +373,8 @@ class CrossfilterApp {
 
         // Get display names for different event sources
         const displayNames = {
-            [FilterOperationType.TEMPORAL]: 'temporal buckets',
-            [FilterOperationType.SPATIAL]: 'spatial regions'
+            [ProjectionType.TEMPORAL]: 'temporal buckets',
+            [ProjectionType.GEO]: 'spatial regions'
         };
         
         const displayName = displayNames[eventSource] || 'points';
@@ -409,7 +408,7 @@ class CrossfilterApp {
     }
 
     async filterTemporalToSelected() {
-        return this.filterToSelected(FilterOperationType.TEMPORAL);
+        return this.filterToSelected(ProjectionType.TEMPORAL);
     }
 }
 

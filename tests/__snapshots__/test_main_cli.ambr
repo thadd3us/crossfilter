@@ -1,6 +1,7 @@
 # serializer version: 1
 # name: test_cli_server_with_preload_jsonl
   dict({
+    'all_rows_count': 100,
     'columns': list([
       'UUID_STRING',
       'DATA_TYPE',
@@ -36,14 +37,17 @@
       'QUANTIZED_TIMESTAMP_MONTH',
       'QUANTIZED_TIMESTAMP_YEAR',
     ]),
-    'filter_state': dict({
-      'can_undo': False,
-      'filter_ratio': 1.0,
-      'filtered_count': 100,
-      'total_count': 100,
-      'undo_stack_size': 0,
-    }),
+    'filter_ratio': 1.0,
     'filtered_count': 100,
+    'filtered_rows_count': 100,
+    'geo_projection': dict({
+      'current_bucketing_column': None,
+      'h3_level': None,
+      'is_aggregated': False,
+      'max_rows': 100000,
+      'projection_rows': 100,
+      'target_column': None,
+    }),
     'has_data': True,
     'memory_usage': '0.15 MB',
     'row_count': 100,
@@ -52,5 +56,13 @@
       33,
     ]),
     'status': 'loaded',
+    'temporal_projection': dict({
+      'aggregation_level': None,
+      'current_bucketing_column': None,
+      'is_aggregated': False,
+      'max_rows': 100000,
+      'projection_rows': 100,
+      'target_column': None,
+    }),
   })
 # ---

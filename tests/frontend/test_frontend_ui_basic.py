@@ -20,6 +20,15 @@ from syrupy.extensions.image import PNGImageSnapshotExtension
 #     _file_extension = "png"
 
 
+import pytest
+from playwright.sync_api import Browser, Page, Playwright
+
+
+@pytest.fixture(scope="session")
+def browser(playwright: Playwright) -> Browser:
+    return playwright.chromium.launch(headless=False, devtools=True)
+
+
 def wait_for_server(url: str, max_attempts: int = 30, delay: float = 1.0) -> bool:
     """Wait for the server to be ready."""
     for _ in range(max_attempts):
@@ -265,10 +274,20 @@ def test_filter_to_selected_ui_elements(
     end_x = plot_box["x"] + plot_box["width"] - margin_x
     end_y = plot_box["y"] + plot_box["height"] - margin_y
 
+    page.evaluate(
+        """
+        document.querySelector('#plotContainer').addEventListener('mousedown', e => console.log('mousedown', e));
+        document.querySelector('#plotContainer').addEventListener('mouseup', e => console.log('mouseup', e));
+        // document.querySelector('#plotContainer').addEventListener('mousemove', e => console.log('mousemove', e));
+        """
+    )
+
     # Perform drag selection
     page.mouse.move(start_x, start_y)
     page.mouse.down()
-    page.mouse.move(end_x, end_y)
+    page.wait_for_timeout(50)  # <- critical!
+
+    page.mouse.move(end_x, end_y, steps=10)
     page.mouse.up()
 
     # Wait for the button to become enabled after selection
@@ -278,8 +297,7 @@ def test_filter_to_selected_ui_elements(
 
     # Verify selection info is displayed
     selection_info = plot_selection_info.text_content()
-    assert "Selected:" in selection_info
-    assert "points" in selection_info
+    assert "Selected: 27 points" in selection_info
 
     # Click the filterToSelectedBtn and debug JavaScript execution
     # THAD: These (and other) prints should use logging.

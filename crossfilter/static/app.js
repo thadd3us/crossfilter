@@ -102,7 +102,7 @@ class CrossfilterApp {
     handleSSEEvent(event) {
         try {
             const data = JSON.parse(event.data);
-            console.log('CrossfilterApp: Received SSE event:', data);
+            // console.log('CrossfilterApp: Received SSE event:', data);
             
             // Update filter version
             this.filterVersion = data.version;

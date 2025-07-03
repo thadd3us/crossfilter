@@ -35,58 +35,44 @@ def create_temporal_cdf(
     time_column = C.TIMESTAMP_UTC
 
     df[C.DF_ID] = df.index
+    if C.COUNT not in df.columns:
+        df[C.COUNT] = 1
 
     # TODO: This could be a cacheable amount of work.
     if not groupby:
         groupby = "Data"
         df[groupby] = "All"
-    elif groupby not in df.columns:
-        raise ValueError(f"Requested groupby column '{groupby}' not found in DataFrame. Available columns: {list(df.columns)}")
-    
     df[groupby] = df[groupby].astype(str).fillna("Unknown")
-    df["groupby_count"] = df.groupby(groupby)[C.DF_ID].transform("count")
-    df["Group (Count)"] = df[groupby] + " (" + df["groupby_count"].astype(str) + ")"
-    df = df.sort_values(by=["groupby_count", groupby], ascending=[False, True])
+    df["groupby_count_sum"] = df.groupby(groupby)[C.COUNT].transform("sum")
+    df["Group (Count)"] = df[groupby] + " (" + df["groupby_count_sum"].astype(str) + ")"
+    df = df.sort_values(by=["groupby_count_sum", groupby], ascending=[False, True])
 
-    fig = go.Figure()
-
-    # groups = []
-    for name, group_df in df.groupby("Group (Count)"):
-        group_df = group_df.sort_values(by=time_column)
-        # TODO: This should be cumsum.
-        group_df["CDF"] = np.arange(1, len(group_df) + 1) / len(group_df)
-        fig.add_trace(
-            go.Scatter(
-                x=group_df[time_column],
-                y=group_df["CDF"],
-                customdata=group_df[C.DF_ID],
-                # hov
-                # hoverinfo="x+y+customdata",
-                # hoverdata=[C.NAME, C.UUID_STRING],
-                mode="markers+lines",
-                name=name,
-            )
-        )
-        # groups.append(group)
-    # plot_df = pd.concat(groups)
+    groups = []
+    for _, group in df.groupby("Group (Count)"):
+        group = group.sort_values(by=time_column)
+        group["CDF"] = group[C.COUNT].cumsum() / max(1, group[C.COUNT].sum())
+        groups.append(group)
+    plot_df = pd.concat(groups)
 
     # Build hover_data list based on available columns
-    # hover_data_columns = [C.DF_ID]
-    # for col in [C.NAME, C.UUID_STRING]:
-    #     if col in plot_df.columns:
-    #         hover_data_columns.append(col)
+    hover_data_columns = [C.DF_ID]
+    for col in [C.NAME, C.DATA_TYPE, C.UUID_STRING]:
+        if col in plot_df.columns:
+            hover_data_columns.append(col)
 
-    # fig = px.scatter(
-    #     plot_df,
-    #     x=time_column,
-    #     y="CDF",
-    #     color="Group (Count)",
-    #     custom_data=[C.DF_ID],
-    #     hover_data=hover_data_columns,
+    fig = px.line(
+        plot_df,
+        x=time_column,
+        y="CDF",
+        color="Group (Count)",
+        custom_data=[C.DF_ID],
+        hover_data=hover_data_columns,
+        markers=True,
+        # hover_data={"label": True},
+    )
+    # fig.update_traces(
+    #     hovertemplate="x: %{x}<br>ECDF: %{y}<br>Label: %{customdata[0]}<extra></extra>"
     # )
-    # # fig.update_traces(
-    # #     hovertemplate="x: %{x}<br>ECDF: %{y}<br>Label: %{customdata[0]}<extra></extra>"
-    # # )
 
     # Configure layout
     fig.update_layout(
@@ -102,7 +88,7 @@ def create_temporal_cdf(
 
     return fig
 
-    # elif SchemaColumns.TIMESTAMP_UTC not in df.columns:
+    # elif C.TIMESTAMP_UTC not in df.columns:
     #     fig = go.Figure()
     #     fig.add_annotation(
     #         text="No timestamp data found",
@@ -114,7 +100,7 @@ def create_temporal_cdf(
     #     )
     # else:
     #     # Create ECDF plot using plotly express
-    #     temp_fig = px.ecdf(df, x=SchemaColumns.TIMESTAMP_UTC, title=title)
+    #     temp_fig = px.ecdf(df, x=C.TIMESTAMP_UTC, title=title)
 
     #     # Extract the data and convert numpy arrays to lists before creating final figure
     #     if temp_fig.data:

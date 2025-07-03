@@ -12,21 +12,21 @@ from playwright.sync_api import Page
 from syrupy import SnapshotAssertion
 from syrupy.extensions.image import PNGImageSnapshotExtension
 
+import pytest
+from playwright.sync_api import Browser, Page, Playwright
 
-# NOTE: Example of an overly verbose LLM.
+
+# NOTE: BAD Example of an overly verbose LLM.
 # class TemporalCDFPNGExtension(PNGImageSnapshotExtension):
 #     """Custom PNG snapshot extension for temporal CDF plots."""
 
 #     _file_extension = "png"
 
 
-import pytest
-from playwright.sync_api import Browser, Page, Playwright
-
-
-@pytest.fixture(scope="session")
-def browser(playwright: Playwright) -> Browser:
-    return playwright.chromium.launch(headless=False, devtools=True)
+# @pytest.fixture(scope="session")
+# def browser(playwright: Playwright) -> Browser:
+#     """Use this to get the devtools open immediately.
+#     return playwright.chromium.launch(headless=False, devtools=True)
 
 
 def wait_for_server(url: str, max_attempts: int = 30, delay: float = 1.0) -> bool:
@@ -252,9 +252,8 @@ def test_filter_to_selected_ui_elements(
 
     # Now perform the full selection workflow:
 
-    # 1. Click the plotly rectangle select button (box select)
-    # Wait for the plot toolbar to be visible
-    page.wait_for_selector(".modebar", timeout=5000)
+    # Click the plotly rectangle select button (box select). Wait for the plot toolbar to be visible
+    page.wait_for_selector(".modebar", timeout=1000)
 
     # Click the box select tool in Plotly's mode bar
     box_select_button = page.locator("[data-attr='dragmode'][data-val='select']")
@@ -274,30 +273,28 @@ def test_filter_to_selected_ui_elements(
     end_x = plot_box["x"] + plot_box["width"] - margin_x
     end_y = plot_box["y"] + plot_box["height"] - margin_y
 
-    page.evaluate(
-        """
-        document.querySelector('#plotContainer').addEventListener('mousedown', e => console.log('mousedown', e));
-        document.querySelector('#plotContainer').addEventListener('mouseup', e => console.log('mouseup', e));
-        // document.querySelector('#plotContainer').addEventListener('mousemove', e => console.log('mousemove', e));
-        """
-    )
+    # page.evaluate(
+    #     """
+    #     document.querySelector('#plotContainer').addEventListener('mousedown', e => console.log('mousedown', e));
+    #     document.querySelector('#plotContainer').addEventListener('mouseup', e => console.log('mouseup', e));
+    #     // document.querySelector('#plotContainer').addEventListener('mousemove', e => console.log('mousemove', e));
+    #     """
+    # )
 
     # Perform drag selection
     page.mouse.move(start_x, start_y)
     page.mouse.down()
-    page.wait_for_timeout(50)  # <- critical!
-
-    page.mouse.move(end_x, end_y, steps=10)
+    page.mouse.move(end_x, end_y)
     page.mouse.up()
 
     # Wait for the button to become enabled after selection
     page.wait_for_function(
-        "!document.getElementById('filterToSelectedBtn').disabled", timeout=5000
+        "!document.getElementById('filterToSelectedBtn').disabled", timeout=1000
     )
 
     # Verify selection info is displayed
     selection_info = plot_selection_info.text_content()
-    assert "Selected: 27 points" in selection_info
+    assert "Selected: 36 points" in selection_info
 
     # Click the filterToSelectedBtn and debug JavaScript execution
     # THAD: These (and other) prints should use logging.
@@ -309,7 +306,7 @@ def test_filter_to_selected_ui_elements(
         () => {
             const btn = document.getElementById('filterToSelectedBtn');
             const app = window.app;
-            
+
             return {
                 buttonExists: !!btn,
                 buttonDisabled: btn ? btn.disabled : 'no button',
@@ -342,7 +339,7 @@ def test_filter_to_selected_ui_elements(
             """
             () => {
                 const status = document.getElementById('status').textContent;
-                // Check if filtering has reduced the count (not showing "100 after filtering" anymore) 
+                // Check if filtering has reduced the count (not showing "100 after filtering" anymore)
                 return status.includes('after filtering') && !status.includes('100 after filtering');
             }
             """,
@@ -365,7 +362,7 @@ def test_filter_to_selected_ui_elements(
             """
             () => {
                 // Check if there are any EventSource connections
-                return document.querySelector('script[src*="eventsource"]') !== null || 
+                return document.querySelector('script[src*="eventsource"]') !== null ||
                        window.eventSource !== undefined;
             }
         """

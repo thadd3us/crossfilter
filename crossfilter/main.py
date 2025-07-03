@@ -1,15 +1,17 @@
 """Main CLI application for Crossfilter."""
 
 import json
+import logging
 import signal
 import sys
+import traceback
 from pathlib import Path
 from typing import Any, Optional
 
 import typer
 import uvicorn
-from fastapi import Depends, FastAPI, HTTPException, Query
-from fastapi.responses import HTMLResponse
+from fastapi import Depends, FastAPI, HTTPException, Query, Request
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
@@ -40,6 +42,35 @@ app = FastAPI(
     title="Crossfilter",
     description="Interactive crossfilter application for geospatial and temporal data analysis",
 )
+
+# Configure logging for better error visibility
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    """Global exception handler that provides full stack traces for debugging."""
+    # Format the full traceback
+    error_traceback = traceback.format_exc()
+    error_message = f"Unhandled exception in {request.method} {request.url}: {exc}"
+    
+    # Log to both logger and print to ensure visibility in tests
+    logger.error(error_message)
+    logger.error(error_traceback)
+    print(f"[BACKEND ERROR] {error_message}")
+    print(f"[BACKEND ERROR] {error_traceback}")
+    
+    # Return detailed error information (only in development - consider security in production)
+    return JSONResponse(
+        status_code=500,
+        content={
+            "detail": f"Internal server error: {str(exc)}",
+            "traceback": error_traceback.split('\n'),
+            "request_url": str(request.url),
+            "request_method": request.method,
+        }
+    )
 
 # Mount static files
 static_path = Path(__file__).parent / "static"
@@ -109,24 +140,14 @@ async def get_session_status(
     summary = session_state.get_summary()
 
     # Add filter-specific fields for frontend compatibility
-    if session_state.has_data():
-        filter_summary = session_state.filter_state.get_summary()
-        summary.update(
-            {
-                "has_data": True,
-                "row_count": filter_summary["total_count"],
-                "filtered_count": filter_summary["filtered_count"],
-            }
-        )
-    else:
-        # THAD: Delete this unneed branch -- an empty DataFrame should result in 0 rows.
-        summary.update(
-            {
-                "has_data": False,
-                "row_count": 0,
-                "filtered_count": 0,
-            }
-        )
+    filter_summary = session_state.filter_state.get_summary()
+    summary.update(
+        {
+            "has_data": session_state.has_data(),
+            "row_count": filter_summary["total_count"],
+            "filtered_count": filter_summary["filtered_count"],
+        }
+    )
 
     return summary
 

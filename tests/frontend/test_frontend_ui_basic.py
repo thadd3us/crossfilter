@@ -57,44 +57,58 @@ def backend_server_with_data() -> Generator[str, None, None]:
     server_process = subprocess.Popen(
         cmd,
         stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
+        stderr=subprocess.STDOUT,  # Merge stderr into stdout for easier monitoring
         cwd=Path(__file__).parent.parent.parent,
+        text=True,
+        bufsize=1,  # Line buffered for real-time output
     )
+
+    # Set up monitoring for server output
+    server_output_lines = []
+    
+    def monitor_server_output():
+        """Monitor server output in background thread."""
+        try:
+            for line in iter(server_process.stdout.readline, ''):
+                if line:
+                    server_output_lines.append(line.strip())
+                    # Print server output in real-time for debugging
+                    print(f"[BACKEND] {line.strip()}")
+        except Exception as e:
+            print(f"[BACKEND MONITOR ERROR] {e}")
+    
+    import threading
+    monitor_thread = threading.Thread(target=monitor_server_output, daemon=True)
+    monitor_thread.start()
 
     try:
         # Wait for server to be ready
         if not wait_for_server(server_url):
-            stdout, stderr = server_process.communicate(timeout=5)
+            # Give the monitor thread a moment to capture output
+            time.sleep(2)
+            server_process.terminate()
+            monitor_thread.join(timeout=3)
+            
             pytest.fail(
                 f"Server failed to start within timeout.\n"
-                f"STDOUT: {stdout.decode()}\n"
-                f"STDERR: {stderr.decode()}"
+                f"Server output:\n" + "\n".join(server_output_lines[-50:])  # Show last 50 lines
             )
 
-        # # Verify data is loaded
-        # session_response = requests.get(f"{server_url}/api/session")
-        # if not session_response.ok:
-        #     pytest.fail(
-        #         f"Session endpoint not accessible: {session_response.status_code}"
-        #     )
-
-        # session_data = session_response.json()
-        # if not session_data.get("has_data"):
-        #     pytest.fail("Server started but no data was loaded")
-
-        # print(
-        #     f"Server started successfully with {session_data.get('row_count', 0)} records"
-        # )
         yield server_url
 
     finally:
         # Clean up: terminate the server
+        print("[BACKEND] Shutting down server...")
         server_process.terminate()
         try:
             server_process.wait(timeout=10)
         except subprocess.TimeoutExpired:
+            print("[BACKEND] Server didn't shut down gracefully, killing...")
             server_process.kill()
             server_process.wait()
+        
+        # Wait for monitor thread to finish
+        monitor_thread.join(timeout=3)
 
 
 @pytest.mark.e2e

@@ -77,6 +77,7 @@ Crossfilter is a Python web application for interactive crossfiltering and analy
 22. **Prefer Synchronous over Asynchronous**: Use async/await only when truly needed for concurrency. Simple, synchronous code is easier to understand and debug.
 23. **Don't Cargo-Cult Code**: Just because existing code is complex doesn't mean new code needs to be. Evaluate each situation independently and choose the appropriate level of complexity.
 24. **Focus on Actual Requirements**: Implement exactly what's needed, not what might be needed. A "hello world" test should be simple, not a copy of a full application test suite.
+25. **No Silent Fallbacks**: Never silently fall back or ignore user requests when data/columns are missing. If a user requests a specific column or parameter that doesn't exist, raise a clear error instead of falling back to a default. This makes bugs visible immediately rather than causing silent incorrect behavior.
 45. **Don't enumerate arguments in docstrings**: Just use good names and type hints to make it clear what things are.
 
 ### Project Structure

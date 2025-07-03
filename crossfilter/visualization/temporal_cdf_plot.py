@@ -16,7 +16,7 @@ from crossfilter.core.schema import SchemaColumns as C
 def create_temporal_cdf(
     df: pd.DataFrame,
     title: str = "Temporal Distribution (CDF)",
-    groupby: Optional[str] = C.DATA_TYPE,
+    groupby: Optional[str] = str(C.DATA_TYPE),
 ) -> go.Figure:
     """Create a Plotly CDF plot for temporal data."""
     if df.empty:
@@ -40,6 +40,9 @@ def create_temporal_cdf(
     if not groupby:
         groupby = "Data"
         df[groupby] = "All"
+    elif groupby not in df.columns:
+        raise ValueError(f"Requested groupby column '{groupby}' not found in DataFrame. Available columns: {list(df.columns)}")
+    
     df[groupby] = df[groupby].astype(str).fillna("Unknown")
     df["groupby_count"] = df.groupby(groupby)[C.DF_ID].transform("count")
     df["Group (Count)"] = df[groupby] + " (" + df["groupby_count"].astype(str) + ")"
@@ -56,7 +59,7 @@ def create_temporal_cdf(
             go.Scatter(
                 x=group_df[time_column],
                 y=group_df["CDF"],
-                customdata=[C.DF_ID],
+                customdata=group_df[C.DF_ID],
                 # hov
                 # hoverinfo="x+y+customdata",
                 # hoverdata=[C.NAME, C.UUID_STRING],

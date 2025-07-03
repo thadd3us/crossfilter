@@ -178,7 +178,8 @@ class SessionState:
 
         if len(filtered_data) <= max_groups:
             # Return individual points if under threshold
-            df = filtered_data[[SchemaColumns.TIMESTAMP_UTC]].copy()
+            columns = [SchemaColumns.TIMESTAMP_UTC, SchemaColumns.DATA_TYPE]
+            df = filtered_data[columns].copy()
             df = df.sort_values(SchemaColumns.TIMESTAMP_UTC)
             df["cumulative_count"] = range(1, len(df) + 1)
             # Add df_id column for consistency

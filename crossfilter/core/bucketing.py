@@ -186,22 +186,30 @@ def bucket_by_target_column(original_data: pd.DataFrame, target_column: str) -> 
     Returns:
         Bucketed DataFrame with one row per unique target_column value
     """
+    logger.debug(f"bucket_by_target_column called with target_column='{target_column}'")
+    logger.debug(f"Original data columns: {list(original_data.columns)}")
+    logger.debug(f"Target column '{target_column}' in original data: {target_column in original_data.columns}")
+    
     if target_column not in original_data.columns:
         raise ValueError(f"Target column '{target_column}' not found in DataFrame")
 
     # Group by target column and take first value for each column, plus count
+    # Include the target column in the result to enable filtering operations
     agg_dict = {}
     for col in original_data.columns:
-        if col == target_column:
-            continue  # Skip the groupby column
         agg_dict[col] = 'first'
 
     # Get the grouped data, including nulls in groupby
+    logger.debug(f"Aggregation dictionary: {agg_dict}")
     grouped = original_data.groupby(target_column, dropna=False).agg(agg_dict).reset_index()
+    logger.debug(f"Grouped DataFrame columns: {list(grouped.columns)}")
+    logger.debug(f"Target column '{target_column}' in grouped DataFrame: {target_column in grouped.columns}")
 
     # Add count column
     counts = original_data.groupby(target_column, dropna=False).size().reset_index(name='COUNT')
     bucketed = grouped.merge(counts, on=target_column)
+    logger.debug(f"Final bucketed DataFrame columns: {list(bucketed.columns)}")
+    logger.debug(f"Target column '{target_column}' in final bucketed DataFrame: {target_column in bucketed.columns}")
 
     # Set standard integer index for DF_ID
     bucketed.index.name = SchemaColumns.DF_ID
@@ -209,6 +217,9 @@ def bucket_by_target_column(original_data: pd.DataFrame, target_column: str) -> 
     logger.debug(
         f"Bucketed {len(original_data)} rows into {len(bucketed)} buckets by column '{target_column}'"
     )
+    logger.debug(f"Bucketed DataFrame columns: {list(bucketed.columns)}")
+    logger.debug(f"Target column '{target_column}' in bucketed DataFrame: {target_column in bucketed.columns}")
+    
     return bucketed
 
 

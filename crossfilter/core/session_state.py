@@ -156,7 +156,13 @@ class SessionState:
     def get_summary(self) -> dict:
         """Get a summary of the current session state."""
         if not self.has_data():
-            return {"status": "empty", "message": "No data loaded"}
+            return {
+                "status": "empty", 
+                "message": "No data loaded",
+                "all_rows_count": 0,
+                "filtered_rows_count": 0,
+                "columns": []
+            }
 
         summary = {
             "status": "loaded",
@@ -208,6 +214,25 @@ class SessionState:
         
         return self._temporal_projection.projection_df
 
+    def get_filtered_data(self) -> pd.DataFrame:
+        """
+        Get the current filtered dataset.
+        
+        Returns:
+            Current filtered subset of the data
+        """
+        return self._filtered_rows.copy()
+
+    @property
+    def all_rows(self) -> pd.DataFrame:
+        """Get the complete dataset."""
+        return self._all_rows.copy()
+
+    @property
+    def filtered_rows(self) -> pd.DataFrame:
+        """Get the current filtered subset."""
+        return self._filtered_rows.copy()
+
     @property
     def filter_version(self) -> int:
         """Get the current filter version for change tracking."""
@@ -225,7 +250,10 @@ class SessionState:
                 "has_data": self.has_data(),
                 "all_rows_count": len(self._all_rows) if self.has_data() else 0,
                 "filtered_rows_count": len(self._filtered_rows) if self.has_data() else 0,
-                "columns": list(self._all_rows.columns) if self.has_data() else []
+                "columns": list(self._all_rows.columns) if self.has_data() else [],
+                # Frontend-compatible field names
+                "row_count": len(self._all_rows) if self.has_data() else 0,
+                "filtered_count": len(self._filtered_rows) if self.has_data() else 0,
             }
         }
         
@@ -252,7 +280,10 @@ class SessionState:
                     "has_data": self.has_data(),
                     "all_rows_count": len(self._all_rows) if self.has_data() else 0,
                     "filtered_rows_count": len(self._filtered_rows) if self.has_data() else 0,
-                    "columns": list(self._all_rows.columns) if self.has_data() else []
+                    "columns": list(self._all_rows.columns) if self.has_data() else [],
+                    # Frontend-compatible field names
+                    "row_count": len(self._all_rows) if self.has_data() else 0,
+                    "filtered_count": len(self._filtered_rows) if self.has_data() else 0,
                 }
             }
             yield f"data: {json.dumps(initial_event)}\n\n"

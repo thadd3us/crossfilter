@@ -22,11 +22,6 @@ from crossfilter.core.bucketing import (
 )
 from crossfilter.core.schema import FilterEvent, ProjectionType, load_jsonl_to_dataframe
 from crossfilter.core.session_state import SessionState
-from crossfilter.visualization.plots import (
-    create_fallback_scatter_geo,
-    create_kepler_config,
-    prepare_kepler_data,
-)
 from crossfilter.visualization.temporal_cdf_plot import create_temporal_cdf
 
 # Create a single session state instance for dependency injection
@@ -54,23 +49,24 @@ async def global_exception_handler(request: Request, exc: Exception) -> JSONResp
     # Format the full traceback
     error_traceback = traceback.format_exc()
     error_message = f"Unhandled exception in {request.method} {request.url}: {exc}"
-    
+
     # Log to both logger and print to ensure visibility in tests
     logger.error(error_message)
     logger.error(error_traceback)
     print(f"[BACKEND ERROR] {error_message}")
     print(f"[BACKEND ERROR] {error_traceback}")
-    
+
     # Return detailed error information (only in development - consider security in production)
     return JSONResponse(
         status_code=500,
         content={
             "detail": f"Internal server error: {str(exc)}",
-            "traceback": error_traceback.split('\n'),
+            "traceback": error_traceback.split("\n"),
             "request_url": str(request.url),
             "request_method": request.method,
-        }
+        },
     )
+
 
 # Mount static files
 static_path = Path(__file__).parent / "static"
@@ -164,11 +160,14 @@ class FilterRequest(BaseModel):
 class DfIdsFilterRequest(BaseModel):
     """Request model for filtering to specific df_ids from a plot."""
 
-    df_ids: list[int]  # df_ids from the plot (could be from lasso selection, visible area, etc.)
+    df_ids: list[
+        int
+    ]  # df_ids from the plot (could be from lasso selection, visible area, etc.)
     event_source: ProjectionType  # Which plot type this filtering comes from
     description: str
 
 
+# THAD: Rename this route to f"/api/projections/{C.GEO}".
 @app.get("/api/plots/spatial")
 async def get_spatial_plot_data(
     max_groups: int = Query(100000, ge=1, le=1000000),
@@ -180,23 +179,11 @@ async def get_spatial_plot_data(
 
     try:
         # Get aggregated spatial data
-        spatial_data = session_state.get_spatial_aggregation(max_groups)
-
-        # Prepare data and config for Kepler.gl
-        kepler_data = prepare_kepler_data(spatial_data)
-        kepler_config = create_kepler_config(spatial_data)
-
-        # Also create fallback Plotly plot
-        plotly_plot = create_fallback_scatter_geo(spatial_data)
 
         return {
-            "kepler_data": kepler_data,
-            "kepler_config": kepler_config,
-            "plotly_fallback": plotly_plot,
-            "data_type": (
-                "aggregated" if "count" in spatial_data.columns else "individual"
-            ),
-            "point_count": len(spatial_data),
+            "kepler_data": None,
+            "kepler_config": None,
+            "plotly_fallback": None,
         }
     except Exception as e:
         raise HTTPException(
@@ -204,6 +191,7 @@ async def get_spatial_plot_data(
         )
 
 
+# THAD: Rename this route to f"/api/projections/{C.TEMPORAL}".
 @app.get("/api/plots/temporal")
 async def get_temporal_plot_data(
     max_groups: int = Query(100000, ge=1, le=1000000),
@@ -214,12 +202,8 @@ async def get_temporal_plot_data(
         raise HTTPException(status_code=404, detail="No data loaded")
 
     try:
-        # Get aggregated temporal data
-        temporal_data = session_state.get_temporal_aggregation(max_groups)
-
-        # Create Plotly CDF plot figure and convert to JSON-serializable dict
+        temporal_data = session_state.get_temporal_projection()
         fig = create_temporal_cdf(temporal_data)
-
         plotly_plot = json.loads(fig.to_json())
 
         return {
@@ -237,6 +221,7 @@ async def get_temporal_plot_data(
 
 @app.get("/api/plots/temporal/html", response_class=HTMLResponse)
 async def get_temporal_plot_html(
+    # THAD: Remove this argument.
     max_groups: int = Query(100000, ge=1, le=1000000),
     session_state: SessionState = Depends(get_session_state),
 ) -> str:
@@ -246,7 +231,7 @@ async def get_temporal_plot_html(
 
     try:
         # Get aggregated temporal data
-        temporal_data = session_state.get_temporal_aggregation(max_groups)
+        temporal_data = session_state.get_temporal_projection()
 
         # Create Plotly CDF plot figure
         fig = create_temporal_cdf(temporal_data, title="Temporal CDF Plot")
@@ -278,7 +263,7 @@ async def apply_filter(
         # Create and apply filter event using new projection-based API
         filter_event = FilterEvent(
             projection_type=filter_request.filter_operation_type,
-            selected_df_ids=set(filter_request.row_indices)
+            selected_df_ids=set(filter_request.row_indices),
         )
         session_state.apply_filter_event(filter_event)
 
@@ -306,10 +291,10 @@ async def intersect_filter(
         # and the provided row indices
         current_filtered_ids = set(session_state.get_filtered_data().index)
         intersected_ids = current_filtered_ids & set(filter_request.row_indices)
-        
+
         filter_event = FilterEvent(
             projection_type=filter_request.filter_operation_type,
-            selected_df_ids=intersected_ids
+            selected_df_ids=intersected_ids,
         )
         session_state.apply_filter_event(filter_event)
 
@@ -351,8 +336,8 @@ async def undo_filter(
     """Undo the last filter operation."""
     # Undo functionality was removed in the new projection-based architecture
     raise HTTPException(
-        status_code=501, 
-        detail="Undo functionality not implemented in projection-based architecture"
+        status_code=501,
+        detail="Undo functionality not implemented in projection-based architecture",
     )
 
 
@@ -363,14 +348,15 @@ async def get_filter_history(
     """Get the filter operation history."""
     # Filter history was removed in the new projection-based architecture
     raise HTTPException(
-        status_code=501, 
-        detail="Filter history not implemented in projection-based architecture"
+        status_code=501,
+        detail="Filter history not implemented in projection-based architecture",
     )
 
 
 @app.post("/api/filters/df_ids")
 async def filter_to_df_ids(
     request: DfIdsFilterRequest,
+    # THAD: Remove this argument.
     max_groups: int = Query(100000, ge=1, le=1000000),
     session_state: SessionState = Depends(get_session_state),
 ) -> dict[str, Any]:
@@ -381,15 +367,21 @@ async def filter_to_df_ids(
     try:
         # Validate event source
         if request.event_source == ProjectionType.TEMPORAL:
-            logger.info(f"Processing temporal filter request with df_ids: {request.df_ids}")
-            
+            logger.info(
+                f"Processing temporal filter request with df_ids: {request.df_ids}"
+            )
+
             # Get the current filtered data with bucketed columns
             original_data = session_state.get_filtered_data()
-            logger.info(f"Original data shape: {original_data.shape}, columns: {list(original_data.columns)}")
+            logger.info(
+                f"Original data shape: {original_data.shape}, columns: {list(original_data.columns)}"
+            )
 
             # Get the temporal aggregation that matches what the frontend is using
-            temporal_data = session_state.get_temporal_aggregation(max_groups)
-            logger.info(f"Temporal data shape: {temporal_data.shape}, columns: {list(temporal_data.columns)}")
+            temporal_data = session_state.get_temporal_projection()
+            logger.info(
+                f"Temporal data shape: {temporal_data.shape}, columns: {list(temporal_data.columns)}"
+            )
 
             # Determine the temporal column that was used for bucketing
             optimal_level = get_optimal_temporal_level(original_data, max_groups)
@@ -397,28 +389,31 @@ async def filter_to_df_ids(
             if optimal_level is None:
                 raise HTTPException(
                     status_code=400,
-                    detail="No temporal columns available for filtering"
+                    detail="No temporal columns available for filtering",
                 )
 
             target_column = get_temporal_column_name(optimal_level)
             logger.info(f"Target column: '{target_column}'")
-            logger.info(f"Target column in original data: {target_column in original_data.columns}")
-            logger.info(f"Target column in temporal data: {target_column in temporal_data.columns}")
+            logger.info(
+                f"Target column in original data: {target_column in original_data.columns}"
+            )
+            logger.info(
+                f"Target column in temporal data: {target_column in temporal_data.columns}"
+            )
 
             # Convert bucket df_ids to original data df_ids using the bucketing function
-            logger.info(f"About to call filter_df_to_selected_buckets with target_column='{target_column}'")
+            logger.info(
+                f"About to call filter_df_to_selected_buckets with target_column='{target_column}'"
+            )
             filtered_original_data = filter_df_to_selected_buckets(
-                original_data,
-                temporal_data,
-                target_column,
-                request.df_ids
+                original_data, temporal_data, target_column, request.df_ids
             )
             logger.info(f"Filtered data shape: {filtered_original_data.shape}")
 
             # Apply the temporal filter using the original df_ids via new API
             filter_event = FilterEvent(
                 projection_type=ProjectionType.TEMPORAL,
-                selected_df_ids=set(filtered_original_data.index)
+                selected_df_ids=set(filtered_original_data.index),
             )
             session_state.apply_filter_event(filter_event)
 
@@ -433,14 +428,13 @@ async def filter_to_df_ids(
         elif request.event_source == ProjectionType.GEO:
             # Spatial visible filtering not yet implemented
             raise HTTPException(
-                status_code=501,
-                detail="Spatial visible filtering not yet implemented"
+                status_code=501, detail="Spatial visible filtering not yet implemented"
             )
 
         else:
             raise HTTPException(
                 status_code=400,
-                detail=f"Unsupported event_source: {request.event_source}"
+                detail=f"Unsupported event_source: {request.event_source}",
             )
     except Exception as e:
         raise HTTPException(
@@ -454,7 +448,7 @@ async def filter_change_stream(
 ):
     """Server-Sent Events stream for filter change notifications."""
     from fastapi.responses import StreamingResponse
-    
+
     return StreamingResponse(
         session_state.filter_change_stream(),
         media_type="text/event-stream",
@@ -463,7 +457,7 @@ async def filter_change_stream(
             "Connection": "keep-alive",
             "Access-Control-Allow-Origin": "*",
             "Access-Control-Allow-Headers": "Cache-Control",
-        }
+        },
     )
 
 
@@ -527,10 +521,10 @@ def serve(
     # Pass the app instance directly to preserve the session state
     # Configure for faster shutdown during testing
     uvicorn.run(
-        app, 
-        host=host, 
-        port=port, 
-        reload=reload, 
+        app,
+        host=host,
+        port=port,
+        reload=reload,
         log_level="info",
         # Reduce shutdown timeout for faster test execution
         # This affects how long uvicorn waits for connections to close

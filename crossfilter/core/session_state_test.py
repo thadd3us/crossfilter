@@ -3,7 +3,8 @@
 import pandas as pd
 import pytest
 
-from crossfilter.core.schema import FilterEvent, ProjectionType, SchemaColumns as C
+from crossfilter.core.schema import FilterEvent, ProjectionType
+from crossfilter.core.schema import SchemaColumns as C
 from crossfilter.core.session_state import SessionState
 
 
@@ -63,7 +64,7 @@ def test_session_state_metadata(sample_df: pd.DataFrame) -> None:
     metadata = session.metadata
     # Shape includes bucketed columns now
     assert metadata["shape"][0] == 20  # Same number of rows
-    assert metadata["shape"][1] > 4   # More columns due to bucketing
+    assert metadata["shape"][1] > 4  # More columns due to bucketing
     assert C.GPS_LATITUDE in metadata["columns"]
     assert C.TIMESTAMP_UTC in metadata["columns"]
 
@@ -100,7 +101,7 @@ def test_spatial_aggregation_individual_points(sample_df: pd.DataFrame) -> None:
     session.load_dataframe(sample_df)
 
     # Request more groups than we have points
-    result = session.get_spatial_aggregation(max_groups=100)
+    result = session.get_geo_aggregation()
 
     # Should return individual points
     assert len(result) == 20
@@ -117,7 +118,9 @@ def test_spatial_aggregation_aggregated(sample_df: pd.DataFrame) -> None:
     session.load_dataframe(sample_df)
 
     # Request fewer groups than we have points
-    result = session.get_spatial_aggregation(max_groups=5)
+    session.geo_projection.max_rows = 5
+    session.geo_projection.update_projection(session.filtered_rows)
+    result = session.get_geo_aggregation()
 
     # Should return aggregated data
     assert len(result) <= 5
@@ -135,7 +138,7 @@ def test_temporal_aggregation_individual_points(sample_df: pd.DataFrame) -> None
     session.load_dataframe(sample_df)
 
     # Request more groups than we have points
-    result = session.get_temporal_aggregation(max_groups=100)
+    result = session.get_temporal_projection()
 
     # Should return individual points
     assert len(result) == 20
@@ -157,8 +160,9 @@ def test_temporal_aggregation_aggregated(sample_df: pd.DataFrame) -> None:
     session = SessionState()
     session.load_dataframe(sample_df)
 
-    # Request fewer groups than we have points
-    result = session.get_temporal_aggregation(max_groups=3)
+    session.temporal_projection.max_rows = 3
+    session.temporal_projection.update_projection(session.filtered_rows)
+    result = session.get_temporal_projection()
 
     # Should return aggregated data
     assert len(result) <= 3
@@ -179,7 +183,7 @@ def test_apply_filter_event_temporal(sample_df: pd.DataFrame) -> None:
 
     # Get initial counts
     assert len(session.filtered_rows) == 20
-    
+
     # Apply a temporal filter (select first 10 points)
     selected_df_ids = set(range(0, 10))
     filter_event = FilterEvent(ProjectionType.TEMPORAL, selected_df_ids)
@@ -190,7 +194,7 @@ def test_apply_filter_event_temporal(sample_df: pd.DataFrame) -> None:
     assert all(idx in range(0, 10) for idx in session.filtered_rows.index)
 
     # Check that projections were updated
-    temporal_result = session.get_temporal_aggregation(max_groups=100)
+    temporal_result = session.get_temporal_projection()
     assert len(temporal_result) == 10
 
 
@@ -201,7 +205,7 @@ def test_apply_filter_event_geo(sample_df: pd.DataFrame) -> None:
 
     # Get initial counts
     assert len(session.filtered_rows) == 20
-    
+
     # Apply a geographic filter (select first 10 points)
     selected_df_ids = set(range(0, 10))
     filter_event = FilterEvent(ProjectionType.GEO, selected_df_ids)
@@ -212,7 +216,7 @@ def test_apply_filter_event_geo(sample_df: pd.DataFrame) -> None:
     assert all(idx in range(0, 10) for idx in session.filtered_rows.index)
 
     # Check that projections were updated
-    geo_result = session.get_spatial_aggregation(max_groups=100)
+    geo_result = session.get_geo_aggregation()
     assert len(geo_result) == 10
 
 
@@ -269,8 +273,8 @@ def test_empty_dataframe_handling() -> None:
     assert not session.has_data()  # Empty DataFrame
 
     # Aggregation should handle empty data gracefully
-    spatial_result = session.get_spatial_aggregation(max_groups=100)
-    temporal_result = session.get_temporal_aggregation(max_groups=100)
+    spatial_result = session.get_geo_aggregation()
+    temporal_result = session.get_temporal_projection()
 
     assert len(spatial_result) == 0
     assert len(temporal_result) == 0
@@ -282,8 +286,8 @@ def test_filter_integration_with_aggregation(sample_df: pd.DataFrame) -> None:
     session.load_dataframe(sample_df)
 
     # Get initial aggregation
-    initial_spatial = session.get_spatial_aggregation(max_groups=100)
-    initial_temporal = session.get_temporal_aggregation(max_groups=100)
+    initial_spatial = session.get_geo_aggregation()
+    initial_temporal = session.get_temporal_projection()
 
     assert len(initial_spatial) == 20
     assert len(initial_temporal) == 20
@@ -294,8 +298,8 @@ def test_filter_integration_with_aggregation(sample_df: pd.DataFrame) -> None:
     session.apply_filter_event(filter_event)
 
     # Get aggregation after filtering
-    filtered_spatial = session.get_spatial_aggregation(max_groups=100)
-    filtered_temporal = session.get_temporal_aggregation(max_groups=100)
+    filtered_spatial = session.get_geo_aggregation()
+    filtered_temporal = session.get_temporal_projection()
 
     assert len(filtered_spatial) == 10
     assert len(filtered_temporal) == 10
@@ -311,11 +315,13 @@ def test_projection_max_rows_updates(sample_df: pd.DataFrame) -> None:
     session.load_dataframe(sample_df)
 
     # Initially should show individual points
-    temporal_result = session.get_temporal_aggregation(max_groups=100)
+    temporal_result = session.get_temporal_projection()
     assert "count" not in temporal_result.columns  # Individual points
 
     # Change to force aggregation
-    temporal_result = session.get_temporal_aggregation(max_groups=5)
+    session.temporal_projection.max_rows = 5
+    session.temporal_projection.update_projection(session.filtered_rows)
+    temporal_result = session.get_temporal_projection()
     assert "count" in temporal_result.columns  # Aggregated
 
     # Verify projection state was updated
@@ -328,10 +334,10 @@ def test_unknown_projection_type(sample_df: pd.DataFrame) -> None:
     session.load_dataframe(sample_df)
 
     initial_count = len(session.filtered_rows)
-    
+
     # Try to apply filter with unknown projection type
     filter_event = FilterEvent(ProjectionType.CLIP_EMBEDDING, set(range(0, 10)))
     session.apply_filter_event(filter_event)
-    
+
     # Should not have changed the filtered data
     assert len(session.filtered_rows) == initial_count

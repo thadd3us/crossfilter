@@ -40,7 +40,7 @@ class TemporalProjectionState:
     def max_rows(self) -> int:
         """Get the maximum number of rows before aggregation."""
         return self._projection_state.max_rows
-    
+
     @max_rows.setter
     def max_rows(self, value: int) -> None:
         """Set the maximum number of rows before aggregation."""
@@ -97,56 +97,56 @@ class TemporalProjectionState:
         """Create a projection showing individual points."""
         # Return individual points sorted by timestamp
         columns_to_include = [SchemaColumns.TIMESTAMP_UTC, SchemaColumns.DATA_TYPE]
-        
+
         # Include additional columns that might be useful for visualization
         for col in filtered_rows.columns:
             if col not in columns_to_include and col != SchemaColumns.DF_ID:
                 columns_to_include.append(col)
-        
+
         # Filter to only include columns that exist in the DataFrame
         existing_columns = [col for col in columns_to_include if col in filtered_rows.columns]
-        
+
         df = filtered_rows[existing_columns].copy()
         df = df.sort_values(SchemaColumns.TIMESTAMP_UTC)
-        
+
         # Add cumulative count for CDF visualization
         df["cumulative_count"] = range(1, len(df) + 1)
-        
+
         # Preserve the original df_id as a column for filtering
         df[SchemaColumns.DF_ID] = df.index
-        
+
         return df
 
     def _create_aggregated_projection(self, filtered_rows: pd.DataFrame) -> pd.DataFrame:
         """Create a projection with aggregated temporal buckets."""
         # Find optimal temporal level for aggregation
         optimal_level = get_optimal_temporal_level(filtered_rows, self.max_rows)
-        
+
         if optimal_level is None:
             # Fallback to least granular level
             optimal_level = TemporalLevel.YEAR
-        
+
         # Get the target column name for this level
         target_column = get_temporal_column_name(optimal_level)
-        
+
         if target_column not in filtered_rows.columns:
             logger.warning(f"Target column {target_column} not found in filtered data")
             return self._create_individual_points_projection(filtered_rows)
-        
+
         # Create aggregated DataFrame
         bucketed = bucket_by_target_column(filtered_rows, target_column)
-        
+
         # Store the aggregation details
         self._current_aggregation_level = optimal_level
         self._projection_state.current_bucketing_column = target_column
-        
+
         # Transform to match expected output format for CDF visualization
         result = bucketed.rename(columns={SchemaColumns.COUNT: "count"})
-        
+
         # Sort by timestamp and add cumulative count for CDF
         result = result.sort_values(target_column)
         result["cumulative_count"] = result["count"].cumsum()
-        
+
         return result
 
     def apply_filter_event(self, selected_df_ids: set[int], filtered_rows: pd.DataFrame) -> pd.DataFrame:

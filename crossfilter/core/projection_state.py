@@ -6,7 +6,6 @@ from typing import Optional
 import pandas as pd
 
 from crossfilter.core.bucketing import filter_df_to_selected_buckets
-from crossfilter.core.schema import SchemaColumns
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +35,7 @@ class ProjectionState:
     def projection_df(self) -> pd.DataFrame:
         """Get the current projection DataFrame."""
         return self._projection_df.copy()
-    
+
     @projection_df.setter
     def projection_df(self, value: pd.DataFrame) -> None:
         """Set the current projection DataFrame."""
@@ -59,33 +58,33 @@ class ProjectionState:
         """
         if not selected_df_ids:
             return pd.DataFrame()
-        
+
         if self.current_bucketing_column is None:
             # Individual points mode - filter by df_id directly
             return filtered_rows.loc[filtered_rows.index.isin(selected_df_ids)].copy()
-        
+
         # Aggregated mode - need to map bucket selections back to original rows
         if self.current_bucketing_column not in filtered_rows.columns:
             logger.warning(f"Bucketing column {self.current_bucketing_column} not found in filtered data")
             return filtered_rows
-        
+
         # Get the bucket values for the selected df_ids
         selected_bucket_df_ids = list(selected_df_ids)
-        
+
         # Make sure all selected ids are valid
         valid_ids = [id for id in selected_bucket_df_ids if id < len(self._projection_df)]
         if len(valid_ids) != len(selected_bucket_df_ids):
             logger.warning(f"Some selected df_ids are invalid: {set(selected_bucket_df_ids) - set(valid_ids)}")
-        
+
         if not valid_ids:
             return pd.DataFrame()
-        
+
         # Use the bucketing utility to filter original data
         try:
             return filter_df_to_selected_buckets(
-                filtered_rows, 
-                self._projection_df, 
-                self.current_bucketing_column, 
+                filtered_rows,
+                self._projection_df,
+                self.current_bucketing_column,
                 valid_ids
             )
         except Exception as e:

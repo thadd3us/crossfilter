@@ -12,10 +12,6 @@ from playwright.sync_api import Page
 from syrupy import SnapshotAssertion
 from syrupy.extensions.image import PNGImageSnapshotExtension
 
-import pytest
-from playwright.sync_api import Browser, Page, Playwright
-
-
 # NOTE: BAD Example of an overly verbose LLM.
 # class TemporalCDFPNGExtension(PNGImageSnapshotExtension):
 #     """Custom PNG snapshot extension for temporal CDF plots."""
@@ -101,8 +97,8 @@ def backend_server_with_data() -> Generator[str, None, None]:
             monitor_thread.join(timeout=3)
 
             pytest.fail(
-                f"Server failed to start within timeout.\n"
-                f"Server output:\n"
+                "Server failed to start within timeout.\n"
+                "Server output:\n"
                 + "\n".join(server_output_lines[-50:])  # Show last 50 lines
             )
 
@@ -217,25 +213,28 @@ def test_filter_to_selected_ui_elements(
 
     # THAD: Figure out which of these wait_for_function calls is last, and only keep that one.
     # Wait for the plot to be rendered
-    page.wait_for_function(
-        """
-        () => {
-            const plotContainer = document.getElementById('plotContainer');
-            return plotContainer && plotContainer.querySelector('.main-svg') !== null;
-        }
-    """,
-        timeout=5000,
-    )
+    # page.wait_for_function(
+    #     """
+    #     () => {
+    #         const plotContainer = document.getElementById('plotContainer');
+    #         return plotContainer && plotContainer.querySelector('.main-svg') !== null;
+    #     }
+    # """,
+    #     timeout=5000,
+    # )
 
-    # Wait for plot controls to appear
-    page.wait_for_function(
-        "document.getElementById('plotControls').style.display === 'flex'", timeout=5000
-    )
+    # # Wait for plot controls to appear
+    # page.wait_for_function(
+    #     "document.getElementById('plotControls').style.display === 'flex'", timeout=5000
+    # )
 
-    # Wait for the app object to be initialized and ready
-    page.wait_for_function(
-        "!!window.app && window.app.hasData !== undefined", timeout=10000
-    )
+    # # Wait for the app object to be initialized and ready
+    # page.wait_for_function(
+    #     "!!window.app && window.app.hasData !== undefined", timeout=10000
+    # )
+
+    # Wait for the plot toolbar to be visible.
+    page.wait_for_selector(".modebar", timeout=1000)
 
     # Check that Filter to Selected button is initially disabled (no selection)
     filter_button = page.locator("#filterToSelectedBtn")
@@ -251,9 +250,6 @@ def test_filter_to_selected_ui_elements(
     assert "100 after filtering" in initial_status
 
     # Now perform the full selection workflow:
-
-    # Click the plotly rectangle select button (box select). Wait for the plot toolbar to be visible
-    page.wait_for_selector(".modebar", timeout=1000)
 
     # Click the box select tool in Plotly's mode bar
     box_select_button = page.locator("[data-attr='dragmode'][data-val='select']")
@@ -326,13 +322,8 @@ def test_filter_to_selected_ui_elements(
     # THAD: These (and other) prints should use logging.
     print("✓ Button clicked")
 
-    # 7. Wait for the POST request to be sent and response received
+    # Wait for the POST request to be sent and response received
     print("⏳ Waiting for filter request and response...")
-
-    # 8. Wait for the server response and status update (simulates SSE-like behavior)
-    # The current implementation uses manual refresh after filtering, not SSE
-    # But we should still wait for the status update to show filtered count
-    print("⏳ Waiting for status update after filtering...")
 
     try:
         page.wait_for_function(
@@ -346,23 +337,9 @@ def test_filter_to_selected_ui_elements(
             timeout=1000,
         )
 
-        status_text = page.locator("#status").text_content() or "NO TEXT CONTENT"
-        
-        # Extract the filtered count from the status text and validate it's reasonable
-        import re
-        match = re.search(r'(\d+) after filtering', status_text)
-        if match:
-            filtered_count = int(match.group(1))
-            # Should be significantly less than 100 (the original count)
-            # The exact count depends on the selection, but should be reasonable for our 36-point selection
-            assert filtered_count < 100, f"Expected filtered count < 100, got {filtered_count}"
-            assert filtered_count > 0, f"Expected filtered count > 0, got {filtered_count}"
-            print(f"✅ Filter successfully applied: {filtered_count} points remain from original 100")
-        else:
-            pytest.fail(f"Could not extract filtered count from status: {status_text}")
-    except Exception as e:
-        print(f"❌ Status update failed: {e}")
-        # Debug the current status
+        filtered_status = page.locator("#status").text_content() or "NO TEXT CONTENT"
+        assert "36 after filtering" in filtered_status
+    finally:
         current_status = page.locator("#status").text_content()
         print(f"Current status: {current_status}")
 

@@ -4,13 +4,13 @@ import asyncio
 import json
 import logging
 import time
-from typing import AsyncGenerator
+from collections.abc import AsyncGenerator
 
 import pandas as pd
 
 from crossfilter.core.bucketing import add_bucketed_columns
 from crossfilter.core.geo_projection_state import GeoProjectionState
-from crossfilter.core.schema import FilterEvent, ProjectionType, SchemaColumns
+from crossfilter.core.schema import FilterEvent, ProjectionType
 from crossfilter.core.temporal_projection_state import TemporalProjectionState
 
 logger = logging.getLogger(__name__)
@@ -39,11 +39,11 @@ class SessionState:
         # Current filtered subset of all_rows after filtering operations
         self._filtered_rows = pd.DataFrame()
         self._update_metadata()
-        
+
         # Initialize projection states
         self._temporal_projection = TemporalProjectionState(max_rows=default_max_rows)
         self._geo_projection = GeoProjectionState(max_rows=default_max_rows)
-        
+
         # SSE event broadcasting
         self._filter_version = 0
         self._sse_clients: set[asyncio.Queue] = set()
@@ -73,16 +73,18 @@ class SessionState:
         # Add bucketed columns and store as all_rows
         bucketed_data = add_bucketed_columns(df)
         self._all_rows = bucketed_data
-        
+
         # Initialize filtered_rows to show all data
         self._filtered_rows = self._all_rows.copy()
-        
+
         self._update_metadata()
-        logger.info(f"Loaded dataset with {len(df)} rows (expanded to {len(bucketed_data)} rows with bucketed columns) into session state")
-        
+        logger.info(
+            f"Loaded dataset with {len(df)} rows (expanded to {len(bucketed_data)} rows with bucketed columns) into session state"
+        )
+
         # Update all projections with the new data
         self._update_all_projections()
-        
+
         # Broadcast data loaded event
         self._broadcast_filter_change("data_loaded", ["temporal", "geo"])
 
@@ -108,7 +110,7 @@ class SessionState:
         self._all_rows = pd.DataFrame()
         self._filtered_rows = pd.DataFrame()
         self._update_metadata()
-        
+
         # Update all projections with empty data
         self._update_all_projections()
 
@@ -120,7 +122,7 @@ class SessionState:
     def apply_filter_event(self, filter_event: FilterEvent) -> None:
         """
         Apply a filter event from a specific projection.
-        
+
         Args:
             filter_event: The filter event containing projection type and selected df_ids
         """
@@ -135,13 +137,13 @@ class SessionState:
         else:
             logger.warning(f"Unknown projection type: {filter_event.projection_type}")
             return
-        
+
         # Update filtered_rows with the new selection
         self._filtered_rows = new_filtered_rows
-        
+
         # Update all projections with the new filtered data
         self._update_all_projections()
-        
+
         # Broadcast filter change event
         self._broadcast_filter_change("filter_applied", ["temporal", "geo"])
 
@@ -157,11 +159,11 @@ class SessionState:
         """Get a summary of the current session state."""
         if not self.has_data():
             return {
-                "status": "empty", 
+                "status": "empty",
                 "message": "No data loaded",
                 "all_rows_count": 0,
                 "filtered_rows_count": 0,
-                "columns": []
+                "columns": [],
             }
 
         summary = {
@@ -171,7 +173,11 @@ class SessionState:
             "memory_usage": f"{self._all_rows.memory_usage(deep=True).sum() / 1024 / 1024:.2f} MB",
             "all_rows_count": len(self._all_rows),
             "filtered_rows_count": len(self._filtered_rows),
-            "filter_ratio": len(self._filtered_rows) / len(self._all_rows) if len(self._all_rows) > 0 else 0,
+            "filter_ratio": (
+                len(self._filtered_rows) / len(self._all_rows)
+                if len(self._all_rows) > 0
+                else 0
+            ),
         }
 
         # Add projection state info
@@ -180,44 +186,16 @@ class SessionState:
 
         return summary
 
-    def get_spatial_aggregation(self, max_groups: int) -> pd.DataFrame:
-        """
-        Get spatially aggregated data for visualization.
-
-        Args:
-            max_groups: Maximum number of groups to return (updates projection max_rows)
-
-        Returns:
-            Aggregated DataFrame suitable for heatmap visualization
-        """
-        # Update the projection's max_rows and refresh if needed
-        if self._geo_projection.max_rows != max_groups:
-            self._geo_projection.max_rows = max_groups
-            self._geo_projection.update_projection(self._filtered_rows)
-        
+    def get_geo_aggregation(self) -> pd.DataFrame:
         return self._geo_projection.projection_df
 
-    def get_temporal_aggregation(self, max_groups: int) -> pd.DataFrame:
-        """
-        Get temporally aggregated data for CDF visualization.
-
-        Args:
-            max_groups: Maximum number of groups to return (updates projection max_rows)
-
-        Returns:
-            Aggregated DataFrame suitable for CDF visualization
-        """
-        # Update the projection's max_rows and refresh if needed
-        if self._temporal_projection.max_rows != max_groups:
-            self._temporal_projection.max_rows = max_groups
-            self._temporal_projection.update_projection(self._filtered_rows)
-        
+    def get_temporal_projection(self) -> pd.DataFrame:
         return self._temporal_projection.projection_df
 
     def get_filtered_data(self) -> pd.DataFrame:
         """
         Get the current filtered dataset.
-        
+
         Returns:
             Current filtered subset of the data
         """
@@ -238,7 +216,9 @@ class SessionState:
         """Get the current filter version for change tracking."""
         return self._filter_version
 
-    def _broadcast_filter_change(self, event_type: str, affected_components: list[str]) -> None:
+    def _broadcast_filter_change(
+        self, event_type: str, affected_components: list[str]
+    ) -> None:
         """Broadcast filter change event to all SSE clients."""
         self._filter_version += 1
         event_data = {
@@ -249,14 +229,16 @@ class SessionState:
             "session_state": {
                 "has_data": self.has_data(),
                 "all_rows_count": len(self._all_rows) if self.has_data() else 0,
-                "filtered_rows_count": len(self._filtered_rows) if self.has_data() else 0,
+                "filtered_rows_count": (
+                    len(self._filtered_rows) if self.has_data() else 0
+                ),
                 "columns": list(self._all_rows.columns) if self.has_data() else [],
                 # Frontend-compatible field names
                 "row_count": len(self._all_rows) if self.has_data() else 0,
                 "filtered_count": len(self._filtered_rows) if self.has_data() else 0,
-            }
+            },
         }
-        
+
         # Queue the event for all connected SSE clients
         for client_queue in self._sse_clients:
             try:
@@ -268,7 +250,7 @@ class SessionState:
         """Generate Server-Sent Events stream for filter changes."""
         client_queue: asyncio.Queue = asyncio.Queue(maxsize=100)
         self._sse_clients.add(client_queue)
-        
+
         try:
             # Send initial connection event
             initial_event = {
@@ -279,15 +261,19 @@ class SessionState:
                 "session_state": {
                     "has_data": self.has_data(),
                     "all_rows_count": len(self._all_rows) if self.has_data() else 0,
-                    "filtered_rows_count": len(self._filtered_rows) if self.has_data() else 0,
+                    "filtered_rows_count": (
+                        len(self._filtered_rows) if self.has_data() else 0
+                    ),
                     "columns": list(self._all_rows.columns) if self.has_data() else [],
                     # Frontend-compatible field names
                     "row_count": len(self._all_rows) if self.has_data() else 0,
-                    "filtered_count": len(self._filtered_rows) if self.has_data() else 0,
-                }
+                    "filtered_count": (
+                        len(self._filtered_rows) if self.has_data() else 0
+                    ),
+                },
             }
             yield f"data: {json.dumps(initial_event)}\n\n"
-            
+
             # Stream subsequent events
             while True:
                 try:
@@ -299,7 +285,7 @@ class SessionState:
                     heartbeat = {
                         "type": "heartbeat",
                         "timestamp": time.time(),
-                        "version": self._filter_version
+                        "version": self._filter_version,
                     }
                     yield f"data: {json.dumps(heartbeat)}\n\n"
         except asyncio.CancelledError:

@@ -52,7 +52,7 @@ class ProjectionType(StrEnum):
 @dataclass(frozen=True)
 class FilterEvent:
     """Represents a filter event from a specific projection."""
-    
+
     projection_type: ProjectionType
     selected_df_ids: set[int]
 

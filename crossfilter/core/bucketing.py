@@ -187,7 +187,7 @@ def bucket_by_target_column(original_data: pd.DataFrame, target_column: str) -> 
     logger.debug(f"bucket_by_target_column called with target_column='{target_column}'")
     logger.debug(f"Original data columns: {list(original_data.columns)}")
     logger.debug(f"Target column '{target_column}' in original data: {target_column in original_data.columns}")
-    
+
     if target_column not in original_data.columns:
         raise ValueError(f"Target column '{target_column}' not found in DataFrame")
 
@@ -206,11 +206,11 @@ def bucket_by_target_column(original_data: pd.DataFrame, target_column: str) -> 
 
     # Add count column
     counts = original_data.groupby(target_column, dropna=False).size()
-    
+
     # Combine the grouped data with counts
     bucketed = grouped.copy()
     bucketed[SchemaColumns.COUNT] = counts
-    
+
     # Reset index to make target_column a regular column
     bucketed = bucketed.reset_index()
     logger.debug(f"Final bucketed DataFrame columns: {list(bucketed.columns)}")
@@ -224,7 +224,7 @@ def bucket_by_target_column(original_data: pd.DataFrame, target_column: str) -> 
     )
     logger.debug(f"Bucketed DataFrame columns: {list(bucketed.columns)}")
     logger.debug(f"Target column '{target_column}' in bucketed DataFrame: {target_column in bucketed.columns}")
-    
+
     return bucketed
 
 

@@ -404,14 +404,19 @@ async def filter_to_df_ids(
     try:
         # Validate event source
         if request.event_source == FilterOperationType.TEMPORAL:
+            logger.info(f"Processing temporal filter request with df_ids: {request.df_ids}")
+            
             # Get the current filtered data with bucketed columns
             original_data = session_state.get_filtered_data()
+            logger.info(f"Original data shape: {original_data.shape}, columns: {list(original_data.columns)}")
 
             # Get the temporal aggregation that matches what the frontend is using
             temporal_data = session_state.get_temporal_aggregation(max_groups)
+            logger.info(f"Temporal data shape: {temporal_data.shape}, columns: {list(temporal_data.columns)}")
 
             # Determine the temporal column that was used for bucketing
             optimal_level = get_optimal_temporal_level(original_data, max_groups)
+            logger.info(f"Optimal temporal level: {optimal_level}")
             if optimal_level is None:
                 raise HTTPException(
                     status_code=400,
@@ -419,14 +424,19 @@ async def filter_to_df_ids(
                 )
 
             target_column = get_temporal_column_name(optimal_level)
+            logger.info(f"Target column: '{target_column}'")
+            logger.info(f"Target column in original data: {target_column in original_data.columns}")
+            logger.info(f"Target column in temporal data: {target_column in temporal_data.columns}")
 
             # Convert bucket df_ids to original data df_ids using the bucketing function
+            logger.info(f"About to call filter_df_to_selected_buckets with target_column='{target_column}'")
             filtered_original_data = filter_df_to_selected_buckets(
                 original_data,
                 temporal_data,
                 target_column,
                 request.df_ids
             )
+            logger.info(f"Filtered data shape: {filtered_original_data.shape}")
 
             # Apply the temporal filter using the original df_ids
             session_state.filter_state.apply_temporal_filter(

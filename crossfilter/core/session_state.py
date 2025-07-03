@@ -63,11 +63,12 @@ class SessionState:
     @data.setter
     def data(self, value: pd.DataFrame) -> None:
         """Set the current dataset."""
-        self._data = value
+        # Add bucketed columns and store the enhanced data
         bucketed_data = add_bucketed_columns(value)
+        self._data = bucketed_data
         self._filter_state.initialize_with_data(bucketed_data)
         self._update_metadata()
-        logger.info(f"Loaded dataset with {len(value)} rows into session state")
+        logger.info(f"Loaded dataset with {len(value)} rows (expanded to {len(bucketed_data)} rows with bucketed columns) into session state")
         
         # Broadcast data loaded event
         self._broadcast_filter_change("data_loaded", ["temporal", "spatial"])
@@ -178,7 +179,14 @@ class SessionState:
 
         if len(filtered_data) <= max_groups:
             # Return individual points if under threshold
+            # But we still need to include the optimal temporal column for filtering
+            optimal_level = get_optimal_temporal_level(filtered_data, max_groups)
             columns = [SchemaColumns.TIMESTAMP_UTC, SchemaColumns.DATA_TYPE]
+            if optimal_level is not None:
+                target_column = get_temporal_column_name(optimal_level)
+                if target_column in filtered_data.columns:
+                    columns.append(target_column)
+            
             df = filtered_data[columns].copy()
             df = df.sort_values(SchemaColumns.TIMESTAMP_UTC)
             df["cumulative_count"] = range(1, len(df) + 1)

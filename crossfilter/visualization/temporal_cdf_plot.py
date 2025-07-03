@@ -10,13 +10,13 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 
-from crossfilter.core.schema import SchemaColumns
+from crossfilter.core.schema import SchemaColumns as C
 
 
 def create_temporal_cdf(
     df: pd.DataFrame,
     title: str = "Temporal Distribution (CDF)",
-    groupby: Optional[str] = None,
+    groupby: Optional[str] = C.DATA_TYPE,
 ) -> go.Figure:
     """Create a Plotly CDF plot for temporal data."""
     if df.empty:
@@ -32,44 +32,58 @@ def create_temporal_cdf(
         return fig
 
     df = df.copy()
-    time_column = SchemaColumns.TIMESTAMP_UTC
+    time_column = C.TIMESTAMP_UTC
 
-    df[SchemaColumns.DF_ID] = df.index
+    df[C.DF_ID] = df.index
 
     # TODO: This could be a cacheable amount of work.
     if not groupby:
         groupby = "Data"
         df[groupby] = "All"
     df[groupby] = df[groupby].astype(str).fillna("Unknown")
-    df["groupby_count"] = df.groupby(groupby)[SchemaColumns.DF_ID].transform("count")
+    df["groupby_count"] = df.groupby(groupby)[C.DF_ID].transform("count")
     df["Group (Count)"] = df[groupby] + " (" + df["groupby_count"].astype(str) + ")"
     df = df.sort_values(by=["groupby_count", groupby], ascending=[False, True])
 
-    groups = []
-    for _, group in df.groupby("Group (Count)"):
-        group = group.sort_values(by=time_column)
-        group["CDF"] = np.arange(1, len(group) + 1) / len(group)
-        groups.append(group)
-    plot_df = pd.concat(groups)
+    fig = go.Figure()
+
+    # groups = []
+    for name, group_df in df.groupby("Group (Count)"):
+        group_df = group_df.sort_values(by=time_column)
+        # TODO: This should be cumsum.
+        group_df["CDF"] = np.arange(1, len(group_df) + 1) / len(group_df)
+        fig.add_trace(
+            go.Scatter(
+                x=group_df[time_column],
+                y=group_df["CDF"],
+                customdata=[C.DF_ID],
+                # hov
+                # hoverinfo="x+y+customdata",
+                # hoverdata=[C.NAME, C.UUID_STRING],
+                mode="markers+lines",
+                name=name,
+            )
+        )
+        # groups.append(group)
+    # plot_df = pd.concat(groups)
 
     # Build hover_data list based on available columns
-    hover_data_columns = [SchemaColumns.DF_ID]
-    for col in [SchemaColumns.NAME, SchemaColumns.UUID_STRING]:
-        if col in plot_df.columns:
-            hover_data_columns.append(col)
+    # hover_data_columns = [C.DF_ID]
+    # for col in [C.NAME, C.UUID_STRING]:
+    #     if col in plot_df.columns:
+    #         hover_data_columns.append(col)
 
-    fig = px.scatter(
-        plot_df,
-        x=time_column,
-        y="CDF",
-        color="Group (Count)",
-        custom_data=[SchemaColumns.DF_ID],
-        hover_data=hover_data_columns,
-        # hover_data={"label": True},
-    )
-    # fig.update_traces(
-    #     hovertemplate="x: %{x}<br>ECDF: %{y}<br>Label: %{customdata[0]}<extra></extra>"
+    # fig = px.scatter(
+    #     plot_df,
+    #     x=time_column,
+    #     y="CDF",
+    #     color="Group (Count)",
+    #     custom_data=[C.DF_ID],
+    #     hover_data=hover_data_columns,
     # )
+    # # fig.update_traces(
+    # #     hovertemplate="x: %{x}<br>ECDF: %{y}<br>Label: %{customdata[0]}<extra></extra>"
+    # # )
 
     # Configure layout
     fig.update_layout(

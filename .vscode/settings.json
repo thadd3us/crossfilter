@@ -1,7 +1,7 @@
 {
     "python.testing.pytestArgs": [
-        ".",
         "-sv",
+        "--headed"
     ],
     "python.testing.unittestEnabled": false,
     "python.testing.pytestEnabled": true

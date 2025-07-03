@@ -20,7 +20,7 @@ from crossfilter.core.bucketing import (
     get_optimal_temporal_level,
     get_temporal_column_name,
 )
-from crossfilter.core.schema import FilterOperationType, load_jsonl_to_dataframe
+from crossfilter.core.schema import FilterEvent, ProjectionType, load_jsonl_to_dataframe
 from crossfilter.core.session_state import SessionState
 from crossfilter.visualization.plots import (
     create_fallback_scatter_geo,
@@ -140,12 +140,11 @@ async def get_session_status(
     summary = session_state.get_summary()
 
     # Add filter-specific fields for frontend compatibility
-    filter_summary = session_state.filter_state.get_summary()
     summary.update(
         {
             "has_data": session_state.has_data(),
-            "row_count": filter_summary["total_count"],
-            "filtered_count": filter_summary["filtered_count"],
+            "row_count": summary.get("all_rows_count", 0),
+            "filtered_count": summary.get("filtered_rows_count", 0),
         }
     )
 
@@ -157,7 +156,7 @@ class FilterRequest(BaseModel):
     """Request model for applying filters."""
 
     row_indices: list[int]  # df_id values (DataFrame index)
-    filter_operation_type: FilterOperationType  # 'spatial' or 'temporal'
+    filter_operation_type: ProjectionType  # 'spatial' or 'temporal'
     description: str
     metadata: Optional[dict[str, Any]] = None
 
@@ -166,7 +165,7 @@ class DfIdsFilterRequest(BaseModel):
     """Request model for filtering to specific df_ids from a plot."""
 
     df_ids: list[int]  # df_ids from the plot (could be from lasso selection, visible area, etc.)
-    event_source: FilterOperationType  # Which plot type this filtering comes from
+    event_source: ProjectionType  # Which plot type this filtering comes from
     description: str
 
 
@@ -276,26 +275,16 @@ async def apply_filter(
         raise HTTPException(status_code=404, detail="No data loaded")
 
     try:
-        # Apply filter based on type
-        if filter_request.filter_operation_type == FilterOperationType.SPATIAL:
-            session_state.filter_state.apply_spatial_filter(
-                set(filter_request.row_indices),
-                filter_request.description,
-            )
-        elif filter_request.filter_operation_type == FilterOperationType.TEMPORAL:
-            session_state.filter_state.apply_temporal_filter(
-                set(filter_request.row_indices),
-                filter_request.description,
-            )
-        else:
-            raise HTTPException(
-                status_code=400,
-                detail="Invalid operation_type. Must be 'spatial' or 'temporal'",
-            )
+        # Create and apply filter event using new projection-based API
+        filter_event = FilterEvent(
+            projection_type=filter_request.filter_operation_type,
+            selected_df_ids=set(filter_request.row_indices)
+        )
+        session_state.apply_filter_event(filter_event)
 
         return {
             "success": True,
-            "filter_state": session_state.filter_state.get_summary(),
+            "filter_state": session_state.get_summary(),
         }
     except Exception as e:
         raise HTTPException(
@@ -313,15 +302,20 @@ async def intersect_filter(
         raise HTTPException(status_code=404, detail="No data loaded")
 
     try:
-        session_state.filter_state.intersect_with_filter(
-            set(filter_request.row_indices),
-            filter_request.filter_operation_type,
-            filter_request.description,
+        # For intersect operations, we filter to the intersection of current filtered data
+        # and the provided row indices
+        current_filtered_ids = set(session_state.get_filtered_data().index)
+        intersected_ids = current_filtered_ids & set(filter_request.row_indices)
+        
+        filter_event = FilterEvent(
+            projection_type=filter_request.filter_operation_type,
+            selected_df_ids=intersected_ids
         )
+        session_state.apply_filter_event(filter_event)
 
         return {
             "success": True,
-            "filter_state": session_state.filter_state.get_summary(),
+            "filter_state": session_state.get_summary(),
         }
     except Exception as e:
         raise HTTPException(
@@ -338,14 +332,11 @@ async def reset_filters(
         raise HTTPException(status_code=404, detail="No data loaded")
 
     try:
-        session_state.filter_state.reset_filters()
-        
-        # Broadcast filter reset event
-        session_state._broadcast_filter_change("filter_reset", ["temporal", "spatial"])
+        session_state.reset_filters()
 
         return {
             "success": True,
-            "filter_state": session_state.filter_state.get_summary(),
+            "filter_state": session_state.get_summary(),
         }
     except Exception as e:
         raise HTTPException(
@@ -358,19 +349,11 @@ async def undo_filter(
     session_state: SessionState = Depends(get_session_state),
 ) -> dict[str, Any]:
     """Undo the last filter operation."""
-    if not session_state.has_data():
-        raise HTTPException(status_code=404, detail="No data loaded")
-
-    try:
-        success = session_state.filter_state.undo()
-
-        return {
-            "success": success,
-            "filter_state": session_state.filter_state.get_summary(),
-            "message": "Filter undone" if success else "No operations to undo",
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error undoing filter: {str(e)}")
+    # Undo functionality was removed in the new projection-based architecture
+    raise HTTPException(
+        status_code=501, 
+        detail="Undo functionality not implemented in projection-based architecture"
+    )
 
 
 @app.get("/api/filters/history")
@@ -378,17 +361,11 @@ async def get_filter_history(
     session_state: SessionState = Depends(get_session_state),
 ) -> dict[str, Any]:
     """Get the filter operation history."""
-    if not session_state.has_data():
-        raise HTTPException(status_code=404, detail="No data loaded")
-
-    try:
-        history = session_state.filter_state.get_undo_stack_info()
-
-        return {"history": history, "can_undo": session_state.filter_state.can_undo}
-    except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Error getting filter history: {str(e)}"
-        )
+    # Filter history was removed in the new projection-based architecture
+    raise HTTPException(
+        status_code=501, 
+        detail="Filter history not implemented in projection-based architecture"
+    )
 
 
 @app.post("/api/filters/df_ids")
@@ -403,7 +380,7 @@ async def filter_to_df_ids(
 
     try:
         # Validate event source
-        if request.event_source == FilterOperationType.TEMPORAL:
+        if request.event_source == ProjectionType.TEMPORAL:
             logger.info(f"Processing temporal filter request with df_ids: {request.df_ids}")
             
             # Get the current filtered data with bucketed columns
@@ -438,24 +415,22 @@ async def filter_to_df_ids(
             )
             logger.info(f"Filtered data shape: {filtered_original_data.shape}")
 
-            # Apply the temporal filter using the original df_ids
-            session_state.filter_state.apply_temporal_filter(
-                set(filtered_original_data.index),
-                request.description,
+            # Apply the temporal filter using the original df_ids via new API
+            filter_event = FilterEvent(
+                projection_type=ProjectionType.TEMPORAL,
+                selected_df_ids=set(filtered_original_data.index)
             )
-            
-            # Broadcast filter applied event
-            session_state._broadcast_filter_change("filter_applied", ["temporal", "spatial"])
+            session_state.apply_filter_event(filter_event)
 
             return {
                 "success": True,
                 "event_source": request.event_source.value,
                 "filtered_count": len(filtered_original_data),
                 "bucket_count": len(request.df_ids),
-                "filter_state": session_state.filter_state.get_summary(),
+                "filter_state": session_state.get_summary(),
             }
 
-        elif request.event_source == FilterOperationType.SPATIAL:
+        elif request.event_source == ProjectionType.GEO:
             # Spatial visible filtering not yet implemented
             raise HTTPException(
                 status_code=501,

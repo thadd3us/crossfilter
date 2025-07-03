@@ -388,7 +388,7 @@
 # name: test_bucket_by_target_column_h3_column_preservation_snapshot
   list([
     dict({
-      'COUNT': 1,
+      <SchemaColumns.COUNT: 'COUNT'>: 1,
       <SchemaColumns.GPS_LATITUDE: 'GPS_LATITUDE'>: 37.8049,
       <SchemaColumns.GPS_LONGITUDE: 'GPS_LONGITUDE'>: -122.3894,
       'QUANTIZED_H3_L0': '8029fffffffffff',
@@ -411,7 +411,7 @@
       <SchemaColumns.UUID_STRING: 'UUID_STRING'>: 'uuid_3',
     }),
     dict({
-      'COUNT': 2,
+      <SchemaColumns.COUNT: 'COUNT'>: 2,
       <SchemaColumns.GPS_LATITUDE: 'GPS_LATITUDE'>: 37.8149,
       <SchemaColumns.GPS_LONGITUDE: 'GPS_LONGITUDE'>: -122.37939999999999,
       'QUANTIZED_H3_L0': '8029fffffffffff',
@@ -434,7 +434,7 @@
       <SchemaColumns.UUID_STRING: 'UUID_STRING'>: 'uuid_4',
     }),
     dict({
-      'COUNT': 1,
+      <SchemaColumns.COUNT: 'COUNT'>: 1,
       <SchemaColumns.GPS_LATITUDE: 'GPS_LATITUDE'>: 37.8549,
       <SchemaColumns.GPS_LONGITUDE: 'GPS_LONGITUDE'>: -122.3394,
       'QUANTIZED_H3_L0': '8029fffffffffff',
@@ -457,7 +457,7 @@
       <SchemaColumns.UUID_STRING: 'UUID_STRING'>: 'uuid_8',
     }),
     dict({
-      'COUNT': 1,
+      <SchemaColumns.COUNT: 'COUNT'>: 1,
       <SchemaColumns.GPS_LATITUDE: 'GPS_LATITUDE'>: 37.864900000000006,
       <SchemaColumns.GPS_LONGITUDE: 'GPS_LONGITUDE'>: -122.32939999999999,
       'QUANTIZED_H3_L0': '8029fffffffffff',
@@ -480,7 +480,7 @@
       <SchemaColumns.UUID_STRING: 'UUID_STRING'>: 'uuid_9',
     }),
     dict({
-      'COUNT': 2,
+      <SchemaColumns.COUNT: 'COUNT'>: 2,
       <SchemaColumns.GPS_LATITUDE: 'GPS_LATITUDE'>: 37.834900000000005,
       <SchemaColumns.GPS_LONGITUDE: 'GPS_LONGITUDE'>: -122.3594,
       'QUANTIZED_H3_L0': '8029fffffffffff',
@@ -503,7 +503,7 @@
       <SchemaColumns.UUID_STRING: 'UUID_STRING'>: 'uuid_6',
     }),
     dict({
-      'COUNT': 1,
+      <SchemaColumns.COUNT: 'COUNT'>: 1,
       <SchemaColumns.GPS_LATITUDE: 'GPS_LATITUDE'>: 37.7749,
       <SchemaColumns.GPS_LONGITUDE: 'GPS_LONGITUDE'>: -122.4194,
       'QUANTIZED_H3_L0': '8029fffffffffff',
@@ -526,7 +526,7 @@
       <SchemaColumns.UUID_STRING: 'UUID_STRING'>: 'uuid_0',
     }),
     dict({
-      'COUNT': 2,
+      <SchemaColumns.COUNT: 'COUNT'>: 2,
       <SchemaColumns.GPS_LATITUDE: 'GPS_LATITUDE'>: 37.7849,
       <SchemaColumns.GPS_LONGITUDE: 'GPS_LONGITUDE'>: -122.40939999999999,
       'QUANTIZED_H3_L0': '8029fffffffffff',
@@ -553,7 +553,7 @@
 # name: test_bucket_by_target_column_simple_data_snapshot
   list([
     dict({
-      'COUNT': 2,
+      <SchemaColumns.COUNT: 'COUNT'>: 2,
       <SchemaColumns.GPS_LATITUDE: 'GPS_LATITUDE'>: 37.77,
       <SchemaColumns.GPS_LONGITUDE: 'GPS_LONGITUDE'>: -122.42,
       <SchemaColumns.UUID_STRING: 'UUID_STRING'>: 'uuid_1',
@@ -561,7 +561,7 @@
       'value': 10,
     }),
     dict({
-      'COUNT': 2,
+      <SchemaColumns.COUNT: 'COUNT'>: 2,
       <SchemaColumns.GPS_LATITUDE: 'GPS_LATITUDE'>: 37.78,
       <SchemaColumns.GPS_LONGITUDE: 'GPS_LONGITUDE'>: -122.43,
       <SchemaColumns.UUID_STRING: 'UUID_STRING'>: 'uuid_2',
@@ -569,7 +569,7 @@
       'value': 20,
     }),
     dict({
-      'COUNT': 1,
+      <SchemaColumns.COUNT: 'COUNT'>: 1,
       <SchemaColumns.GPS_LATITUDE: 'GPS_LATITUDE'>: 37.79,
       <SchemaColumns.GPS_LONGITUDE: 'GPS_LONGITUDE'>: -122.44,
       <SchemaColumns.UUID_STRING: 'UUID_STRING'>: 'uuid_4',
@@ -581,7 +581,7 @@
 # name: test_bucket_by_target_column_temporal_column_preservation_snapshot
   list([
     dict({
-      'COUNT': 1,
+      <SchemaColumns.COUNT: 'COUNT'>: 1,
       <SchemaColumns.GPS_LATITUDE: 'GPS_LATITUDE'>: 37.7749,
       <SchemaColumns.GPS_LONGITUDE: 'GPS_LONGITUDE'>: -122.4194,
       'QUANTIZED_TIMESTAMP_DAY': Timestamp('2024-01-01 00:00:00+0000', tz='UTC'),
@@ -594,7 +594,7 @@
       <SchemaColumns.UUID_STRING: 'UUID_STRING'>: 'uuid_0',
     }),
     dict({
-      'COUNT': 1,
+      <SchemaColumns.COUNT: 'COUNT'>: 1,
       <SchemaColumns.GPS_LATITUDE: 'GPS_LATITUDE'>: 37.7849,
       <SchemaColumns.GPS_LONGITUDE: 'GPS_LONGITUDE'>: -122.40939999999999,
       'QUANTIZED_TIMESTAMP_DAY': Timestamp('2024-01-01 00:00:00+0000', tz='UTC'),
@@ -607,7 +607,7 @@
       <SchemaColumns.UUID_STRING: 'UUID_STRING'>: 'uuid_1',
     }),
     dict({
-      'COUNT': 1,
+      <SchemaColumns.COUNT: 'COUNT'>: 1,
       <SchemaColumns.GPS_LATITUDE: 'GPS_LATITUDE'>: 37.794900000000005,
       <SchemaColumns.GPS_LONGITUDE: 'GPS_LONGITUDE'>: -122.3994,
       'QUANTIZED_TIMESTAMP_DAY': Timestamp('2024-01-01 00:00:00+0000', tz='UTC'),
@@ -620,7 +620,7 @@
       <SchemaColumns.UUID_STRING: 'UUID_STRING'>: 'uuid_2',
     }),
     dict({
-      'COUNT': 1,
+      <SchemaColumns.COUNT: 'COUNT'>: 1,
       <SchemaColumns.GPS_LATITUDE: 'GPS_LATITUDE'>: 37.8049,
       <SchemaColumns.GPS_LONGITUDE: 'GPS_LONGITUDE'>: -122.3894,
       'QUANTIZED_TIMESTAMP_DAY': Timestamp('2024-01-01 00:00:00+0000', tz='UTC'),
@@ -633,7 +633,7 @@
       <SchemaColumns.UUID_STRING: 'UUID_STRING'>: 'uuid_3',
     }),
     dict({
-      'COUNT': 1,
+      <SchemaColumns.COUNT: 'COUNT'>: 1,
       <SchemaColumns.GPS_LATITUDE: 'GPS_LATITUDE'>: 37.8149,
       <SchemaColumns.GPS_LONGITUDE: 'GPS_LONGITUDE'>: -122.37939999999999,
       'QUANTIZED_TIMESTAMP_DAY': Timestamp('2024-01-01 00:00:00+0000', tz='UTC'),
@@ -646,7 +646,7 @@
       <SchemaColumns.UUID_STRING: 'UUID_STRING'>: 'uuid_4',
     }),
     dict({
-      'COUNT': 1,
+      <SchemaColumns.COUNT: 'COUNT'>: 1,
       <SchemaColumns.GPS_LATITUDE: 'GPS_LATITUDE'>: 37.8249,
       <SchemaColumns.GPS_LONGITUDE: 'GPS_LONGITUDE'>: -122.3694,
       'QUANTIZED_TIMESTAMP_DAY': Timestamp('2024-01-01 00:00:00+0000', tz='UTC'),
@@ -659,7 +659,7 @@
       <SchemaColumns.UUID_STRING: 'UUID_STRING'>: 'uuid_5',
     }),
     dict({
-      'COUNT': 1,
+      <SchemaColumns.COUNT: 'COUNT'>: 1,
       <SchemaColumns.GPS_LATITUDE: 'GPS_LATITUDE'>: 37.834900000000005,
       <SchemaColumns.GPS_LONGITUDE: 'GPS_LONGITUDE'>: -122.3594,
       'QUANTIZED_TIMESTAMP_DAY': Timestamp('2024-01-01 00:00:00+0000', tz='UTC'),
@@ -672,7 +672,7 @@
       <SchemaColumns.UUID_STRING: 'UUID_STRING'>: 'uuid_6',
     }),
     dict({
-      'COUNT': 1,
+      <SchemaColumns.COUNT: 'COUNT'>: 1,
       <SchemaColumns.GPS_LATITUDE: 'GPS_LATITUDE'>: 37.8449,
       <SchemaColumns.GPS_LONGITUDE: 'GPS_LONGITUDE'>: -122.3494,
       'QUANTIZED_TIMESTAMP_DAY': Timestamp('2024-01-01 00:00:00+0000', tz='UTC'),
@@ -685,7 +685,7 @@
       <SchemaColumns.UUID_STRING: 'UUID_STRING'>: 'uuid_7',
     }),
     dict({
-      'COUNT': 1,
+      <SchemaColumns.COUNT: 'COUNT'>: 1,
       <SchemaColumns.GPS_LATITUDE: 'GPS_LATITUDE'>: 37.8549,
       <SchemaColumns.GPS_LONGITUDE: 'GPS_LONGITUDE'>: -122.3394,
       'QUANTIZED_TIMESTAMP_DAY': Timestamp('2024-01-01 00:00:00+0000', tz='UTC'),
@@ -698,7 +698,7 @@
       <SchemaColumns.UUID_STRING: 'UUID_STRING'>: 'uuid_8',
     }),
     dict({
-      'COUNT': 1,
+      <SchemaColumns.COUNT: 'COUNT'>: 1,
       <SchemaColumns.GPS_LATITUDE: 'GPS_LATITUDE'>: 37.864900000000006,
       <SchemaColumns.GPS_LONGITUDE: 'GPS_LONGITUDE'>: -122.32939999999999,
       'QUANTIZED_TIMESTAMP_DAY': Timestamp('2024-01-01 00:00:00+0000', tz='UTC'),

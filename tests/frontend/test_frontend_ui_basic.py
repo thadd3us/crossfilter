@@ -100,15 +100,10 @@ def backend_server_with_data() -> Generator[str, None, None]:
         yield server_url
 
     finally:
-        # Clean up: terminate the server
+        # Clean up: terminate the server immediately for faster tests
         print("[BACKEND] Shutting down server...")
-        server_process.terminate()
-        try:
-            server_process.wait(timeout=10)
-        except subprocess.TimeoutExpired:
-            print("[BACKEND] Server didn't shut down gracefully, killing...")
-            server_process.kill()
-            server_process.wait()
+        server_process.kill()
+        server_process.wait()
 
         # Wait for monitor thread to finish
         monitor_thread.join(timeout=3)

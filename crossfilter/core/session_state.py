@@ -261,7 +261,8 @@ class SessionState:
             # Stream subsequent events
             while True:
                 try:
-                    event_data = await asyncio.wait_for(client_queue.get(), timeout=30.0)
+                    # Reduced timeout from 30s to 2s for faster test shutdown
+                    event_data = await asyncio.wait_for(client_queue.get(), timeout=2.0)
                     yield f"data: {json.dumps(event_data)}\n\n"
                 except asyncio.TimeoutError:
                     # Send periodic heartbeat to keep connection alive

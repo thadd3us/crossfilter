@@ -5,4 +5,8 @@
 /user_home/workspace/crossfilter/core/bucketing.py:166: UserWarning: Converting to PeriodArray/Index representation will drop timezone information.
   timestamps.dt.normalize().dt.to_period("Y").dt.start_time
 ```
-1. 
+
+1. The web UI status line should show:
+* the total number of rows in the main sheet, and its RAM usage
+* the number of filtered lines
+

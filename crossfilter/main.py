@@ -540,7 +540,19 @@ def serve(
     # Use Uvicorn as the ASGI server - it's the recommended production server for FastAPI
     # providing high performance async request handling
     # Pass the app instance directly to preserve the session state
-    uvicorn.run(app, host=host, port=port, reload=reload, log_level="info")
+    # Configure for faster shutdown during testing
+    uvicorn.run(
+        app, 
+        host=host, 
+        port=port, 
+        reload=reload, 
+        log_level="info",
+        # Reduce shutdown timeout for faster test execution
+        # This affects how long uvicorn waits for connections to close
+        timeout_graceful_shutdown=2,
+        # Reduce keep-alive timeout to prevent hanging connections
+        timeout_keep_alive=1,
+    )
 
 
 def main() -> None:

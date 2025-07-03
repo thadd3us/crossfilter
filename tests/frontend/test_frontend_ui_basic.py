@@ -13,10 +13,11 @@ from syrupy import SnapshotAssertion
 from syrupy.extensions.image import PNGImageSnapshotExtension
 
 
-class TemporalCDFPNGExtension(PNGImageSnapshotExtension):
-    """Custom PNG snapshot extension for temporal CDF plots."""
+# NOTE: Example of an overly verbose LLM.
+# class TemporalCDFPNGExtension(PNGImageSnapshotExtension):
+#     """Custom PNG snapshot extension for temporal CDF plots."""
 
-    _file_extension = "png"
+#     _file_extension = "png"
 
 
 def wait_for_server(url: str, max_attempts: int = 30, delay: float = 1.0) -> bool:
@@ -65,19 +66,20 @@ def backend_server_with_data() -> Generator[str, None, None]:
 
     # Set up monitoring for server output
     server_output_lines = []
-    
+
     def monitor_server_output():
         """Monitor server output in background thread."""
         try:
-            for line in iter(server_process.stdout.readline, ''):
+            for line in iter(server_process.stdout.readline, ""):
                 if line:
                     server_output_lines.append(line.strip())
                     # Print server output in real-time for debugging
                     print(f"[BACKEND] {line.strip()}")
         except Exception as e:
             print(f"[BACKEND MONITOR ERROR] {e}")
-    
+
     import threading
+
     monitor_thread = threading.Thread(target=monitor_server_output, daemon=True)
     monitor_thread.start()
 
@@ -88,10 +90,11 @@ def backend_server_with_data() -> Generator[str, None, None]:
             time.sleep(2)
             server_process.terminate()
             monitor_thread.join(timeout=3)
-            
+
             pytest.fail(
                 f"Server failed to start within timeout.\n"
-                f"Server output:\n" + "\n".join(server_output_lines[-50:])  # Show last 50 lines
+                f"Server output:\n"
+                + "\n".join(server_output_lines[-50:])  # Show last 50 lines
             )
 
         yield server_url
@@ -106,7 +109,7 @@ def backend_server_with_data() -> Generator[str, None, None]:
             print("[BACKEND] Server didn't shut down gracefully, killing...")
             server_process.kill()
             server_process.wait()
-        
+
         # Wait for monitor thread to finish
         monitor_thread.join(timeout=3)
 
@@ -135,15 +138,11 @@ def test_temporal_cdf_plot_png_snapshot(
     """,
         timeout=5000,
     )
-
-    # Wait a bit more for the plot to fully render
-    page.wait_for_timeout(2000)
-
     # Take a screenshot of the entire page
     screenshot_bytes = page.screenshot(full_page=True)
 
     # Use syrupy to compare the screenshot
-    assert screenshot_bytes == snapshot(extension_class=TemporalCDFPNGExtension)
+    assert screenshot_bytes == snapshot(extension_class=PNGImageSnapshotExtension)
 
 
 @pytest.mark.e2e

@@ -96,10 +96,10 @@ class SessionState:
             new_filtered_rows = self.temporal_projection.apply_filter_event(
                 filter_event.selected_df_ids, self.filtered_rows
             )
-        # elif filter_event.projection_type == ProjectionType.GEO:
-        #     new_filtered_rows = self.geo_projection.apply_filter_event(
-        #         filter_event.selected_df_ids, self.filtered_rows
-        #     )
+        elif filter_event.projection_type == ProjectionType.GEO:
+            new_filtered_rows = self.geo_projection.apply_filter_event(
+                filter_event.selected_df_ids, self.filtered_rows
+            )
         else:
             logger.error(f"Invalid projection type: {filter_event.projection_type}")
             raise ValueError(f"Invalid projection type: {filter_event.projection_type}")

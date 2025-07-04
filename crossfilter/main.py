@@ -16,6 +16,7 @@ from fastapi.staticfiles import StaticFiles
 from crossfilter.core.backend_frontend_shared_schema import (
     DfIdsFilterRequest,
     FilterResponse,
+    GeoPlotResponse,
     LoadDataRequest,
     LoadDataResponse,
     SessionStateResponse,
@@ -24,6 +25,7 @@ from crossfilter.core.backend_frontend_shared_schema import (
 from crossfilter.core.schema import FilterEvent, ProjectionType, load_jsonl_to_dataframe
 from crossfilter.core.session_state import SessionState
 from crossfilter.visualization.temporal_cdf_plot import create_temporal_cdf
+from crossfilter.visualization.geo_plot import create_geo_plot
 
 # Create a single session state instance for dependency injection
 _session_state_instance = SessionState()
@@ -129,14 +131,67 @@ async def get_temporal_plot_data(
         fig = create_temporal_cdf(temporal_data)
         plotly_plot = json.loads(fig.to_json())
 
+        # Calculate status information
+        from crossfilter.core.schema import SchemaColumns as C
+        distinct_point_count = temporal_data[C.COUNT].sum() if C.COUNT in temporal_data.columns else len(temporal_data)
+        
+        # Get aggregation level from temporal projection state
+        temporal_summary = session_state.temporal_projection.get_summary()
+        target_column = temporal_summary.get("target_column")
+        if target_column and "temporal_" in target_column:
+            # Extract granularity from column name like "temporal_minute", "temporal_hour", etc.
+            granularity = target_column.replace("temporal_", "").capitalize()
+            aggregation_level = f"{granularity} buckets"
+        else:
+            aggregation_level = None
+
         return TemporalPlotResponse(
             plotly_plot=plotly_plot,
-            data_type="aggregated" if "count" in temporal_data.columns else "individual",
+            data_type="aggregated" if C.COUNT in temporal_data.columns else "individual",
             point_count=len(temporal_data),
+            distinct_point_count=distinct_point_count,
+            aggregation_level=aggregation_level,
         )
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Error generating temporal plot: {str(e)}"
+        )
+
+
+@app.get("/api/plots/geo")
+async def get_geo_plot_data(
+    session_state: SessionState = Depends(get_session_state),
+) -> GeoPlotResponse:
+    """Get data for the geographic plot."""
+    from fastapi import HTTPException
+
+    if len(session_state.all_rows) == 0:
+        raise HTTPException(status_code=404, detail="No data loaded")
+
+    try:
+        geo_data = session_state.get_geo_aggregation()
+        fig = create_geo_plot(geo_data)
+        plotly_plot = json.loads(fig.to_json())
+
+        # Calculate status information
+        marker_count = len(geo_data)
+        from crossfilter.core.schema import SchemaColumns as C
+        distinct_point_count = geo_data[C.COUNT].sum() if C.COUNT in geo_data.columns else len(geo_data)
+        
+        # Get aggregation level from geo projection state
+        geo_summary = session_state.geo_projection.get_summary()
+        h3_level = geo_summary.get("h3_level")
+        aggregation_level = f"H3 level {h3_level}" if h3_level is not None else None
+
+        return GeoPlotResponse(
+            plotly_plot=plotly_plot,
+            marker_count=marker_count,
+            distinct_point_count=distinct_point_count,
+            aggregation_level=aggregation_level,
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Error generating geo plot: {str(e)}"
         )
 
 

@@ -74,6 +74,17 @@ class TemporalPlotResponse(BaseModel):
     plotly_plot: dict[str, Any]
     data_type: str
     point_count: int
+    distinct_point_count: int
+    aggregation_level: Optional[str]
+
+
+class GeoPlotResponse(BaseModel):
+    """Response model for geo plot data."""
+    
+    plotly_plot: dict[str, Any]
+    marker_count: int
+    distinct_point_count: int
+    aggregation_level: Optional[str]
 
 
 # Server-Sent Events Models

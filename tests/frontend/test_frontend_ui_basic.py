@@ -211,7 +211,7 @@ def test_filter_to_selected_ui_elements(page: Page, server_with_data: str) -> No
                 buttonOnclick: btn ? btn.getAttribute('onclick') : 'no button',
                 hasApp: !!app,
                 hasFilterFunction: !!(app && app.filterTemporalToSelected),
-                selectedCount: app ? app.selectedRowIndices.size : 'no app',
+                selectedCount: app ? app.selectedTemporalRowIndices.size : 'no app',
                 hasPlotData: !!(app && app.plotData)
             };
         }

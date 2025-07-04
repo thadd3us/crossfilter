@@ -91,6 +91,9 @@
             <span id="selectionInfo"></span>
         </div>
 
+        <div id="temporalPlotStatus" class="info" style="margin-bottom: 10px; display: none;">
+            Loading temporal data...
+        </div>
         <div class="plot-container" id="plotContainer">
             <div style="display: flex; align-items: center; justify-content: center; height: 100%; color: #666;">
                 No data loaded. Click "Load Sample Data" to begin.
@@ -100,6 +103,22 @@
         <div class="controls" id="plotControls" style="display: none;">
             <button id="filterToSelectedBtn" onclick="filterTemporalToSelected()" disabled>Filter to Selected</button>
             <span id="plotSelectionInfo"></span>
+        </div>
+
+        <div id="geoPlotSection" style="display: none;">
+            <h3>Geographic Distribution</h3>
+            <div id="geoPlotStatus" class="info" style="margin-bottom: 10px;">
+                Loading geographic data...
+            </div>
+            <div class="plot-container" id="geoPlotContainer">
+                <div style="display: flex; align-items: center; justify-content: center; height: 100%; color: #666;">
+                    Loading geographic plot...
+                </div>
+            </div>
+            <div class="controls" id="geoPlotControls" style="display: none;">
+                <button id="filterToSelectedGeoBtn" onclick="filterGeoToSelected()" disabled>Filter to Selected</button>
+                <span id="geoPlotSelectionInfo"></span>
+            </div>
         </div>
 
         <div id="messages"></div>

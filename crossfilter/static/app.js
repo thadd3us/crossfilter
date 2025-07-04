@@ -8,7 +8,8 @@ const ProjectionType = {
 
 class CrossfilterApp {
     constructor() {
-        this.selectedRowIndices = new Set();
+        this.selectedTemporalRowIndices = new Set();
+        this.selectedGeoRowIndices = new Set();
         this.plotData = null;
         this.hasData = false;
         this.eventSource = null;
@@ -185,17 +186,31 @@ class CrossfilterApp {
 
         try {
             console.log('CrossfilterApp: Fetching plot data...');
-            this.showInfo('Loading temporal CDF plot...');
-            const response = await fetch('/api/plots/temporal?max_groups=10000');
+            this.showInfo('Loading temporal and geographic plots...');
             
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
+            // Load both plots simultaneously
+            const [temporalResponse, geoResponse] = await Promise.all([
+                fetch('/api/plots/temporal?max_groups=10000'),
+                fetch('/api/plots/geo')
+            ]);
+            
+            if (!temporalResponse.ok) {
+                throw new Error(`Temporal plot HTTP error! status: ${temporalResponse.status}`);
             }
+            if (!geoResponse.ok) {
+                throw new Error(`Geo plot HTTP error! status: ${geoResponse.status}`);
+            }
+            
+            const [temporalResult, geoResult] = await Promise.all([
+                temporalResponse.json(),
+                geoResponse.json()
+            ]);
+            
+            console.log('CrossfilterApp: Both plot data received');
+            this.plotData = temporalResult;
+            this.renderTemporalCDF(temporalResult);
+            this.renderGeoPlot(geoResult);
 
-            const result = await response.json();
-            console.log('CrossfilterApp: Plot data received:', result);
-            this.plotData = result;
-            this.renderTemporalCDF(result);
             this.clearMessages();
             console.log('CrossfilterApp: Plot rendering complete');
         } catch (error) {
@@ -206,9 +221,10 @@ class CrossfilterApp {
     renderTemporalCDF(plotData) {
         console.log('CrossfilterApp: renderTemporalCDF() called with data:', plotData);
         const plotContainer = document.getElementById('plotContainer');
+        const statusElement = document.getElementById('temporalPlotStatus');
         
-        if (!plotContainer) {
-            console.error('CrossfilterApp: Plot container not found!');
+        if (!plotContainer || !statusElement) {
+            console.error('CrossfilterApp: Plot container or status element not found!');
             this.showError('Plot container not found');
             return;
         }
@@ -217,6 +233,13 @@ class CrossfilterApp {
             console.log('CrossfilterApp: Clearing plot container and rendering...');
             // Clear any existing content (including the "No data loaded" message)
             plotContainer.innerHTML = '';
+            
+            // Update status line
+            const aggregationText = plotData.aggregation_level || 'None';
+            statusElement.innerHTML = `
+                Showing ${plotData.point_count} buckets representing ${plotData.distinct_point_count} distinct points, aggregated at ${aggregationText}
+            `;
+            statusElement.style.display = 'block';
             
             // Create the plot using Plotly
             const figure = plotData.plotly_plot;
@@ -246,11 +269,11 @@ class CrossfilterApp {
 
             // Handle plot selection events
             plotContainer.on('plotly_selected', (eventData) => {
-                this.handlePlotSelection(eventData);
+                this.handleTemporalPlotSelection(eventData);
             });
 
             plotContainer.on('plotly_deselect', () => {
-                this.clearSelection();
+                this.clearTemporalSelection();
             });
 
             // Show plot controls now that plot is rendered
@@ -258,14 +281,76 @@ class CrossfilterApp {
             if (plotControls) {
                 plotControls.style.display = 'flex';
             }
-            this.updateFilterButton();
+            this.updateTemporalFilterButton();
         } catch (error) {
             this.showError('Failed to render plot: ' + error.message);
             console.error('Plot rendering error:', error);
         }
     }
 
-    handlePlotSelection(eventData) {
+    renderGeoPlot(plotData) {
+        console.log('CrossfilterApp: renderGeoPlot() called with data:', plotData);
+        const plotContainer = document.getElementById('geoPlotContainer');
+        const statusElement = document.getElementById('geoPlotStatus');
+        
+        if (!plotContainer || !statusElement) {
+            console.error('CrossfilterApp: Geo plot container or status element not found!');
+            this.showError('Geo plot container not found');
+            return;
+        }
+        
+        try {
+            console.log('CrossfilterApp: Clearing geo plot container and rendering...');
+            // Clear any existing content
+            plotContainer.innerHTML = '';
+            
+            // Update status line
+            const aggregationText = plotData.aggregation_level || 'None';
+            statusElement.innerHTML = `
+                Showing ${plotData.marker_count} markers representing ${plotData.distinct_point_count} distinct points, aggregated at ${aggregationText}
+            `;
+            
+            // Create the plot using Plotly
+            const figure = plotData.plotly_plot;
+            console.log('CrossfilterApp: Plotly geo figure data:', figure);
+            
+            // Enable selection on the plot
+            const config = {
+                displayModeBar: true,
+                modeBarButtonsToAdd: ['select2d', 'lasso2d'],
+                modeBarButtonsToRemove: ['autoScale2d'],
+                displaylogo: false
+            };
+
+            Plotly.newPlot(plotContainer, figure.data, figure.layout, config);
+            console.log('CrossfilterApp: Plotly.newPlot() completed successfully for geo plot');
+
+            // Handle plot selection events
+            plotContainer.on('plotly_selected', (eventData) => {
+                this.handleGeoPlotSelection(eventData);
+            });
+
+            plotContainer.on('plotly_deselect', () => {
+                this.clearGeoSelection();
+            });
+
+            // Show geo plot section and controls
+            const geoPlotSection = document.getElementById('geoPlotSection');
+            const geoPlotControls = document.getElementById('geoPlotControls');
+            if (geoPlotSection) {
+                geoPlotSection.style.display = 'block';
+            }
+            if (geoPlotControls) {
+                geoPlotControls.style.display = 'flex';
+            }
+            this.updateGeoFilterButton();
+        } catch (error) {
+            this.showError('Failed to render geo plot: ' + error.message);
+            console.error('Geo plot rendering error:', error);
+        }
+    }
+
+    handleTemporalPlotSelection(eventData) {
         if (!eventData || !eventData.points) {
             return;
         }
@@ -290,13 +375,52 @@ class CrossfilterApp {
             }
         });
 
-        this.selectedRowIndices = selectedIndices;
-        this.updateFilterButton();
+        this.selectedTemporalRowIndices = selectedIndices;
+        this.updateTemporalFilterButton();
+    }
+
+    handleGeoPlotSelection(eventData) {
+        if (!eventData || !eventData.points) {
+            return;
+        }
+
+        // Extract row indices from selected points
+        // The backend should provide df_id (row index) in the customdata
+        const selectedIndices = new Set();
+        eventData.points.forEach((point, index) => {
+            let df_id = null;
+            
+            // Try to get df_id from customdata first
+            if (point.customdata && point.customdata[0] !== undefined) {
+                df_id = point.customdata[0]; // First item in customdata is df_id
+            } 
+            // Fallback: For individual points, pointNumber should correspond to df_id
+            else if (point.pointNumber !== undefined) {
+                df_id = point.pointNumber;
+            }
+            
+            if (df_id !== null) {
+                selectedIndices.add(df_id);
+            }
+        });
+
+        this.selectedGeoRowIndices = selectedIndices;
+        this.updateGeoFilterButton();
+    }
+
+    clearTemporalSelection() {
+        this.selectedTemporalRowIndices.clear();
+        this.updateTemporalFilterButton();
+    }
+
+    clearGeoSelection() {
+        this.selectedGeoRowIndices.clear();
+        this.updateGeoFilterButton();
     }
 
     clearSelection() {
-        this.selectedRowIndices.clear();
-        this.updateFilterButton();
+        this.clearTemporalSelection();
+        this.clearGeoSelection();
     }
 
     async resetFilters() {
@@ -349,13 +473,26 @@ class CrossfilterApp {
         document.getElementById('messages').innerHTML = '';
     }
 
-    updateFilterButton() {
+    updateTemporalFilterButton() {
         const filterButton = document.getElementById('filterToSelectedBtn');
         const plotSelectionInfo = document.getElementById('plotSelectionInfo');
         
-        if (this.selectedRowIndices.size > 0) {
+        if (this.selectedTemporalRowIndices.size > 0) {
             filterButton.disabled = false;
-            plotSelectionInfo.textContent = `Selected: ${this.selectedRowIndices.size} points`;
+            plotSelectionInfo.textContent = `Selected: ${this.selectedTemporalRowIndices.size} points`;
+        } else {
+            filterButton.disabled = true;
+            plotSelectionInfo.textContent = '';
+        }
+    }
+
+    updateGeoFilterButton() {
+        const filterButton = document.getElementById('filterToSelectedGeoBtn');
+        const plotSelectionInfo = document.getElementById('geoPlotSelectionInfo');
+        
+        if (this.selectedGeoRowIndices.size > 0) {
+            filterButton.disabled = false;
+            plotSelectionInfo.textContent = `Selected: ${this.selectedGeoRowIndices.size} points`;
         } else {
             filterButton.disabled = true;
             plotSelectionInfo.textContent = '';
@@ -363,7 +500,16 @@ class CrossfilterApp {
     }
 
     async filterToSelected(eventSource) {
-        const selectedIndices = Array.from(this.selectedRowIndices);
+        // Get the appropriate selected indices based on event source
+        let selectedIndices;
+        if (eventSource === ProjectionType.TEMPORAL) {
+            selectedIndices = Array.from(this.selectedTemporalRowIndices);
+        } else if (eventSource === ProjectionType.GEO) {
+            selectedIndices = Array.from(this.selectedGeoRowIndices);
+        } else {
+            this.showError('Unknown event source: ' + eventSource);
+            return;
+        }
         
         if (selectedIndices.length === 0) {
             this.showError('No points selected. Use lasso or box select to choose points first.');
@@ -408,6 +554,10 @@ class CrossfilterApp {
     async filterTemporalToSelected() {
         return this.filterToSelected(ProjectionType.TEMPORAL);
     }
+
+    async filterGeoToSelected() {
+        return this.filterToSelected(ProjectionType.GEO);
+    }
 }
 
 // Global functions for HTML onclick handlers
@@ -424,6 +574,10 @@ function resetFilters() {
 
 function filterTemporalToSelected() {
     app.filterTemporalToSelected();
+}
+
+function filterGeoToSelected() {
+    app.filterGeoToSelected();
 }
 
 // Initialize the application when the page loads

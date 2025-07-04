@@ -310,8 +310,6 @@ def test_unknown_projection_type(sample_df: pd.DataFrame) -> None:
     session = SessionState()
     session.load_dataframe(sample_df)
 
-    initial_count = len(session.filtered_rows)
-
     # Try to apply filter with unknown projection type
     filter_event = FilterEvent(ProjectionType.CLIP_EMBEDDING, set(range(0, 10)))
     with pytest.raises(ValueError, match="Invalid projection type: clip_embedding"):

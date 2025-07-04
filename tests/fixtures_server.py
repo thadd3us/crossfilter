@@ -30,14 +30,12 @@ def wait_for_server(url: str, max_attempts: int = 30, delay: float = 1.0) -> boo
 @pytest.fixture(scope="function")
 def server_with_data() -> Generator[str, None, None]:
     """Start the backend server with pre-loaded sample data.
-    
+
     This fixture provides comprehensive monitoring with real-time backend log output,
     making it easier to debug issues during testing.
     """
     # Path to the sample data
-    sample_data_path = (
-        Path(__file__).parent.parent / "test_data" / "sample_100.jsonl"
-    )
+    sample_data_path = Path(__file__).parent.parent / "test_data" / "sample_100.jsonl"
 
     # Start the server on a test port
     test_port = 8001
@@ -64,7 +62,7 @@ def server_with_data() -> Generator[str, None, None]:
     # Set up monitoring for server output
     server_output_lines = []
 
-    def monitor_server_output():
+    def monitor_server_output() -> None:
         """Monitor server output in background thread."""
         try:
             for line in iter(server_process.stdout.readline, ""):

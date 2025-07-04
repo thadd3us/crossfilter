@@ -46,7 +46,7 @@ def test_filter_df_ids_endpoint_direct(
     if customdata:
         # Each customdata entry should have df_id
         selected_df_ids = []
-        for i, entry in enumerate(customdata[:10]):  # Select first 10 points
+        for _i, entry in enumerate(customdata[:10]):  # Select first 10 points
             if isinstance(entry, dict) and "df_id" in entry:
                 selected_df_ids.append(entry["df_id"])
             elif isinstance(entry, list) and len(entry) > 0:

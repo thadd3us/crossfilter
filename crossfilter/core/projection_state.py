@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 class ProjectionState:
     """
     Manages common projection state for visualizing data.
-    
+
     This class handles the common aspects of data projections including
     the projection DataFrame, max_rows threshold, and current bucketing column.
     It provides a unified interface for filter event processing that works
@@ -23,7 +23,7 @@ class ProjectionState:
     def __init__(self, max_rows: int) -> None:
         """
         Initialize projection state.
-        
+
         Args:
             max_rows: Maximum number of rows to display before aggregation
         """
@@ -34,15 +34,15 @@ class ProjectionState:
     def apply_filter_event(self, selected_df_ids: set[int], filtered_rows: pd.DataFrame) -> pd.DataFrame:
         """
         Apply a filter event and return the new filtered rows.
-        
+
         This method handles both individual points mode and aggregated buckets mode:
         - Individual points: Filter by df_id directly from the projection DataFrame
         - Aggregated buckets: Use filter_df_to_selected_buckets to map selections back to original rows
-        
+
         Args:
             selected_df_ids: Set of df_ids selected in the visualization
             filtered_rows: Current filtered rows to apply filter to
-            
+
         Returns:
             New filtered DataFrame containing only rows matching the selection
         """

@@ -123,6 +123,10 @@ async def get_session_status(
             "has_data": session_state.has_data(),
             "row_count": summary.get("all_rows_count", 0),
             "filtered_count": summary.get("filtered_rows_count", 0),
+            "memory_usage_mb": (
+                f"{session_state.all_rows.memory_usage(deep=True).sum() / 1024 / 1024:.2f}"
+                if session_state.has_data() else "0.00"
+            ),
         }
     )
 

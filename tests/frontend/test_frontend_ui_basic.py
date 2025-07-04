@@ -89,10 +89,12 @@ def test_temporal_cdf_plot_content(page: Page, server_with_data: str) -> None:
         timeout=30000,
     )
 
-    # Verify that status shows data is loaded
+    # Verify that status shows data is loaded with new format
     status_text = page.locator("#status").text_content()
-    assert "Data loaded" in status_text
-    assert "100 rows" in status_text
+    assert "100 rows loaded" in status_text
+    assert "columns" in status_text
+    assert "MB" in status_text
+    assert "remain in current view" in status_text
 
     # Verify the plot container exists and has content
     plot_container = page.locator("#plotContainer")
@@ -135,7 +137,7 @@ def test_filter_to_selected_ui_elements(page: Page, server_with_data: str) -> No
 
     # Get initial row count to verify data is loaded
     initial_status = page.locator("#status").text_content() or "NO TEXT CONTENT"
-    assert "100 after filtering" in initial_status
+    assert "100 remain in current view" in initial_status
 
     # Now perform the full selection workflow:
 

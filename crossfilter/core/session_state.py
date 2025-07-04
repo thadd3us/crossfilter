@@ -193,6 +193,10 @@ class SessionState:
                     len(self.filtered_rows) if self.has_data() else 0
                 ),
                 "columns": list(self.all_rows.columns) if self.has_data() else [],
+                "memory_usage_mb": (
+                    f"{self.all_rows.memory_usage(deep=True).sum() / 1024 / 1024:.2f}"
+                    if self.has_data() else "0.00"
+                ),
                 # Frontend-compatible field names
                 "row_count": len(self.all_rows) if self.has_data() else 0,
                 "filtered_count": len(self.filtered_rows) if self.has_data() else 0,
@@ -225,6 +229,10 @@ class SessionState:
                         len(self.filtered_rows) if self.has_data() else 0
                     ),
                     "columns": list(self.all_rows.columns) if self.has_data() else [],
+                    "memory_usage_mb": (
+                        f"{self.all_rows.memory_usage(deep=True).sum() / 1024 / 1024:.2f}"
+                        if self.has_data() else "0.00"
+                    ),
                     # Frontend-compatible field names
                     "row_count": len(self.all_rows) if self.has_data() else 0,
                     "filtered_count": (

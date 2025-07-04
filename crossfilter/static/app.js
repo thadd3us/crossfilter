@@ -52,8 +52,7 @@ class CrossfilterApp {
         if (status.has_data) {
             if (statusElement) {
                 statusElement.innerHTML = `
-                    <strong>Status:</strong> Data loaded - ${status.row_count} rows, 
-                    ${status.filtered_count} after filtering (${status.columns.length} columns)
+                    <strong>Status:</strong> ${status.row_count} rows loaded with ${status.columns.length} columns (${status.memory_usage_mb} MB), ${status.filtered_count} remain in current view
                 `;
             }
             if (resetFiltersBtn) {

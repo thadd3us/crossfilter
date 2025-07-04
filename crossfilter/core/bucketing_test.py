@@ -76,6 +76,36 @@ def test_add_quantized_columns_for_timestamp(
     assert result.to_dict(orient="records") == snapshot
 
 
+def test_add_quantized_temporal_columns_no_timezone_warnings() -> None:
+    """Test that temporal quantization does not emit timezone warnings."""
+    import warnings
+    
+    # Create timezone-aware test data
+    df = pd.DataFrame({
+        C.TIMESTAMP_UTC: pd.date_range(
+            "2024-01-01", periods=10, freq="h", tz="UTC"
+        )
+    })
+    
+    # Configure warnings to raise as exceptions
+    with warnings.catch_warnings():
+        warnings.filterwarnings(
+            "error", 
+            message="Converting to PeriodArray/Index representation will drop timezone information."
+        )
+        
+        # This should not raise any warnings
+        result = add_quantized_temporal_columns(df)
+        
+        # Verify the result has the expected timezone-aware columns
+        assert result[get_temporal_column_name(TemporalLevel.MONTH)].dt.tz is not None
+        assert result[get_temporal_column_name(TemporalLevel.YEAR)].dt.tz is not None
+        
+        # Verify the timezone is preserved correctly
+        assert str(result[get_temporal_column_name(TemporalLevel.MONTH)].dt.tz) == "UTC"
+        assert str(result[get_temporal_column_name(TemporalLevel.YEAR)].dt.tz) == "UTC"
+
+
 def test_add_quantized_columns_for_h3_missing_columns() -> None:
     """Test H3 quantization when spatial columns are missing."""
     df = pd.DataFrame(
@@ -493,11 +523,11 @@ def test_add_bucketed_columns() -> None:
         C.UUID_STRING: ["uuid1", "uuid2", "uuid3"],
         C.GPS_LATITUDE: [37.7749, 37.7849, 37.7949],
         C.GPS_LONGITUDE: [-122.4194, -122.4094, -122.3994],
-        C.TIMESTAMP_UTC: [
+        C.TIMESTAMP_UTC: pd.to_datetime([
             "2024-01-01 10:00:00",
             "2024-01-01 11:00:00",
             "2024-01-01 12:00:00",
-        ],
+        ], utc=True),
     }
     df = pd.DataFrame(test_data)
     df.index.name = C.DF_ID
@@ -549,7 +579,10 @@ def test_add_bucketed_columns_temporal_only() -> None:
     """Test add_bucketed_columns with only temporal data."""
     test_data = {
         C.UUID_STRING: ["uuid1", "uuid2"],
-        C.TIMESTAMP_UTC: ["2024-01-01 10:00:00", "2024-01-01 11:00:00"],
+        C.TIMESTAMP_UTC: pd.to_datetime([
+            "2024-01-01 10:00:00", 
+            "2024-01-01 11:00:00"
+        ], utc=True),
     }
     df = pd.DataFrame(test_data)
     df.index.name = C.DF_ID

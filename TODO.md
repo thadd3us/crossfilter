@@ -6,7 +6,7 @@
   timestamps.dt.normalize().dt.to_period("Y").dt.start_time
 ```
 
-# The web UI status line should be formatted like:
-* the total number of rows in the main sheet, and its RAM usage
-* the number of filtered lines
+# The web UI status line should be formatted like: "Status: # rows loaded with # columns (# MB), # remain in current view"
+* Report the deep memory used by the biggest pandas df.
+* You'll need to change some of the unit tests to support this.
 

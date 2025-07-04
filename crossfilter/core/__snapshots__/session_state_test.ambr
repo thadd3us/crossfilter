@@ -1,0 +1,34 @@
+# serializer version: 1
+# name: test_temporal_aggregation_aggregated
+  list([
+    dict({
+      <SchemaColumns.COUNT: 'COUNT'>: 20,
+      <SchemaColumns.GPS_LATITUDE: 'GPS_LATITUDE'>: 37.7749,
+      <SchemaColumns.GPS_LONGITUDE: 'GPS_LONGITUDE'>: -122.4194,
+      'QUANTIZED_H3_L0': '8029fffffffffff',
+      'QUANTIZED_H3_L1': '81283ffffffffff',
+      'QUANTIZED_H3_L10': '8a283082800ffff',
+      'QUANTIZED_H3_L11': '8b283082800bfff',
+      'QUANTIZED_H3_L12': '8c283082800b3ff',
+      'QUANTIZED_H3_L13': '8d283082800b3bf',
+      'QUANTIZED_H3_L14': '8e283082800b397',
+      'QUANTIZED_H3_L15': '8f283082800b390',
+      'QUANTIZED_H3_L2': '822837fffffffff',
+      'QUANTIZED_H3_L3': '832830fffffffff',
+      'QUANTIZED_H3_L4': '8428309ffffffff',
+      'QUANTIZED_H3_L5': '85283083fffffff',
+      'QUANTIZED_H3_L6': '86283082fffffff',
+      'QUANTIZED_H3_L7': '872830828ffffff',
+      'QUANTIZED_H3_L8': '8828308281fffff',
+      'QUANTIZED_H3_L9': '89283082803ffff',
+      'QUANTIZED_TIMESTAMP_DAY': Timestamp('2024-01-01 00:00:00+0000', tz='UTC'),
+      'QUANTIZED_TIMESTAMP_HOUR': Timestamp('2024-01-01 10:00:00+0000', tz='UTC'),
+      'QUANTIZED_TIMESTAMP_MINUTE': Timestamp('2024-01-01 10:00:00+0000', tz='UTC'),
+      'QUANTIZED_TIMESTAMP_MONTH': Timestamp('2024-01-01 00:00:00'),
+      'QUANTIZED_TIMESTAMP_SECOND': Timestamp('2024-01-01 10:00:00+0000', tz='UTC'),
+      'QUANTIZED_TIMESTAMP_YEAR': Timestamp('2024-01-01 00:00:00'),
+      <SchemaColumns.TIMESTAMP_UTC: 'TIMESTAMP_UTC'>: Timestamp('2024-01-01 10:00:00+0000', tz='UTC'),
+      <SchemaColumns.UUID_STRING: 'UUID_STRING'>: 'uuid_0',
+    }),
+  ])
+# ---

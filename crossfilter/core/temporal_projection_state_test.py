@@ -2,21 +2,28 @@
 
 import pandas as pd
 import pytest
+from syrupy import SnapshotAssertion
 
 from crossfilter.core.bucketing import add_bucketed_columns
-from crossfilter.core.schema import SchemaColumns as C
+from crossfilter.core.schema import (
+    SchemaColumns as C,
+    TemporalLevel,
+    get_temporal_column_name,
+)
 from crossfilter.core.temporal_projection_state import TemporalProjectionState
 
 
 @pytest.fixture
 def sample_data() -> pd.DataFrame:
     """Create sample data with temporal information."""
-    df = pd.DataFrame({
-        C.UUID_STRING: [f"uuid_{i}" for i in range(20)],
-        C.GPS_LATITUDE: [37.7749 + i * 0.001 for i in range(20)],
-        C.GPS_LONGITUDE: [-122.4194 + i * 0.001 for i in range(20)],
-        C.TIMESTAMP_UTC: [f"2024-01-01T{10 + i // 4}:00:00Z" for i in range(20)],
-    })
+    df = pd.DataFrame(
+        {
+            C.UUID_STRING: [f"uuid_{i}" for i in range(20)],
+            C.GPS_LATITUDE: [37.7749 + i * 0.001 for i in range(20)],
+            C.GPS_LONGITUDE: [-122.4194 + i * 0.001 for i in range(20)],
+            C.TIMESTAMP_UTC: [f"2024-01-01T{10 + i // 4}:00:00Z" for i in range(20)],
+        }
+    )
     df[C.TIMESTAMP_UTC] = pd.to_datetime(df[C.TIMESTAMP_UTC], utc=True)
     df.index.name = C.DF_ID
 
@@ -34,53 +41,34 @@ def test_temporal_projection_initialization() -> None:
     assert projection.projection_state.current_bucketing_column is None
 
 
-def test_update_projection_individual_points(sample_data: pd.DataFrame) -> None:
+def test_update_projection_individual_points(
+    sample_data: pd.DataFrame, snapshot: SnapshotAssertion
+) -> None:
     """Test updating projection with individual points (under threshold)."""
     projection = TemporalProjectionState(max_rows=100)
     projection.update_projection(sample_data)
-
-    result = projection.projection_state.projection_df
-
-    # Should return individual points
-    assert len(result) == 20
-    assert C.TIMESTAMP_UTC in result.columns
-    assert "cumulative_count" in result.columns
-    assert C.DF_ID in result.columns
-    assert "count" not in result.columns  # No aggregation
-
-    # Should be sorted by timestamp
-    assert result[C.TIMESTAMP_UTC].is_monotonic_increasing
-
-    # Cumulative count should be 1 to 20
-    assert list(result["cumulative_count"]) == list(range(1, 21))
-
-    # Aggregation level should be None
     assert projection.current_aggregation_level is None
     assert projection.projection_state.current_bucketing_column is None
+    result = projection.projection_state.projection_df
+    assert result.to_dict(orient="records") == snapshot
 
 
-def test_update_projection_aggregated(sample_data: pd.DataFrame) -> None:
+def test_update_projection_aggregated(
+    sample_data: pd.DataFrame, snapshot: SnapshotAssertion
+) -> None:
     """Test updating projection with aggregation (over threshold)."""
     projection = TemporalProjectionState(max_rows=5)
     projection.update_projection(sample_data)
 
     result = projection.projection_state.projection_df
 
-    # Should return aggregated data
-    assert len(result) <= 5
-    assert "count" in result.columns
-    assert "cumulative_count" in result.columns
-
-    # Total count should match original data
-    assert result["count"].sum() == 20
-
-    # Cumulative count should end at total
-    assert result["cumulative_count"].iloc[-1] == 20
-
-    # Should have aggregation level and target column
-    assert projection.current_aggregation_level is not None
-    assert projection.projection_state.current_bucketing_column is not None
-    assert projection.projection_state.current_bucketing_column.startswith("QUANTIZED_TIMESTAMP_")
+    assert projection.current_aggregation_level is TemporalLevel.SECOND
+    assert (
+        projection.projection_state.current_bucketing_column
+        == get_temporal_column_name(TemporalLevel.SECOND)
+    )
+    result = projection.projection_state.projection_df
+    assert result.to_dict(orient="records") == snapshot
 
 
 def test_update_projection_empty_data() -> None:
@@ -97,11 +85,14 @@ def test_update_projection_empty_data() -> None:
 
 def test_update_projection_no_timestamp(sample_data: pd.DataFrame) -> None:
     """Test updating projection with data missing timestamp column."""
-    projection = TemporalProjectionState(max_rows=100)
+    projection = TemporalProjectionState(max_rows=1)
 
     # Remove timestamp column
-    data_without_timestamp = sample_data.drop(columns=[C.TIMESTAMP_UTC])
-    projection.update_projection(data_without_timestamp)
+    data_without_timestamp = sample_data[
+        [C.UUID_STRING, C.GPS_LATITUDE, C.GPS_LONGITUDE]
+    ]
+    with pytest.raises(AssertionError, match="QUANTIZED_TIMESTAMP_SECOND"):
+        projection.update_projection(data_without_timestamp)
 
     assert projection.projection_state.projection_df.empty
     assert projection.current_aggregation_level is None
@@ -197,7 +188,7 @@ def test_max_rows_threshold_boundary(sample_data: pd.DataFrame) -> None:
     # Should show individual points
     result = projection.projection_state.projection_df
     assert len(result) == 20
-    assert "count" not in result.columns
+    assert C.COUNT not in result.columns
     assert projection.current_aggregation_level is None
 
     # Now use 19 max_rows (one less than data size)
@@ -207,5 +198,5 @@ def test_max_rows_threshold_boundary(sample_data: pd.DataFrame) -> None:
     # Should aggregate
     result = projection.projection_state.projection_df
     assert len(result) <= 19
-    assert "count" in result.columns
+    assert C.COUNT in result.columns
     assert projection.current_aggregation_level is not None

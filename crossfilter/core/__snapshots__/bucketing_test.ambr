@@ -737,3 +737,21 @@
     }),
   ])
 # ---
+# name: test_get_optimal_temporal_level
+  dict({
+    1: <TemporalLevel.DAY: 'DAY'>,
+    2: <TemporalLevel.DAY: 'DAY'>,
+    3: <TemporalLevel.HOUR: 'HOUR'>,
+    4: <TemporalLevel.HOUR: 'HOUR'>,
+    5: <TemporalLevel.HOUR: 'HOUR'>,
+    6: <TemporalLevel.HOUR: 'HOUR'>,
+    7: <TemporalLevel.HOUR: 'HOUR'>,
+    8: <TemporalLevel.HOUR: 'HOUR'>,
+    9: <TemporalLevel.HOUR: 'HOUR'>,
+    10: <TemporalLevel.HOUR: 'HOUR'>,
+    100: <TemporalLevel.HOUR: 'HOUR'>,
+    1000: <TemporalLevel.MINUTE: 'MINUTE'>,
+    5000: <TemporalLevel.MINUTE: 'MINUTE'>,
+    10000: None,
+  })
+# ---

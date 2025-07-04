@@ -54,6 +54,7 @@ class BucketKey:
     which bucketing operation was used to ensure we apply the correct
     filtering logic.
     """
+
     target_column: str
     identifier: str = ""
 
@@ -61,13 +62,13 @@ class BucketKey:
         """Generate a unique identifier if not provided."""
         if not self.identifier:
             # Generate a short UUID for this bucketing instance
-            object.__setattr__(self, 'identifier', str(uuid.uuid4())[:8])
+            object.__setattr__(self, "identifier", str(uuid.uuid4())[:8])
 
 
 # H3 resolution levels to pre-compute (0-15, where higher = more granular)
 H3_LEVELS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
 
-# Temporal quantization levels
+# Temporal quantization levels.  Important that these are ordered from smallest to largest grain.
 TEMPORAL_LEVELS = [
     TemporalLevel.SECOND,
     TemporalLevel.MINUTE,
@@ -78,7 +79,7 @@ TEMPORAL_LEVELS = [
 ]
 
 
-def add_quantized_columns_for_h3(df: pd.DataFrame) -> pd.DataFrame:
+def add_quantized_geo_h3_columns(df: pd.DataFrame) -> pd.DataFrame:
     """
     Add H3 spatial quantization columns to the DataFrame.
 
@@ -92,7 +93,9 @@ def add_quantized_columns_for_h3(df: pd.DataFrame) -> pd.DataFrame:
         SchemaColumns.GPS_LATITUDE in df.columns
         and SchemaColumns.GPS_LONGITUDE in df.columns
     ):
-        raise ValueError("DataFrame must contain GPS_LATITUDE and GPS_LONGITUDE columns")
+        raise ValueError(
+            "DataFrame must contain GPS_LATITUDE and GPS_LONGITUDE columns"
+        )
 
     df = df.copy()
     df = _add_h3_columns(df)
@@ -100,7 +103,7 @@ def add_quantized_columns_for_h3(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def add_quantized_columns_for_timestamp(df: pd.DataFrame) -> pd.DataFrame:
+def add_quantized_temporal_columns(df: pd.DataFrame) -> pd.DataFrame:
     """
     Add temporal quantization columns to the DataFrame.
 
@@ -169,7 +172,9 @@ def _add_temporal_columns(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def bucket_by_target_column(original_data: pd.DataFrame, target_column: str) -> pd.DataFrame:
+def bucket_by_target_column(
+    original_data: pd.DataFrame, target_column: str
+) -> pd.DataFrame:
     """
     Create a bucketed DataFrame by grouping on the target column.
 
@@ -186,7 +191,9 @@ def bucket_by_target_column(original_data: pd.DataFrame, target_column: str) -> 
     """
     logger.debug(f"bucket_by_target_column called with target_column='{target_column}'")
     logger.debug(f"Original data columns: {list(original_data.columns)}")
-    logger.debug(f"Target column '{target_column}' in original data: {target_column in original_data.columns}")
+    logger.debug(
+        f"Target column '{target_column}' in original data: {target_column in original_data.columns}"
+    )
 
     if target_column not in original_data.columns:
         raise ValueError(f"Target column '{target_column}' not found in DataFrame")
@@ -196,13 +203,15 @@ def bucket_by_target_column(original_data: pd.DataFrame, target_column: str) -> 
     agg_dict = {}
     for col in original_data.columns:
         if col != target_column:
-            agg_dict[col] = 'first'
+            agg_dict[col] = "first"
 
     # Get the grouped data, including nulls in groupby
     logger.debug(f"Aggregation dictionary: {agg_dict}")
     grouped = original_data.groupby(target_column, dropna=False).agg(agg_dict)
     logger.debug(f"Grouped DataFrame columns: {list(grouped.columns)}")
-    logger.debug(f"Target column '{target_column}' in grouped DataFrame (index): {target_column in grouped.index.names}")
+    logger.debug(
+        f"Target column '{target_column}' in grouped DataFrame (index): {target_column in grouped.index.names}"
+    )
 
     # Add count column
     counts = original_data.groupby(target_column, dropna=False).size()
@@ -214,7 +223,9 @@ def bucket_by_target_column(original_data: pd.DataFrame, target_column: str) -> 
     # Reset index to make target_column a regular column
     bucketed = bucketed.reset_index()
     logger.debug(f"Final bucketed DataFrame columns: {list(bucketed.columns)}")
-    logger.debug(f"Target column '{target_column}' in final bucketed DataFrame: {target_column in bucketed.columns}")
+    logger.debug(
+        f"Target column '{target_column}' in final bucketed DataFrame: {target_column in bucketed.columns}"
+    )
 
     # Set standard integer index for DF_ID
     bucketed.index.name = SchemaColumns.DF_ID
@@ -223,7 +234,9 @@ def bucket_by_target_column(original_data: pd.DataFrame, target_column: str) -> 
         f"Bucketed {len(original_data)} rows into {len(bucketed)} buckets by column '{target_column}'"
     )
     logger.debug(f"Bucketed DataFrame columns: {list(bucketed.columns)}")
-    logger.debug(f"Target column '{target_column}' in bucketed DataFrame: {target_column in bucketed.columns}")
+    logger.debug(
+        f"Target column '{target_column}' in bucketed DataFrame: {target_column in bucketed.columns}"
+    )
 
     return bucketed
 
@@ -255,38 +268,39 @@ def get_optimal_h3_level(df: pd.DataFrame, max_groups: int) -> Optional[int]:
 
 
 def get_optimal_temporal_level(
-    df: pd.DataFrame, max_groups: int
+    df: pd.DataFrame, max_rows: int
 ) -> Optional[TemporalLevel]:
     """
-    Find the temporal quantization level that gives closest to max_groups unique buckets.
-
-    Args:
-        df: DataFrame with temporal quantization columns
-        max_groups: Maximum number of groups desired
-
     Returns:
-        Optimal temporal level, or None if no temporal columns found
+        Optimal temporal aggregation level, or None if no temporal aggregation is required.
     """
-    best_level = None
-    best_count = 0
+    if len(df.index) <= max_rows:
+        logger.info(
+            f"No need to bucket data at any temporal level, {len(df)=}, {max_rows=}"
+        )
+        return None
 
     for level in TEMPORAL_LEVELS:
         col_name = get_temporal_column_name(level)
-        if col_name in df.columns:
-            unique_count = df[col_name].nunique()
-            if unique_count <= max_groups and unique_count > best_count:
-                best_level = level
-                best_count = unique_count
+        assert col_name in df.columns, f"Column {col_name} not found in DataFrame"
+        unique_count = df[col_name].nunique()
+        if unique_count <= max_rows:
+            logger.info(
+                f"Using temporal level {level} to bucket {len(df)=} rows into {max_rows=}, {unique_count=}"
+            )
+            return level
 
-    logger.debug(f"Optimal temporal level: {best_level} with {best_count} groups")
-    return best_level
+    logger.warning(
+        f"No temporal level found that would bucket {len(df)=} rows into {max_rows=}, using {TemporalLevel.YEAR}"
+    )
+    return TemporalLevel.YEAR
 
 
 def filter_df_to_selected_buckets(
     original_data: pd.DataFrame,
     bucketed_df: pd.DataFrame,
     target_column: str,
-    bucket_indices_to_keep: list[int]
+    bucket_indices_to_keep: list[int],
 ) -> pd.DataFrame:
     """
     Filter original data to only contain rows from selected buckets.
@@ -305,30 +319,38 @@ def filter_df_to_selected_buckets(
         Filtered DataFrame containing only rows from selected buckets
     """
     if target_column not in original_data.columns:
-        raise ValueError(f"Target column '{target_column}' not found in original DataFrame")
+        raise ValueError(
+            f"Target column '{target_column}' not found in original DataFrame"
+        )
 
     if target_column not in bucketed_df.columns:
-        raise ValueError(f"Target column '{target_column}' not found in bucketed DataFrame")
+        raise ValueError(
+            f"Target column '{target_column}' not found in bucketed DataFrame"
+        )
 
     # Validate bucket indices
-    invalid_indices = [idx for idx in bucket_indices_to_keep if idx < 0 or idx >= len(bucketed_df)]
+    invalid_indices = [
+        idx for idx in bucket_indices_to_keep if idx < 0 or idx >= len(bucketed_df)
+    ]
     if invalid_indices:
-        raise ValueError(f"Invalid bucket indices: {invalid_indices}. Valid range is 0-{len(bucketed_df)-1}")
+        raise ValueError(
+            f"Invalid bucket indices: {invalid_indices}. Valid range is 0-{len(bucketed_df)-1}"
+        )
 
     # Get the target column values for selected buckets as Series
     selected_bucket_values = bucketed_df.iloc[bucket_indices_to_keep][target_column]
 
     # Check that none of the selected bucket values is NaN
     if selected_bucket_values.isna().any():
-        raise ValueError("Selected bucket values cannot contain NaN. This indicates invalid bucketing.")
+        raise ValueError(
+            "Selected bucket values cannot contain NaN. This indicates invalid bucketing."
+        )
 
     # Filter original data using isin
     mask = original_data[target_column].isin(selected_bucket_values)
     filtered_data = original_data[mask].copy()
 
     return filtered_data
-
-
 
 
 def add_bucketed_columns(df: pd.DataFrame) -> pd.DataFrame:
@@ -379,5 +401,3 @@ def bucket_dataframe(bucket_key: BucketKey, df: pd.DataFrame) -> pd.DataFrame:
         ValueError: If the target column is not found in the DataFrame
     """
     return bucket_by_target_column(df, bucket_key.target_column)
-
-

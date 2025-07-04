@@ -2,6 +2,7 @@
 
 import pandas as pd
 import pytest
+from syrupy import SnapshotAssertion
 
 from crossfilter.core.schema import FilterEvent, ProjectionType
 from crossfilter.core.schema import SchemaColumns as C
@@ -142,20 +143,17 @@ def test_temporal_aggregation_individual_points(sample_df: pd.DataFrame) -> None
 
     # Should return individual points
     assert len(result) == 20
+    assert result.index.name == C.DF_ID
     assert C.TIMESTAMP_UTC in result.columns
-    assert "cumulative_count" in result.columns
-    assert C.DF_ID in result.columns
-    # Should not have COUNT column for individual points
-    assert "count" not in result.columns
+    assert C.COUNT not in result.columns
 
     # Should be sorted by timestamp
     assert result[C.TIMESTAMP_UTC].is_monotonic_increasing
 
-    # Cumulative count should go from 1 to 20
-    assert list(result["cumulative_count"]) == list(range(1, 21))
 
-
-def test_temporal_aggregation_aggregated(sample_df: pd.DataFrame) -> None:
+def test_temporal_aggregation_aggregated(
+    sample_df: pd.DataFrame, snapshot: SnapshotAssertion
+) -> None:
     """Test temporal aggregation when over threshold."""
     session = SessionState()
     session.load_dataframe(sample_df)
@@ -164,16 +162,7 @@ def test_temporal_aggregation_aggregated(sample_df: pd.DataFrame) -> None:
     session.temporal_projection.update_projection(session.filtered_rows)
     result = session.get_temporal_projection()
 
-    # Should return aggregated data
-    assert len(result) <= 3
-    assert "count" in result.columns
-    assert "cumulative_count" in result.columns
-
-    # Total count should match original data
-    assert result["count"].sum() == 20
-
-    # Cumulative count should end at total
-    assert result["cumulative_count"].iloc[-1] == 20
+    assert result.to_dict(orient="records") == snapshot
 
 
 def test_apply_filter_event_temporal(sample_df: pd.DataFrame) -> None:
@@ -209,15 +198,8 @@ def test_apply_filter_event_geo(sample_df: pd.DataFrame) -> None:
     # Apply a geographic filter (select first 10 points)
     selected_df_ids = set(range(0, 10))
     filter_event = FilterEvent(ProjectionType.GEO, selected_df_ids)
-    session.apply_filter_event(filter_event)
-
-    # Check that filtered_rows was updated
-    assert len(session.filtered_rows) == 10
-    assert all(idx in range(0, 10) for idx in session.filtered_rows.index)
-
-    # Check that projections were updated
-    geo_result = session.get_geo_aggregation()
-    assert len(geo_result) == 10
+    with pytest.raises(ValueError, match="Invalid projection type: geo"):
+        session.apply_filter_event(filter_event)
 
 
 def test_reset_filters(sample_df: pd.DataFrame) -> None:
@@ -293,7 +275,7 @@ def test_filter_integration_with_aggregation(sample_df: pd.DataFrame) -> None:
     assert len(initial_temporal) == 20
 
     # Apply filter to reduce to 10 points
-    filtered_df_ids = set(range(0, 10))
+    filtered_df_ids = set(range(5, 15))
     filter_event = FilterEvent(ProjectionType.TEMPORAL, filtered_df_ids)
     session.apply_filter_event(filter_event)
 
@@ -301,12 +283,8 @@ def test_filter_integration_with_aggregation(sample_df: pd.DataFrame) -> None:
     filtered_spatial = session.get_geo_aggregation()
     filtered_temporal = session.get_temporal_projection()
 
-    assert len(filtered_spatial) == 10
-    assert len(filtered_temporal) == 10
-
-    # All df_ids should be in the filtered set
-    assert all(df_id in filtered_df_ids for df_id in filtered_spatial[C.DF_ID])
-    assert all(df_id in filtered_df_ids for df_id in filtered_temporal[C.DF_ID])
+    assert filtered_spatial.index.to_list() == list(filtered_df_ids)
+    assert filtered_temporal.index.to_list() == list(filtered_df_ids)
 
 
 def test_projection_max_rows_updates(sample_df: pd.DataFrame) -> None:
@@ -316,13 +294,13 @@ def test_projection_max_rows_updates(sample_df: pd.DataFrame) -> None:
 
     # Initially should show individual points
     temporal_result = session.get_temporal_projection()
-    assert "count" not in temporal_result.columns  # Individual points
+    assert C.COUNT not in temporal_result.columns  # Individual points
 
     # Change to force aggregation
     session.temporal_projection.projection_state.max_rows = 5
     session.temporal_projection.update_projection(session.filtered_rows)
     temporal_result = session.get_temporal_projection()
-    assert "count" in temporal_result.columns  # Aggregated
+    assert C.COUNT in temporal_result.columns  # Aggregated
 
     # Verify projection state was updated
     assert session.temporal_projection.projection_state.max_rows == 5
@@ -337,7 +315,5 @@ def test_unknown_projection_type(sample_df: pd.DataFrame) -> None:
 
     # Try to apply filter with unknown projection type
     filter_event = FilterEvent(ProjectionType.CLIP_EMBEDDING, set(range(0, 10)))
-    session.apply_filter_event(filter_event)
-
-    # Should not have changed the filtered data
-    assert len(session.filtered_rows) == initial_count
+    with pytest.raises(ValueError, match="Invalid projection type: clip_embedding"):
+        session.apply_filter_event(filter_event)

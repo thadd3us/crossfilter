@@ -8,8 +8,8 @@ from crossfilter.core.bucketing import (
     H3_LEVELS,
     TEMPORAL_LEVELS,
     add_bucketed_columns,
-    add_quantized_columns_for_h3,
-    add_quantized_columns_for_timestamp,
+    add_quantized_geo_h3_columns,
+    add_quantized_temporal_columns,
     bucket_by_target_column,
     filter_df_to_selected_buckets,
     get_optimal_h3_level,
@@ -63,7 +63,7 @@ def test_add_quantized_columns_for_h3(
     sample_df: pd.DataFrame, snapshot: SnapshotAssertion
 ) -> None:
     """Test adding H3 spatial quantization columns."""
-    result = add_quantized_columns_for_h3(sample_df)
+    result = add_quantized_geo_h3_columns(sample_df)
     assert result.dtypes.to_dict() == snapshot
     assert result.to_dict(orient="records") == snapshot
 
@@ -72,7 +72,7 @@ def test_add_quantized_columns_for_timestamp(
     sample_df: pd.DataFrame, snapshot: SnapshotAssertion
 ) -> None:
     """Test adding temporal quantization columns."""
-    result = add_quantized_columns_for_timestamp(sample_df)
+    result = add_quantized_temporal_columns(sample_df)
     assert result.dtypes.to_dict() == snapshot
     assert result.to_dict(orient="records") == snapshot
 
@@ -87,8 +87,11 @@ def test_add_quantized_columns_for_h3_missing_columns() -> None:
     )
     df.index.name = C.DF_ID
 
-    with pytest.raises(ValueError, match="DataFrame must contain GPS_LATITUDE and GPS_LONGITUDE columns"):
-        add_quantized_columns_for_h3(df)
+    with pytest.raises(
+        ValueError,
+        match="DataFrame must contain GPS_LATITUDE and GPS_LONGITUDE columns",
+    ):
+        add_quantized_geo_h3_columns(df)
 
 
 def test_add_quantized_columns_for_timestamp_missing_column() -> None:
@@ -103,12 +106,12 @@ def test_add_quantized_columns_for_timestamp_missing_column() -> None:
     df.index.name = C.DF_ID
 
     with pytest.raises(ValueError, match="DataFrame must contain TIMESTAMP_UTC column"):
-        add_quantized_columns_for_timestamp(df)
+        add_quantized_temporal_columns(df)
 
 
 def test_get_optimal_h3_level(sample_df: pd.DataFrame) -> None:
     """Test finding optimal H3 level."""
-    quantized = add_quantized_columns_for_h3(sample_df)
+    quantized = add_quantized_geo_h3_columns(sample_df)
 
     # With small dataset, should find a high-resolution level
     optimal = get_optimal_h3_level(quantized, max_groups=1000)
@@ -121,24 +124,30 @@ def test_get_optimal_h3_level(sample_df: pd.DataFrame) -> None:
     assert optimal_small <= optimal  # Lower resolution has smaller numbers
 
 
-def test_get_optimal_temporal_level(sample_df: pd.DataFrame) -> None:
+def test_get_optimal_temporal_level(snapshot: SnapshotAssertion) -> None:
     """Test finding optimal temporal level."""
-    quantized = add_quantized_columns_for_timestamp(sample_df)
-
-    # With small dataset, should find a fine-grained level
-    optimal = get_optimal_temporal_level(quantized, max_groups=1000)
-    assert optimal is not None
-    assert optimal in TEMPORAL_LEVELS
-
-    # With very small max_groups, should find coarser level
-    optimal_small = get_optimal_temporal_level(quantized, max_groups=1)
-    assert optimal_small is not None
+    length = 10000
+    df = pd.DataFrame(
+        {
+            C.UUID_STRING: [f"uuid_{i}" for i in range(length)],
+            C.TIMESTAMP_UTC: [
+                pd.Timestamp("2024-01-01T00:00:00Z") + pd.Timedelta(seconds=i)
+                for i in range(10000)
+            ],
+        }
+    )
+    quantized = add_quantized_temporal_columns(df)
+    actual = {
+        probe: get_optimal_temporal_level(quantized, max_rows=probe)
+        for probe in [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 100, 1000, 5000, 10000]
+    }
+    assert actual == snapshot
 
 
 def test_bucket_by_target_column_h3(sample_df: pd.DataFrame) -> None:
     """Test bucketing by H3 column."""
     # First add H3 quantization columns
-    quantized = add_quantized_columns_for_h3(sample_df)
+    quantized = add_quantized_geo_h3_columns(sample_df)
     h3_level = 7  # Use a specific level for testing
     target_column = get_h3_column_name(h3_level)
 
@@ -162,7 +171,7 @@ def test_bucket_by_target_column_h3(sample_df: pd.DataFrame) -> None:
 def test_bucket_by_target_column_temporal(sample_df: pd.DataFrame) -> None:
     """Test bucketing by temporal column."""
     # First add temporal quantization columns
-    quantized = add_quantized_columns_for_timestamp(sample_df)
+    quantized = add_quantized_temporal_columns(sample_df)
     temporal_level = TemporalLevel.HOUR
     target_column = get_temporal_column_name(temporal_level)
 
@@ -185,7 +194,9 @@ def test_bucket_by_target_column_temporal(sample_df: pd.DataFrame) -> None:
 
 def test_bucket_by_target_column_invalid_column(sample_df: pd.DataFrame) -> None:
     """Test bucketing with invalid target column."""
-    with pytest.raises(ValueError, match="Target column 'invalid_column' not found in DataFrame"):
+    with pytest.raises(
+        ValueError, match="Target column 'invalid_column' not found in DataFrame"
+    ):
         bucket_by_target_column(sample_df, "invalid_column")
 
 
@@ -199,7 +210,7 @@ def test_add_quantized_columns_for_h3_empty_dataframe() -> None:
     )
     df.index.name = C.DF_ID
 
-    result = add_quantized_columns_for_h3(df)
+    result = add_quantized_geo_h3_columns(df)
 
     # Should not raise errors
     assert len(result) == 0
@@ -217,7 +228,7 @@ def test_add_quantized_columns_for_timestamp_empty_dataframe() -> None:
     )
     df.index.name = C.DF_ID
 
-    result = add_quantized_columns_for_timestamp(df)
+    result = add_quantized_temporal_columns(df)
 
     # Should not raise errors
     assert len(result) == 0
@@ -237,7 +248,7 @@ def test_add_quantized_columns_for_h3_null_coordinates() -> None:
     )
     df.index.name = C.DF_ID
 
-    result = add_quantized_columns_for_h3(df)
+    result = add_quantized_geo_h3_columns(df)
 
     # H3 columns should have null for null coordinates
     h3_col = get_h3_column_name(H3_LEVELS[0])
@@ -269,7 +280,7 @@ def test_bucket_by_target_column_h3_column_preservation_snapshot(
 ) -> None:
     """Test bucketing by H3 column with snapshot to show column preservation."""
     # First add H3 quantization columns
-    quantized = add_quantized_columns_for_h3(sample_df)
+    quantized = add_quantized_geo_h3_columns(sample_df)
     h3_level = 7  # Use a specific level for testing
     target_column = get_h3_column_name(h3_level)
 
@@ -284,7 +295,7 @@ def test_bucket_by_target_column_temporal_column_preservation_snapshot(
 ) -> None:
     """Test bucketing by temporal column with snapshot to show column preservation."""
     # First add temporal quantization columns
-    quantized = add_quantized_columns_for_timestamp(sample_df)
+    quantized = add_quantized_temporal_columns(sample_df)
     temporal_level = TemporalLevel.HOUR
     target_column = get_temporal_column_name(temporal_level)
 
@@ -330,7 +341,9 @@ def test_filter_df_to_selected_buckets_basic(simple_data_example: pd.DataFrame) 
     assert set(filtered[C.UUID_STRING]) == expected_uuids
 
 
-def test_filter_df_to_selected_buckets_single_bucket(simple_data_example: pd.DataFrame) -> None:
+def test_filter_df_to_selected_buckets_single_bucket(
+    simple_data_example: pd.DataFrame,
+) -> None:
     """Test filtering to a single bucket."""
     bucketed = bucket_by_target_column(simple_data_example, "category")
 
@@ -348,7 +361,9 @@ def test_filter_df_to_selected_buckets_single_bucket(simple_data_example: pd.Dat
     assert set(filtered[C.UUID_STRING]) == expected_uuids
 
 
-def test_filter_df_to_selected_buckets_all_buckets(simple_data_example: pd.DataFrame) -> None:
+def test_filter_df_to_selected_buckets_all_buckets(
+    simple_data_example: pd.DataFrame,
+) -> None:
     """Test filtering when all buckets are selected."""
     bucketed = bucket_by_target_column(simple_data_example, "category")
 
@@ -361,10 +376,14 @@ def test_filter_df_to_selected_buckets_all_buckets(simple_data_example: pd.DataF
 
     # Should get all original rows
     assert len(filtered) == len(simple_data_example)
-    pd.testing.assert_frame_equal(filtered.sort_index(), simple_data_example.sort_index())
+    pd.testing.assert_frame_equal(
+        filtered.sort_index(), simple_data_example.sort_index()
+    )
 
 
-def test_filter_df_to_selected_buckets_empty_selection(simple_data_example: pd.DataFrame) -> None:
+def test_filter_df_to_selected_buckets_empty_selection(
+    simple_data_example: pd.DataFrame,
+) -> None:
     """Test filtering with empty bucket selection."""
     bucketed = bucket_by_target_column(simple_data_example, "category")
 
@@ -409,7 +428,9 @@ def test_filter_df_to_selected_buckets_with_nan_bucket_values() -> None:
         filter_df_to_selected_buckets(df, bucketed, "category", [null_bucket_idx])
 
 
-def test_filter_df_to_selected_buckets_invalid_indices(simple_data_example: pd.DataFrame) -> None:
+def test_filter_df_to_selected_buckets_invalid_indices(
+    simple_data_example: pd.DataFrame,
+) -> None:
     """Test error handling for invalid bucket indices."""
     bucketed = bucket_by_target_column(simple_data_example, "category")
 
@@ -423,21 +444,31 @@ def test_filter_df_to_selected_buckets_invalid_indices(simple_data_example: pd.D
 
     # Test multiple invalid indices
     with pytest.raises(ValueError, match="Invalid bucket indices: \\[-1, 10\\]"):
-        filter_df_to_selected_buckets(simple_data_example, bucketed, "category", [-1, 1, 10])
+        filter_df_to_selected_buckets(
+            simple_data_example, bucketed, "category", [-1, 1, 10]
+        )
 
 
-def test_filter_df_to_selected_buckets_missing_target_column(simple_data_example: pd.DataFrame) -> None:
+def test_filter_df_to_selected_buckets_missing_target_column(
+    simple_data_example: pd.DataFrame,
+) -> None:
     """Test error handling when target column is missing."""
     bucketed = bucket_by_target_column(simple_data_example, "category")
 
     # Test missing column in original data
-    with pytest.raises(ValueError, match="Target column 'missing_col' not found in original DataFrame"):
+    with pytest.raises(
+        ValueError, match="Target column 'missing_col' not found in original DataFrame"
+    ):
         filter_df_to_selected_buckets(simple_data_example, bucketed, "missing_col", [0])
 
     # Test missing column in bucketed data - create bucketed df without the target column
     bucketed_missing_col = bucketed.drop(columns=["category"])
-    with pytest.raises(ValueError, match="Target column 'category' not found in bucketed DataFrame"):
-        filter_df_to_selected_buckets(simple_data_example, bucketed_missing_col, "category", [0])
+    with pytest.raises(
+        ValueError, match="Target column 'category' not found in bucketed DataFrame"
+    ):
+        filter_df_to_selected_buckets(
+            simple_data_example, bucketed_missing_col, "category", [0]
+        )
 
 
 def test_filter_df_to_selected_buckets_snapshot(
@@ -485,7 +516,9 @@ def test_add_bucketed_columns() -> None:
     assert len(h3_cols) > 0
 
     # Check that temporal columns were added
-    temporal_cols = [col for col in result.columns if col.startswith("QUANTIZED_TIMESTAMP_")]
+    temporal_cols = [
+        col for col in result.columns if col.startswith("QUANTIZED_TIMESTAMP_")
+    ]
     assert len(temporal_cols) > 0
 
     # Check that we have the expected number of additional columns
@@ -506,7 +539,9 @@ def test_add_bucketed_columns_spatial_only() -> None:
 
     # Should have H3 columns but no temporal columns
     h3_cols = [col for col in result.columns if col.startswith("QUANTIZED_H3_")]
-    temporal_cols = [col for col in result.columns if col.startswith("QUANTIZED_TIMESTAMP_")]
+    temporal_cols = [
+        col for col in result.columns if col.startswith("QUANTIZED_TIMESTAMP_")
+    ]
 
     assert len(h3_cols) > 0
     assert len(temporal_cols) == 0
@@ -525,7 +560,9 @@ def test_add_bucketed_columns_temporal_only() -> None:
 
     # Should have temporal columns but no H3 columns
     h3_cols = [col for col in result.columns if col.startswith("QUANTIZED_H3_")]
-    temporal_cols = [col for col in result.columns if col.startswith("QUANTIZED_TIMESTAMP_")]
+    temporal_cols = [
+        col for col in result.columns if col.startswith("QUANTIZED_TIMESTAMP_")
+    ]
 
     assert len(h3_cols) == 0
     assert len(temporal_cols) > 0
@@ -544,7 +581,9 @@ def test_add_bucketed_columns_neither() -> None:
 
     # Should have no additional columns
     h3_cols = [col for col in result.columns if col.startswith("QUANTIZED_H3_")]
-    temporal_cols = [col for col in result.columns if col.startswith("QUANTIZED_TIMESTAMP_")]
+    temporal_cols = [
+        col for col in result.columns if col.startswith("QUANTIZED_TIMESTAMP_")
+    ]
 
     assert len(h3_cols) == 0
     assert len(temporal_cols) == 0

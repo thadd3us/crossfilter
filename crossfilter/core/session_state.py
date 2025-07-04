@@ -48,7 +48,6 @@ class SessionState:
         self.filter_version = 0
         self.sse_clients: set[asyncio.Queue] = set()
 
-
     def load_dataframe(self, df: pd.DataFrame) -> None:
         """Load a DataFrame into the session state."""
         # Add bucketed columns and store as all_rows
@@ -106,13 +105,13 @@ class SessionState:
             new_filtered_rows = self.temporal_projection.apply_filter_event(
                 filter_event.selected_df_ids, self.filtered_rows
             )
-        elif filter_event.projection_type == ProjectionType.GEO:
-            new_filtered_rows = self.geo_projection.apply_filter_event(
-                filter_event.selected_df_ids, self.filtered_rows
-            )
+        # elif filter_event.projection_type == ProjectionType.GEO:
+        #     new_filtered_rows = self.geo_projection.apply_filter_event(
+        #         filter_event.selected_df_ids, self.filtered_rows
+        #     )
         else:
-            logger.warning(f"Unknown projection type: {filter_event.projection_type}")
-            return
+            logger.error(f"Invalid projection type: {filter_event.projection_type}")
+            raise ValueError(f"Invalid projection type: {filter_event.projection_type}")
 
         # Update filtered_rows with the new selection
         self.filtered_rows = new_filtered_rows
@@ -176,7 +175,6 @@ class SessionState:
             Current filtered subset of the data
         """
         return self.filtered_rows.copy()
-
 
     def broadcast_filter_change(
         self, event_type: str, affected_components: list[str]

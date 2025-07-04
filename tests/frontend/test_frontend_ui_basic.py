@@ -1,6 +1,7 @@
 """Basic frontend UI test for temporal CDF plot using Playwright."""
 
 import logging
+import os
 import sys
 
 import pytest
@@ -36,6 +37,14 @@ def test_temporal_cdf_plot_png_snapshot(
     page: Page, server_with_data: str, snapshot: SnapshotAssertion
 ) -> None:
     """Test that the temporal CDF plot loads and displays correctly."""
+
+    # Skip if running in headed mode (visible browser)
+    # Check if --headed flag is present in command line arguments
+    if "--headed" in sys.argv:
+        pytest.skip(
+            "Skipping in headed mode -- headed browsers can interfere with screenshot consistency."
+        )
+
     server_url = server_with_data
 
     # Navigate to the main application page

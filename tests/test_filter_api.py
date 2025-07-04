@@ -5,6 +5,10 @@ import logging
 import requests
 from syrupy import SnapshotAssertion
 
+from tests.fixtures_server import server_with_data
+
+assert server_with_data, "Don't remove this import!"
+
 logger = logging.getLogger(__name__)
 
 

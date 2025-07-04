@@ -12,6 +12,7 @@ from crossfilter.core.bucketing import (
 )
 from crossfilter.core.projection_state import ProjectionState
 from crossfilter.core.schema import TemporalLevel
+from crossfilter.core.schema import SchemaColumns as C
 
 logger = logging.getLogger(__name__)
 
@@ -43,6 +44,8 @@ class TemporalProjectionState:
         Args:
             filtered_rows: Current filtered subset of all_rows
         """
+        filtered_rows = filtered_rows.dropna(subset=[C.TIMESTAMP_UTC])
+
         optimal_level = get_optimal_temporal_level(
             filtered_rows, self.projection_state.max_rows
         )

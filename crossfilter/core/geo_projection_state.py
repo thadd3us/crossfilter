@@ -11,6 +11,7 @@ from crossfilter.core.bucketing import (
     get_optimal_h3_level,
 )
 from crossfilter.core.projection_state import ProjectionState
+from crossfilter.core.schema import SchemaColumns as C
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +36,6 @@ class GeoProjectionState:
         self.projection_state = ProjectionState(max_rows)
         self.current_h3_level: Optional[int] = None
 
-
     def update_projection(self, filtered_rows: pd.DataFrame) -> None:
         """
         Update the geographic projection based on the current filtered data.
@@ -43,6 +43,8 @@ class GeoProjectionState:
         Args:
             filtered_rows: Current filtered subset of all_rows
         """
+        filtered_rows = filtered_rows.dropna(subset=[C.GPS_LATITUDE, C.GPS_LONGITUDE])
+
         optimal_level = get_optimal_h3_level(
             filtered_rows, self.projection_state.max_rows
         )
@@ -63,7 +65,6 @@ class GeoProjectionState:
         logger.info(
             f"Bucketed data at optimal H3 level {optimal_level=}, {len(self.projection_state.projection_df)=}"
         )
-
 
     def apply_filter_event(
         self, selected_df_ids: set[int], filtered_rows: pd.DataFrame

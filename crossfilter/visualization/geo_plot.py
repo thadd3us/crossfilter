@@ -17,17 +17,21 @@ def create_geo_plot(
     df: pd.DataFrame,
     title: str = "Geographic Distribution",
     groupby: Optional[str] = str(C.DATA_TYPE),
-    max_marker_size: int = 50,
+    max_marker_size: int = 10,
 ) -> go.Figure:
     """Create a Plotly geographic scatter plot with tile maps."""
+    df = df.dropna(subset=[C.GPS_LATITUDE, C.GPS_LONGITUDE]).copy()
+
     if df.empty:
         # Show world map when no data - create empty map manually
         fig = go.Figure()
-        fig.add_trace(go.Scattermap(
-            lat=[],
-            lon=[],
-            mode='markers',
-        ))
+        fig.add_trace(
+            go.Scattermap(
+                lat=[],
+                lon=[],
+                mode="markers",
+            )
+        )
         fig.update_layout(
             title=title,
             map=dict(
@@ -50,68 +54,6 @@ def create_geo_plot(
         return fig
 
     # Check if we have required geographic columns
-    required_geo_cols = [C.GPS_LATITUDE, C.GPS_LONGITUDE]
-    missing_cols = [col for col in required_geo_cols if col not in df.columns]
-    if missing_cols:
-        # Show world map when missing coordinates - create empty map manually
-        fig = go.Figure()
-        fig.add_trace(go.Scattermap(
-            lat=[],
-            lon=[],
-            mode='markers',
-        ))
-        fig.update_layout(
-            title=title,
-            map=dict(
-                style="open-street-map",
-                center=dict(lat=0, lon=0),  # Center on equator
-                zoom=1,  # World view
-            ),
-            annotations=[
-                dict(
-                    text=f"Missing geographic columns: {', '.join(missing_cols)}",
-                    x=0.5,
-                    y=0.95,
-                    xref="paper",
-                    yref="paper",
-                    showarrow=False,
-                    font=dict(size=16),
-                )
-            ],
-        )
-        return fig
-
-    # Filter out rows with null coordinates
-    df = df.dropna(subset=[C.GPS_LATITUDE, C.GPS_LONGITUDE]).copy()
-    
-    if df.empty:
-        # Show world map when no valid coordinates - create empty map manually
-        fig = go.Figure()
-        fig.add_trace(go.Scattermap(
-            lat=[],
-            lon=[],
-            mode='markers',
-        ))
-        fig.update_layout(
-            title=title,
-            map=dict(
-                style="open-street-map",
-                center=dict(lat=0, lon=0),  # Center on equator
-                zoom=1,  # World view
-            ),
-            annotations=[
-                dict(
-                    text="No valid geographic coordinates",
-                    x=0.5,
-                    y=0.95,
-                    xref="paper",
-                    yref="paper",
-                    showarrow=False,
-                    font=dict(size=16),
-                )
-            ],
-        )
-        return fig
 
     df[C.DF_ID] = df.index
     if C.COUNT not in df.columns:
@@ -128,14 +70,14 @@ def create_geo_plot(
 
     # Calculate marker sizes based on COUNT, normalized so largest COUNT gets max_marker_size
     max_count = df[C.COUNT].max()
-    min_marker_size = 5  # Minimum visible size
-    
+    min_marker_size = 1  # Minimum visible size
+
     if max_count > 0:
         # Make area proportional to COUNT: radius = sqrt(area) = sqrt(COUNT * scale_factor)
         # For largest COUNT, we want radius = max_marker_size
         # So: max_marker_size = sqrt(max_count * scale_factor)
         # Therefore: scale_factor = (max_marker_size^2) / max_count
-        scale_factor = (max_marker_size ** 2) / max_count
+        scale_factor = (max_marker_size**2) / max_count
         df["marker_size"] = df[C.COUNT].apply(
             lambda x: max(min_marker_size, math.sqrt(x * scale_factor))
         )
@@ -143,7 +85,7 @@ def create_geo_plot(
         df["marker_size"] = min_marker_size
 
     # Build hover_data list based on available columns
-    hover_data_columns = [C.DF_ID, C.COUNT]
+    hover_data_columns = [C.COUNT]
     for col in [C.NAME, C.DATA_TYPE, C.UUID_STRING, C.TIMESTAMP_UTC]:
         if col in df.columns:
             hover_data_columns.append(col)
@@ -164,30 +106,30 @@ def create_geo_plot(
     # Calculate bounds for auto-fitting the map
     lat_min, lat_max = df[C.GPS_LATITUDE].min(), df[C.GPS_LATITUDE].max()
     lon_min, lon_max = df[C.GPS_LONGITUDE].min(), df[C.GPS_LONGITUDE].max()
-    
+
     # Calculate center
     center_lat = (lat_min + lat_max) / 2
     center_lon = (lon_min + lon_max) / 2
-    
+
     # Calculate zoom level based on data span
     lat_span = lat_max - lat_min
     lon_span = lon_max - lon_min
     max_span = max(lat_span, lon_span)
-    
+
     # Heuristic zoom calculation (adjust as needed)
     if max_span > 60:  # Very wide spread
         zoom = 2
     elif max_span > 20:  # Continental scale
         zoom = 4
-    elif max_span > 5:   # Regional scale
+    elif max_span > 5:  # Regional scale
         zoom = 6
-    elif max_span > 1:   # City scale
+    elif max_span > 1:  # City scale
         zoom = 8
-    elif max_span > 0.1: # Neighborhood scale
+    elif max_span > 0.1:  # Neighborhood scale
         zoom = 10
-    else:                # Very local
+    else:  # Very local
         zoom = 12
-    
+
     # Configure layout with auto-fitted bounds
     fig.update_layout(
         hovermode="closest",

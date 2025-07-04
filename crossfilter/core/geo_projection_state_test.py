@@ -2,6 +2,7 @@
 
 import pandas as pd
 import pytest
+from syrupy import SnapshotAssertion
 
 from crossfilter.core.bucketing import add_bucketed_columns
 from crossfilter.core.geo_projection_state import GeoProjectionState
@@ -11,12 +12,14 @@ from crossfilter.core.schema import SchemaColumns as C
 @pytest.fixture
 def sample_data() -> pd.DataFrame:
     """Create sample data with geographic information."""
-    df = pd.DataFrame({
-        C.UUID_STRING: [f"uuid_{i}" for i in range(20)],
-        C.GPS_LATITUDE: [37.7749 + i * 0.001 for i in range(20)],
-        C.GPS_LONGITUDE: [-122.4194 + i * 0.001 for i in range(20)],
-        C.TIMESTAMP_UTC: [f"2024-01-01T{10 + i // 4}:00:00Z" for i in range(20)],
-    })
+    df = pd.DataFrame(
+        {
+            C.UUID_STRING: [f"uuid_{i}" for i in range(20)],
+            C.GPS_LATITUDE: [37.7749 + i * 0.001 for i in range(20)],
+            C.GPS_LONGITUDE: [-122.4194 + i * 0.001 for i in range(20)],
+            C.TIMESTAMP_UTC: [f"2024-01-01T{10 + i // 4}:00:00Z" for i in range(20)],
+        }
+    )
     df[C.TIMESTAMP_UTC] = pd.to_datetime(df[C.TIMESTAMP_UTC], utc=True)
     df.index.name = C.DF_ID
 
@@ -71,7 +74,9 @@ def test_update_projection_aggregated(sample_data: pd.DataFrame) -> None:
     # Should have H3 level and target column
     assert projection.current_h3_level is not None
     assert projection.projection_state.current_bucketing_column is not None
-    assert projection.projection_state.current_bucketing_column.startswith("QUANTIZED_H3_L")
+    assert projection.projection_state.current_bucketing_column.startswith(
+        "QUANTIZED_H3_L"
+    )
     assert projection.current_h3_level >= 0
     assert projection.current_h3_level <= 15
 
@@ -79,7 +84,9 @@ def test_update_projection_aggregated(sample_data: pd.DataFrame) -> None:
 def test_update_projection_empty_data() -> None:
     """Test updating projection with empty data."""
     projection = GeoProjectionState(max_rows=100)
-    empty_df = pd.DataFrame()
+    empty_df = pd.DataFrame(
+        columns=[C.UUID_STRING, C.TIMESTAMP_UTC, C.GPS_LATITUDE, C.GPS_LONGITUDE]
+    )
 
     projection.update_projection(empty_df)
 
@@ -93,13 +100,12 @@ def test_update_projection_no_gps(sample_data: pd.DataFrame) -> None:
     projection = GeoProjectionState(max_rows=1)
 
     # Remove GPS columns
-    data_without_gps = sample_data[
-        [C.UUID_STRING, C.TIMESTAMP_UTC]
-    ]
+    data_without_gps = sample_data.copy()
+    data_without_gps[[C.GPS_LATITUDE, C.GPS_LONGITUDE]] = None
     projection.update_projection(data_without_gps)
 
     # Should return the original data when H3 columns are missing
-    assert len(projection.projection_state.projection_df) == 20
+    assert len(projection.projection_state.projection_df) == 0
     assert projection.current_h3_level is None
     assert projection.projection_state.current_bucketing_column is None
 
@@ -207,14 +213,16 @@ def test_max_rows_threshold_boundary(sample_data: pd.DataFrame) -> None:
     assert projection.current_h3_level is not None
 
 
-def test_data_without_some_gps_coordinates() -> None:
+def test_data_without_some_gps_coordinates(snapshot: SnapshotAssertion) -> None:
     """Test handling of data with some missing GPS coordinates."""
-    df = pd.DataFrame({
-        C.UUID_STRING: [f"uuid_{i}" for i in range(5)],
-        C.GPS_LATITUDE: [37.7749, None, 37.7751, 37.7752, None],
-        C.GPS_LONGITUDE: [-122.4194, -122.4195, None, -122.4197, -122.4198],
-        C.TIMESTAMP_UTC: [f"2024-01-01T10:00:0{i}Z" for i in range(5)],
-    })
+    df = pd.DataFrame(
+        {
+            C.UUID_STRING: [f"uuid_{i}" for i in range(5)],
+            C.GPS_LATITUDE: [37.7749, None, 37.7751, 37.7752, None],
+            C.GPS_LONGITUDE: [-122.4194, -122.4195, None, -122.4197, -122.4198],
+            C.TIMESTAMP_UTC: [f"2024-01-01T10:00:0{i}Z" for i in range(5)],
+        }
+    )
     df[C.TIMESTAMP_UTC] = pd.to_datetime(df[C.TIMESTAMP_UTC], utc=True)
     df.index.name = C.DF_ID
 
@@ -226,6 +234,7 @@ def test_data_without_some_gps_coordinates() -> None:
 
     # Should handle the data, even with some missing coordinates
     result = projection.projection_state.projection_df
-    assert len(result) == 5  # All rows included
+    assert snapshot == result.to_dict(orient="records")
+    assert len(result) == 2  # All rows included
     assert C.GPS_LATITUDE in result.columns
     assert C.GPS_LONGITUDE in result.columns

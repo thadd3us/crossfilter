@@ -68,6 +68,7 @@ class SessionState:
         # Broadcast data loaded event
         self.broadcast_filter_change("data_loaded", ["temporal", "geo"])
 
+    # THAD: Delete this.  When this information is needed, just pull it from the DataFrame.
     def update_metadata(self) -> None:
         """Update metadata based on current DataFrame."""
         self.metadata = {
@@ -76,6 +77,7 @@ class SessionState:
             "dtypes": self.all_rows.dtypes.to_dict(),
         }
 
+    # THAD: Delete this and update callers.  This shouldn't be necessary.  Nothing should be special-cased on whether the DataFrame is empty or not.
     def has_data(self) -> bool:
         """Check if the session has data loaded."""
         return not self.all_rows.empty
@@ -132,6 +134,7 @@ class SessionState:
 
     def get_summary(self) -> dict:
         """Get a summary of the current session state."""
+        # THAD: Don't special case this -- there will be an empty DataFrame that you can just read from!
         if not self.has_data():
             return {
                 "status": "empty",
@@ -142,12 +145,15 @@ class SessionState:
             }
 
         summary = {
+            # THAD: Delete this.
             "status": "loaded",
+            # THAD: Delete this.
             "shape": self.metadata["shape"],
             "columns": self.metadata["columns"],
             "memory_usage": f"{self.all_rows.memory_usage(deep=True).sum() / 1024 / 1024:.2f} MB",
             "all_rows_count": len(self.all_rows),
             "filtered_rows_count": len(self.filtered_rows),
+            # THAD: Delete this.  Nobody asked for it.
             "filter_ratio": (
                 len(self.filtered_rows) / len(self.all_rows)
                 if len(self.all_rows) > 0
@@ -186,6 +192,7 @@ class SessionState:
             "affected_components": affected_components,
             "version": self.filter_version,
             "timestamp": time.time(),
+            # THAD: Just use self.get_summary() for this.
             "session_state": {
                 "has_data": self.has_data(),
                 "all_rows_count": len(self.all_rows) if self.has_data() else 0,
@@ -195,7 +202,8 @@ class SessionState:
                 "columns": list(self.all_rows.columns) if self.has_data() else [],
                 "memory_usage_mb": (
                     f"{self.all_rows.memory_usage(deep=True).sum() / 1024 / 1024:.2f}"
-                    if self.has_data() else "0.00"
+                    if self.has_data()
+                    else "0.00"
                 ),
                 # Frontend-compatible field names
                 "row_count": len(self.all_rows) if self.has_data() else 0,
@@ -217,11 +225,14 @@ class SessionState:
 
         try:
             # Send initial connection event
+            # THAD: Factor out a common function to construct these events and use it both here and in broadcast_filter_change above?
+            # THAD: Also, can we define put the definition of these events into a file called frontend_backend_shared_schema.py and make them strongly typed?
             initial_event = {
                 "type": "connection_established",
                 "affected_components": ["temporal", "geo"],
                 "version": self.filter_version,
                 "timestamp": time.time(),
+                # THAD: Just use self.get_summary() for this.
                 "session_state": {
                     "has_data": self.has_data(),
                     "all_rows_count": len(self.all_rows) if self.has_data() else 0,
@@ -231,7 +242,8 @@ class SessionState:
                     "columns": list(self.all_rows.columns) if self.has_data() else [],
                     "memory_usage_mb": (
                         f"{self.all_rows.memory_usage(deep=True).sum() / 1024 / 1024:.2f}"
-                        if self.has_data() else "0.00"
+                        if self.has_data()
+                        else "0.00"
                     ),
                     # Frontend-compatible field names
                     "row_count": len(self.all_rows) if self.has_data() else 0,

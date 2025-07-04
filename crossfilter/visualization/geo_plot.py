@@ -21,12 +21,31 @@ def create_geo_plot(
 ) -> go.Figure:
     """Create a Plotly geographic scatter plot with tile maps."""
     if df.empty:
+        # Show world map when no data - create empty map manually
         fig = go.Figure()
-        fig.add_annotation(
-            text="No data to display",
-            x=0.5,
-            y=0.5,
-            showarrow=False,
+        fig.add_trace(go.Scattermap(
+            lat=[],
+            lon=[],
+            mode='markers',
+        ))
+        fig.update_layout(
+            title=title,
+            map=dict(
+                style="open-street-map",
+                center=dict(lat=0, lon=0),  # Center on equator
+                zoom=1,  # World view
+            ),
+            annotations=[
+                dict(
+                    text="No data to display",
+                    x=0.5,
+                    y=0.95,
+                    xref="paper",
+                    yref="paper",
+                    showarrow=False,
+                    font=dict(size=16),
+                )
+            ],
         )
         return fig
 
@@ -34,12 +53,31 @@ def create_geo_plot(
     required_geo_cols = [C.GPS_LATITUDE, C.GPS_LONGITUDE]
     missing_cols = [col for col in required_geo_cols if col not in df.columns]
     if missing_cols:
+        # Show world map when missing coordinates - create empty map manually
         fig = go.Figure()
-        fig.add_annotation(
-            text=f"Missing geographic columns: {', '.join(missing_cols)}",
-            x=0.5,
-            y=0.5,
-            showarrow=False,
+        fig.add_trace(go.Scattermap(
+            lat=[],
+            lon=[],
+            mode='markers',
+        ))
+        fig.update_layout(
+            title=title,
+            map=dict(
+                style="open-street-map",
+                center=dict(lat=0, lon=0),  # Center on equator
+                zoom=1,  # World view
+            ),
+            annotations=[
+                dict(
+                    text=f"Missing geographic columns: {', '.join(missing_cols)}",
+                    x=0.5,
+                    y=0.95,
+                    xref="paper",
+                    yref="paper",
+                    showarrow=False,
+                    font=dict(size=16),
+                )
+            ],
         )
         return fig
 
@@ -47,12 +85,31 @@ def create_geo_plot(
     df = df.dropna(subset=[C.GPS_LATITUDE, C.GPS_LONGITUDE]).copy()
     
     if df.empty:
+        # Show world map when no valid coordinates - create empty map manually
         fig = go.Figure()
-        fig.add_annotation(
-            text="No valid geographic coordinates",
-            x=0.5,
-            y=0.5,
-            showarrow=False,
+        fig.add_trace(go.Scattermap(
+            lat=[],
+            lon=[],
+            mode='markers',
+        ))
+        fig.update_layout(
+            title=title,
+            map=dict(
+                style="open-street-map",
+                center=dict(lat=0, lon=0),  # Center on equator
+                zoom=1,  # World view
+            ),
+            annotations=[
+                dict(
+                    text="No valid geographic coordinates",
+                    x=0.5,
+                    y=0.95,
+                    xref="paper",
+                    yref="paper",
+                    showarrow=False,
+                    font=dict(size=16),
+                )
+            ],
         )
         return fig
 
@@ -104,16 +161,40 @@ def create_geo_plot(
         size_max=max_marker_size,
     )
 
-    # Configure layout
+    # Calculate bounds for auto-fitting the map
+    lat_min, lat_max = df[C.GPS_LATITUDE].min(), df[C.GPS_LATITUDE].max()
+    lon_min, lon_max = df[C.GPS_LONGITUDE].min(), df[C.GPS_LONGITUDE].max()
+    
+    # Calculate center
+    center_lat = (lat_min + lat_max) / 2
+    center_lon = (lon_min + lon_max) / 2
+    
+    # Calculate zoom level based on data span
+    lat_span = lat_max - lat_min
+    lon_span = lon_max - lon_min
+    max_span = max(lat_span, lon_span)
+    
+    # Heuristic zoom calculation (adjust as needed)
+    if max_span > 60:  # Very wide spread
+        zoom = 2
+    elif max_span > 20:  # Continental scale
+        zoom = 4
+    elif max_span > 5:   # Regional scale
+        zoom = 6
+    elif max_span > 1:   # City scale
+        zoom = 8
+    elif max_span > 0.1: # Neighborhood scale
+        zoom = 10
+    else:                # Very local
+        zoom = 12
+    
+    # Configure layout with auto-fitted bounds
     fig.update_layout(
         hovermode="closest",
         showlegend=True,
         map=dict(
-            center=dict(
-                lat=df[C.GPS_LATITUDE].mean(),
-                lon=df[C.GPS_LONGITUDE].mean(),
-            ),
-            zoom=10,
+            center=dict(lat=center_lat, lon=center_lon),
+            zoom=zoom,
         ),
     )
 

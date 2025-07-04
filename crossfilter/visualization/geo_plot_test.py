@@ -55,6 +55,45 @@ def grouped_geo_data(sample_data: pd.DataFrame) -> pd.DataFrame:
     return grouped_df
 
 
+@pytest.fixture
+def nyc_area_data() -> pd.DataFrame:
+    """Create test data with points around NYC area to test auto-fitting."""
+    # NYC coordinates: 40.7128° N, 74.0060° W
+    import datetime
+    nyc_lat, nyc_lon = 40.7128, -74.0060
+    
+    # Create points in a small area around NYC
+    data = []
+    locations = [
+        ("Central Park", nyc_lat + 0.02, nyc_lon + 0.01),
+        ("Brooklyn Bridge", nyc_lat - 0.01, nyc_lon + 0.005),
+        ("Times Square", nyc_lat + 0.005, nyc_lon - 0.005),
+        ("Statue of Liberty", nyc_lat - 0.03, nyc_lon - 0.02),
+        ("One World Trade", nyc_lat - 0.005, nyc_lon + 0.002),
+        ("Empire State Building", nyc_lat + 0.008, nyc_lon - 0.008),
+    ]
+    
+    for i, (name, lat, lon) in enumerate(locations):
+        data.append({
+            SchemaColumns.UUID_STRING: f"nyc_uuid_{i}",
+            SchemaColumns.DATA_TYPE: "PHOTO" if i % 2 == 0 else "VIDEO",
+            SchemaColumns.NAME: name,
+            SchemaColumns.CAPTION: f"Photo/Video at {name}",
+            SchemaColumns.SOURCE_FILE: f"nyc_file_{i}.jpg",
+            SchemaColumns.TIMESTAMP_MAYBE_TIMEZONE_AWARE: "2024-01-15T12:00:00",
+            SchemaColumns.TIMESTAMP_UTC: datetime.datetime(2024, 1, 15, 12, i, 0, tzinfo=datetime.timezone.utc),
+            SchemaColumns.GPS_LATITUDE: lat,
+            SchemaColumns.GPS_LONGITUDE: lon,
+            SchemaColumns.RATING_0_TO_5: 4,
+            SchemaColumns.SIZE_IN_BYTES: 1024000,
+            SchemaColumns.COUNT: 1 + i * 2,  # Varying count values
+        })
+    
+    df = pd.DataFrame(data)
+    df.index.name = SchemaColumns.DF_ID
+    return df
+
+
 def test_geo_plot_no_data(
     snapshot: SnapshotAssertion, individual_geo_data: pd.DataFrame
 ) -> None:
@@ -113,6 +152,19 @@ def test_geo_plot_with_count_data_grouped(
         grouped_geo_data,
         groupby=SchemaColumns.DATA_TYPE,
         title="Test Geographic Plot - With Count Data, Grouped By Type",
+    )
+    html_content = fig.to_html(include_plotlyjs="cdn", div_id="test-plot-div")
+    assert html_content == snapshot(extension_class=HTMLSnapshotExtension)
+
+
+def test_geo_plot_nyc_area_auto_fit(
+    snapshot: SnapshotAssertion, nyc_area_data: pd.DataFrame
+) -> None:
+    """Test that plot auto-fits to NYC area data, demonstrating zoom behavior."""
+    fig = create_geo_plot(
+        nyc_area_data,
+        groupby=SchemaColumns.DATA_TYPE,
+        title="Test Geographic Plot - NYC Area Auto-Fit",
     )
     html_content = fig.to_html(include_plotlyjs="cdn", div_id="test-plot-div")
     assert html_content == snapshot(extension_class=HTMLSnapshotExtension)

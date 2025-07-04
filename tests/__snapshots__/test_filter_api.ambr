@@ -38,7 +38,7 @@
         'QUANTIZED_TIMESTAMP_MONTH',
         'QUANTIZED_TIMESTAMP_YEAR',
       ]),
-      'filter_ratio': 0.1,
+      'filtered_count': 10,
       'filtered_rows_count': 10,
       'geo_projection': dict({
         'current_bucketing_column': None,
@@ -48,12 +48,9 @@
         'projection_rows': 10,
         'target_column': None,
       }),
-      'memory_usage': '0.15 MB',
-      'shape': list([
-        100,
-        33,
-      ]),
-      'status': 'loaded',
+      'has_data': True,
+      'memory_usage_mb': '0.15',
+      'row_count': 100,
       'temporal_projection': dict({
         'aggregation_level': None,
         'current_bucketing_column': None,

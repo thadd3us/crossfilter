@@ -1,6 +1,7 @@
 """Basic frontend UI test for temporal CDF plot using Playwright."""
 
 import logging
+import sys
 
 import pytest
 from playwright.sync_api import Page
@@ -26,7 +27,10 @@ logger = logging.getLogger(__name__)
 #     return playwright.chromium.launch(headless=False, devtools=True)
 
 
-@pytest.mark.skip(reason="Very brittle")
+@pytest.mark.skipif(
+    sys.platform != "darwin",
+    reason="Only runs this on macOS -- it is brittle across multiple platforms.",
+)
 @pytest.mark.e2e
 def test_temporal_cdf_plot_png_snapshot(
     page: Page, server_with_data: str, snapshot: SnapshotAssertion

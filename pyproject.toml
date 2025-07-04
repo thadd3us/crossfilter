@@ -101,14 +101,15 @@ testpaths = ["."]
 #python_files = ["test_*.py", "*_test.py"]
 #python_classes = ["Test*"]
 #python_functions = ["test_*"]
+log_cli = true
+log_cli_level = "INFO"
 addopts = [
     "--strict-markers",
     "--strict-config",
-    # Options below interfere with using the debugger from VSCode (sys.trace problems)
-#    "--cov=crossfilter",
-#    "--cov-report=term-missing",
-#    "--cov-report=html",
-#    "--cov-report=xml",
+    "--cov=crossfilter",
+    "--cov-report=term-missing",
+    "--cov-report=html",
+    "--cov-report=xml",
 ]
 markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",

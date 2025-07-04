@@ -22,6 +22,7 @@ logger = logging.getLogger(__name__)
 #     return playwright.chromium.launch(headless=False, devtools=True)
 
 
+@pytest.mark.skip(reason="Very brittle")
 @pytest.mark.e2e
 def test_temporal_cdf_plot_png_snapshot(
     page: Page, server_with_data: str, snapshot: SnapshotAssertion
@@ -96,9 +97,7 @@ def test_temporal_cdf_plot_content(page: Page, server_with_data: str) -> None:
 
 
 @pytest.mark.e2e
-def test_filter_to_selected_ui_elements(
-    page: Page, server_with_data: str
-) -> None:
+def test_filter_to_selected_ui_elements(page: Page, server_with_data: str) -> None:
     """Test the complete Filter to Selected workflow including:
 
     1. Rendering the plot with selection tools

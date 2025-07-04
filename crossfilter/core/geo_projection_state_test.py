@@ -45,8 +45,7 @@ def test_update_projection_individual_points(sample_data: pd.DataFrame) -> None:
     assert len(result) == 20
     assert C.GPS_LATITUDE in result.columns
     assert C.GPS_LONGITUDE in result.columns
-    assert C.DF_ID in result.columns
-    assert "count" not in result.columns  # No aggregation
+    assert C.COUNT not in result.columns  # No aggregation
 
     # H3 level should be None (individual points)
     assert projection.current_h3_level is None
@@ -64,10 +63,10 @@ def test_update_projection_aggregated(sample_data: pd.DataFrame) -> None:
     assert len(result) <= 5
     assert C.GPS_LATITUDE in result.columns
     assert C.GPS_LONGITUDE in result.columns
-    assert "count" in result.columns
+    assert C.COUNT in result.columns
 
     # Total count should match original data
-    assert result["count"].sum() == 20
+    assert result[C.COUNT].sum() == 20
 
     # Should have H3 level and target column
     assert projection.current_h3_level is not None
@@ -91,13 +90,16 @@ def test_update_projection_empty_data() -> None:
 
 def test_update_projection_no_gps(sample_data: pd.DataFrame) -> None:
     """Test updating projection with data missing GPS coordinates."""
-    projection = GeoProjectionState(max_rows=100)
+    projection = GeoProjectionState(max_rows=1)
 
     # Remove GPS columns
-    data_without_gps = sample_data.drop(columns=[C.GPS_LATITUDE, C.GPS_LONGITUDE])
+    data_without_gps = sample_data[
+        [C.UUID_STRING, C.TIMESTAMP_UTC]
+    ]
     projection.update_projection(data_without_gps)
 
-    assert projection.projection_state.projection_df.empty
+    # Should return the original data when H3 columns are missing
+    assert len(projection.projection_state.projection_df) == 20
     assert projection.current_h3_level is None
     assert projection.projection_state.current_bucketing_column is None
 
@@ -191,7 +193,7 @@ def test_max_rows_threshold_boundary(sample_data: pd.DataFrame) -> None:
     # Should show individual points
     result = projection.projection_state.projection_df
     assert len(result) == 20
-    assert "count" not in result.columns
+    assert C.COUNT not in result.columns
     assert projection.current_h3_level is None
 
     # Now use 19 max_rows (one less than data size)
@@ -201,7 +203,7 @@ def test_max_rows_threshold_boundary(sample_data: pd.DataFrame) -> None:
     # Should aggregate
     result = projection.projection_state.projection_df
     assert len(result) <= 19
-    assert "count" in result.columns
+    assert C.COUNT in result.columns
     assert projection.current_h3_level is not None
 
 

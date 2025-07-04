@@ -65,7 +65,7 @@ class BucketKey:
             object.__setattr__(self, "identifier", str(uuid.uuid4())[:8])
 
 
-# H3 resolution levels to pre-compute (0-15, where higher = more granular)
+# H3 resolution levels to pre-compute (0-15, where higher = more granular).  Important that these are ordered from smallest to largest grain.
 H3_LEVELS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
 
 # Temporal quantization levels.  Important that these are ordered from smallest to largest grain.
@@ -241,30 +241,39 @@ def bucket_by_target_column(
     return bucketed
 
 
-def get_optimal_h3_level(df: pd.DataFrame, max_groups: int) -> Optional[int]:
+def get_optimal_h3_level(df: pd.DataFrame, max_rows: int) -> Optional[int]:
     """
-    Find the H3 resolution level that gives closest to max_groups unique cells.
-
-    Args:
-        df: DataFrame with H3 columns
-        max_groups: Maximum number of groups desired
-
     Returns:
-        Optimal H3 level, or None if no H3 columns found
+        Optimal H3 aggregation level, or None if no H3 aggregation is required.
     """
-    best_level = None
-    best_count = 0
+    if len(df.index) <= max_rows:
+        logger.info(
+            f"No need to bucket data at any H3 level, {len(df)=}, {max_rows=}"
+        )
+        return None
+
+    # Check if H3 columns are available (they won't be if GPS columns are missing)
+    first_h3_column = get_h3_column_name(H3_LEVELS[0])
+    if first_h3_column not in df.columns:
+        logger.warning(
+            f"No H3 columns found in DataFrame, cannot perform H3 aggregation"
+        )
+        return None
 
     for level in H3_LEVELS:
         col_name = get_h3_column_name(level)
-        if col_name in df.columns:
-            unique_count = df[col_name].nunique()
-            if unique_count <= max_groups and unique_count > best_count:
-                best_level = level
-                best_count = unique_count
+        assert col_name in df.columns, f"Column {col_name} not found in DataFrame"
+        unique_count = df[col_name].nunique()
+        if unique_count <= max_rows:
+            logger.info(
+                f"Using H3 level {level} to bucket {len(df)=} rows into {max_rows=}, {unique_count=}"
+            )
+            return level
 
-    logger.debug(f"Optimal H3 level: {best_level} with {best_count} groups")
-    return best_level
+    logger.warning(
+        f"No H3 level found that would bucket {len(df)=} rows into {max_rows=}, using {max(H3_LEVELS)}"
+    )
+    return max(H3_LEVELS)
 
 
 def get_optimal_temporal_level(

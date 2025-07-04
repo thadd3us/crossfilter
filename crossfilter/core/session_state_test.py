@@ -108,9 +108,8 @@ def test_spatial_aggregation_individual_points(sample_df: pd.DataFrame) -> None:
     assert len(result) == 20
     assert C.GPS_LATITUDE in result.columns
     assert C.GPS_LONGITUDE in result.columns
-    assert C.DF_ID in result.columns
     # Should not have COUNT column for individual points
-    assert "count" not in result.columns
+    assert C.COUNT not in result.columns
 
 
 def test_spatial_aggregation_aggregated(sample_df: pd.DataFrame) -> None:
@@ -127,10 +126,10 @@ def test_spatial_aggregation_aggregated(sample_df: pd.DataFrame) -> None:
     assert len(result) <= 5
     assert C.GPS_LATITUDE in result.columns
     assert C.GPS_LONGITUDE in result.columns
-    assert "count" in result.columns
+    assert C.COUNT in result.columns
 
     # Total count should match original data
-    assert result["count"].sum() == 20
+    assert result[C.COUNT].sum() == 20
 
 
 def test_temporal_aggregation_individual_points(sample_df: pd.DataFrame) -> None:

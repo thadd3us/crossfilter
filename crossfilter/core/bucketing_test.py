@@ -113,15 +113,14 @@ def test_get_optimal_h3_level(sample_df: pd.DataFrame) -> None:
     """Test finding optimal H3 level."""
     quantized = add_quantized_geo_h3_columns(sample_df)
 
-    # With small dataset, should find a high-resolution level
-    optimal = get_optimal_h3_level(quantized, max_groups=1000)
-    assert optimal is not None
-    assert optimal in H3_LEVELS
+    # With large max_rows, should return None (no aggregation needed)
+    optimal = get_optimal_h3_level(quantized, max_rows=1000)
+    assert optimal is None
 
-    # With very small max_groups, should find lower resolution
-    optimal_small = get_optimal_h3_level(quantized, max_groups=1)
+    # With very small max_rows, should find an H3 level for aggregation
+    optimal_small = get_optimal_h3_level(quantized, max_rows=1)
     assert optimal_small is not None
-    assert optimal_small <= optimal  # Lower resolution has smaller numbers
+    assert optimal_small in H3_LEVELS
 
 
 def test_get_optimal_temporal_level(snapshot: SnapshotAssertion) -> None:

@@ -50,6 +50,7 @@
     }),
     'has_data': True,
     'memory_usage': '0.15 MB',
+    'memory_usage_mb': '0.15',
     'row_count': 100,
     'shape': list([
       100,

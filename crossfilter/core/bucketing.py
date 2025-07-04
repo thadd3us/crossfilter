@@ -147,9 +147,10 @@ def _add_temporal_columns(df: pd.DataFrame) -> pd.DataFrame:
     # Convert to datetime if string
     timestamps = pd.to_datetime(df[SchemaColumns.TIMESTAMP_UTC])
     
-    # Enforce that timestamps are timezone-aware and in UTC
-    assert timestamps.dt.tz is not None, f"TIMESTAMP_UTC column must be timezone-aware, got {timestamps.dt.tz}"
-    assert str(timestamps.dt.tz) == "UTC", f"TIMESTAMP_UTC column must be in UTC timezone, got {timestamps.dt.tz}"
+    # For non-empty DataFrames, enforce that timestamps are timezone-aware and in UTC
+    if len(df) > 0:
+        assert timestamps.dt.tz is not None, f"TIMESTAMP_UTC column must be timezone-aware, got {timestamps.dt.tz}"
+        assert str(timestamps.dt.tz) == "UTC", f"TIMESTAMP_UTC column must be in UTC timezone, got {timestamps.dt.tz}"
 
     # Second level (round to nearest second)
     df[get_temporal_column_name(TemporalLevel.SECOND)] = timestamps.dt.floor("s")
@@ -163,15 +164,23 @@ def _add_temporal_columns(df: pd.DataFrame) -> pd.DataFrame:
     # Day level
     df[get_temporal_column_name(TemporalLevel.DAY)] = timestamps.dt.floor("D")
 
-    # Month level - convert to timezone-naive, apply period conversion, then restore UTC timezone
-    df[get_temporal_column_name(TemporalLevel.MONTH)] = (
-        timestamps.dt.tz_convert(None).dt.to_period("M").dt.start_time.dt.tz_localize("UTC")
-    )
-
-    # Year level - convert to timezone-naive, apply period conversion, then restore UTC timezone
-    df[get_temporal_column_name(TemporalLevel.YEAR)] = (
-        timestamps.dt.tz_convert(None).dt.to_period("Y").dt.start_time.dt.tz_localize("UTC")
-    )
+    # Month and year levels - handle empty vs non-empty DataFrames
+    if len(df) > 0:
+        # Non-empty: convert to timezone-naive, apply period conversion, then restore UTC timezone
+        df[get_temporal_column_name(TemporalLevel.MONTH)] = (
+            timestamps.dt.tz_convert(None).dt.to_period("M").dt.start_time.dt.tz_localize("UTC")
+        )
+        df[get_temporal_column_name(TemporalLevel.YEAR)] = (
+            timestamps.dt.tz_convert(None).dt.to_period("Y").dt.start_time.dt.tz_localize("UTC")
+        )
+    else:
+        # Empty: apply period conversion directly (no timezone to preserve)
+        df[get_temporal_column_name(TemporalLevel.MONTH)] = (
+            timestamps.dt.to_period("M").dt.start_time
+        )
+        df[get_temporal_column_name(TemporalLevel.YEAR)] = (
+            timestamps.dt.to_period("Y").dt.start_time
+        )
 
     return df
 

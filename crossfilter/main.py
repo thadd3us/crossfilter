@@ -66,7 +66,7 @@ async def load_data_endpoint(
 ) -> dict[str, Any]:
     """Load data from a JSONL file into the session state."""
     from fastapi import HTTPException
-    
+
     try:
         jsonl_path = Path(request.file_path)
         if not jsonl_path.exists():
@@ -136,7 +136,7 @@ async def get_temporal_plot_data(
 ) -> dict[str, Any]:
     """Get data for the temporal CDF plot."""
     from fastapi import HTTPException
-    
+
     if not session_state.has_data():
         raise HTTPException(status_code=404, detail="No data loaded")
 
@@ -165,9 +165,9 @@ async def filter_to_df_ids(
 ) -> dict[str, Any]:
     """Filter data to only include points with specified df_ids from a plot."""
     from fastapi import HTTPException
-    
+
     logger.info(f"Filtering to df_ids: {request=}")
-    
+
     try:
         filter_event = FilterEvent(
             projection_type=request.event_source,

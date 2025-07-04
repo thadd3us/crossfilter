@@ -6,7 +6,6 @@ from syrupy import SnapshotAssertion
 
 from crossfilter.core.bucketing import (
     H3_LEVELS,
-    TEMPORAL_LEVELS,
     add_bucketed_columns,
     add_quantized_geo_h3_columns,
     add_quantized_temporal_columns,

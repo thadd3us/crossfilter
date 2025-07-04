@@ -2,11 +2,8 @@
 
 import logging
 
-import pytest
 import requests
 from syrupy import SnapshotAssertion
-
-from tests.fixtures_server import server_with_data
 
 logger = logging.getLogger(__name__)
 

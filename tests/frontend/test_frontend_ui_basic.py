@@ -1,12 +1,11 @@
 """Basic frontend UI test for temporal CDF plot using Playwright."""
 
 import logging
+
 import pytest
 from playwright.sync_api import Page
 from syrupy import SnapshotAssertion
 from syrupy.extensions.image import PNGImageSnapshotExtension
-
-from tests.fixtures_server import server_with_data
 
 logger = logging.getLogger(__name__)
 

@@ -7,6 +7,8 @@ from syrupy import SnapshotAssertion
 from crossfilter.core.bucketing import add_bucketed_columns
 from crossfilter.core.schema import (
     SchemaColumns as C,
+)
+from crossfilter.core.schema import (
     TemporalLevel,
     get_temporal_column_name,
 )

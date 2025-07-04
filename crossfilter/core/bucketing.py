@@ -256,7 +256,7 @@ def get_optimal_h3_level(df: pd.DataFrame, max_rows: int) -> Optional[int]:
     first_h3_column = get_h3_column_name(H3_LEVELS[0])
     if first_h3_column not in df.columns:
         logger.warning(
-            f"No H3 columns found in DataFrame, cannot perform H3 aggregation"
+            "No H3 columns found in DataFrame, cannot perform H3 aggregation"
         )
         return None
 

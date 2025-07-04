@@ -11,7 +11,6 @@ from crossfilter.core.bucketing import (
     get_optimal_h3_level,
 )
 from crossfilter.core.projection_state import ProjectionState
-from crossfilter.core.schema import SchemaColumns
 
 logger = logging.getLogger(__name__)
 

@@ -11,7 +11,7 @@ from crossfilter.core.bucketing import (
     get_temporal_column_name,
 )
 from crossfilter.core.projection_state import ProjectionState
-from crossfilter.core.schema import SchemaColumns, TemporalLevel
+from crossfilter.core.schema import TemporalLevel
 
 logger = logging.getLogger(__name__)
 

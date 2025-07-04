@@ -31,13 +31,13 @@ def test_session_state_initialization() -> None:
     """Test SessionState initialization."""
     session = SessionState()
 
-    assert not session.has_data()
+    assert len(session.all_rows) == 0
     assert session.all_rows.empty
     assert session.filtered_rows.empty
 
     summary = session.get_summary()
-    assert summary["status"] == "empty"
-    assert summary["message"] == "No data loaded"
+    assert summary["all_rows_count"] == 0
+    assert summary["filtered_rows_count"] == 0
 
 
 def test_load_dataframe(sample_df: pd.DataFrame) -> None:
@@ -45,7 +45,7 @@ def test_load_dataframe(sample_df: pd.DataFrame) -> None:
     session = SessionState()
     session.load_dataframe(sample_df)
 
-    assert session.has_data()
+    assert len(session.all_rows) > 0
     assert len(session.all_rows) == 20
     assert len(session.filtered_rows) == 20
     assert session.all_rows.index.name == C.DF_ID
@@ -62,15 +62,13 @@ def test_session_state_metadata(sample_df: pd.DataFrame) -> None:
     session = SessionState()
     session.load_dataframe(sample_df)
 
-    metadata = session.metadata
-    # Shape includes bucketed columns now
-    assert metadata["shape"][0] == 20  # Same number of rows
-    assert metadata["shape"][1] > 4  # More columns due to bucketing
-    assert C.GPS_LATITUDE in metadata["columns"]
-    assert C.TIMESTAMP_UTC in metadata["columns"]
+    # Check data directly from DataFrame
+    assert len(session.all_rows) == 20  # Same number of rows
+    assert len(session.all_rows.columns) > 4  # More columns due to bucketing
+    assert C.GPS_LATITUDE in session.all_rows.columns
+    assert C.TIMESTAMP_UTC in session.all_rows.columns
 
     summary = session.get_summary()
-    assert summary["status"] == "loaded"
     assert summary["all_rows_count"] == 20
     assert summary["filtered_rows_count"] == 20
     assert "memory_usage" in summary
@@ -225,16 +223,16 @@ def test_clear_session_state(sample_df: pd.DataFrame) -> None:
     session = SessionState()
     session.load_dataframe(sample_df)
 
-    assert session.has_data()
+    assert len(session.all_rows) > 0
 
     session.clear()
 
-    assert not session.has_data()
+    assert len(session.all_rows) == 0
     assert session.all_rows.empty
     assert session.filtered_rows.empty
 
     summary = session.get_summary()
-    assert summary["status"] == "empty"
+    assert summary["all_rows_count"] == 0
 
 
 def test_empty_dataframe_handling() -> None:
@@ -251,7 +249,7 @@ def test_empty_dataframe_handling() -> None:
 
     session.load_dataframe(empty_df)
 
-    assert not session.has_data()  # Empty DataFrame
+    assert len(session.all_rows) == 0  # Empty DataFrame
 
     # Aggregation should handle empty data gracefully
     spatial_result = session.get_geo_aggregation()

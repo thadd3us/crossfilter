@@ -8,9 +8,13 @@ from collections.abc import AsyncGenerator
 
 import pandas as pd
 
+from crossfilter.core.backend_frontend_shared_schema import (
+    FilterEvent,
+    ProjectionType,
+    SessionStateResponse,
+)
 from crossfilter.core.bucketing import add_bucketed_columns
 from crossfilter.core.geo_projection_state import GeoProjectionState
-from crossfilter.core.schema import FilterEvent, ProjectionType
 from crossfilter.core.temporal_projection_state import TemporalProjectionState
 
 logger = logging.getLogger(__name__)
@@ -38,7 +42,6 @@ class SessionState:
         self.all_rows = pd.DataFrame()
         # Current filtered subset of all_rows after filtering operations
         self.filtered_rows = pd.DataFrame()
-        self.update_metadata()
 
         # Initialize projection states
         self.temporal_projection = TemporalProjectionState(max_rows=default_max_rows)
@@ -57,7 +60,6 @@ class SessionState:
         # Initialize filtered_rows to show all data
         self.filtered_rows = self.all_rows.copy()
 
-        self.update_metadata()
         logger.info(
             f"Loaded dataset with {len(df)} rows (expanded to {len(bucketed_data)} rows with bucketed columns) into session state"
         )
@@ -68,25 +70,12 @@ class SessionState:
         # Broadcast data loaded event
         self.broadcast_filter_change("data_loaded", ["temporal", "geo"])
 
-    # THAD: Delete this.  When this information is needed, just pull it from the DataFrame.
-    def update_metadata(self) -> None:
-        """Update metadata based on current DataFrame."""
-        self.metadata = {
-            "shape": self.all_rows.shape,
-            "columns": list(self.all_rows.columns),
-            "dtypes": self.all_rows.dtypes.to_dict(),
-        }
 
-    # THAD: Delete this and update callers.  This shouldn't be necessary.  Nothing should be special-cased on whether the DataFrame is empty or not.
-    def has_data(self) -> bool:
-        """Check if the session has data loaded."""
-        return not self.all_rows.empty
 
     def clear(self) -> None:
         """Clear all data from the session state."""
         self.all_rows = pd.DataFrame()
         self.filtered_rows = pd.DataFrame()
-        self.update_metadata()
 
         # Update all projections with empty data
         self.update_all_projections()
@@ -134,38 +123,30 @@ class SessionState:
 
     def get_summary(self) -> dict:
         """Get a summary of the current session state."""
-        # THAD: Don't special case this -- there will be an empty DataFrame that you can just read from!
-        if not self.has_data():
-            return {
-                "status": "empty",
-                "message": "No data loaded",
-                "all_rows_count": 0,
-                "filtered_rows_count": 0,
-                "columns": [],
-            }
-
-        summary = {
-            # THAD: Delete this.
-            "status": "loaded",
-            # THAD: Delete this.
-            "shape": self.metadata["shape"],
-            "columns": self.metadata["columns"],
+        return {
+            "columns": list(self.all_rows.columns),
             "memory_usage": f"{self.all_rows.memory_usage(deep=True).sum() / 1024 / 1024:.2f} MB",
             "all_rows_count": len(self.all_rows),
             "filtered_rows_count": len(self.filtered_rows),
-            # THAD: Delete this.  Nobody asked for it.
-            "filter_ratio": (
-                len(self.filtered_rows) / len(self.all_rows)
-                if len(self.all_rows) > 0
-                else 0
-            ),
+            "temporal_projection": self.temporal_projection.get_summary(),
+            "geo_projection": self.geo_projection.get_summary(),
         }
 
-        # Add projection state info
-        summary["temporal_projection"] = self.temporal_projection.get_summary()
-        summary["geo_projection"] = self.geo_projection.get_summary()
-
-        return summary
+    def _create_session_state_response(self) -> SessionStateResponse:
+        """Create a strongly typed session state response."""
+        all_rows_count = len(self.all_rows)
+        filtered_rows_count = len(self.filtered_rows)
+        return SessionStateResponse(
+            all_rows_count=all_rows_count,
+            filtered_rows_count=filtered_rows_count,
+            columns=list(self.all_rows.columns),
+            memory_usage_mb=f"{self.all_rows.memory_usage(deep=True).sum() / 1024 / 1024:.2f}",
+            temporal_projection=self.temporal_projection.get_summary(),
+            geo_projection=self.geo_projection.get_summary(),
+            has_data=all_rows_count > 0,
+            row_count=all_rows_count,
+            filtered_count=filtered_rows_count,
+        )
 
     def get_geo_aggregation(self) -> pd.DataFrame:
         return self.geo_projection.projection_state.projection_df.copy()
@@ -192,23 +173,7 @@ class SessionState:
             "affected_components": affected_components,
             "version": self.filter_version,
             "timestamp": time.time(),
-            # THAD: Just use self.get_summary() for this.
-            "session_state": {
-                "has_data": self.has_data(),
-                "all_rows_count": len(self.all_rows) if self.has_data() else 0,
-                "filtered_rows_count": (
-                    len(self.filtered_rows) if self.has_data() else 0
-                ),
-                "columns": list(self.all_rows.columns) if self.has_data() else [],
-                "memory_usage_mb": (
-                    f"{self.all_rows.memory_usage(deep=True).sum() / 1024 / 1024:.2f}"
-                    if self.has_data()
-                    else "0.00"
-                ),
-                # Frontend-compatible field names
-                "row_count": len(self.all_rows) if self.has_data() else 0,
-                "filtered_count": len(self.filtered_rows) if self.has_data() else 0,
-            },
+            "session_state": self._create_session_state_response().model_dump(),
         }
 
         # Queue the event for all connected SSE clients
@@ -225,32 +190,12 @@ class SessionState:
 
         try:
             # Send initial connection event
-            # THAD: Factor out a common function to construct these events and use it both here and in broadcast_filter_change above?
-            # THAD: Also, can we define put the definition of these events into a file called frontend_backend_shared_schema.py and make them strongly typed?
             initial_event = {
                 "type": "connection_established",
                 "affected_components": ["temporal", "geo"],
                 "version": self.filter_version,
                 "timestamp": time.time(),
-                # THAD: Just use self.get_summary() for this.
-                "session_state": {
-                    "has_data": self.has_data(),
-                    "all_rows_count": len(self.all_rows) if self.has_data() else 0,
-                    "filtered_rows_count": (
-                        len(self.filtered_rows) if self.has_data() else 0
-                    ),
-                    "columns": list(self.all_rows.columns) if self.has_data() else [],
-                    "memory_usage_mb": (
-                        f"{self.all_rows.memory_usage(deep=True).sum() / 1024 / 1024:.2f}"
-                        if self.has_data()
-                        else "0.00"
-                    ),
-                    # Frontend-compatible field names
-                    "row_count": len(self.all_rows) if self.has_data() else 0,
-                    "filtered_count": (
-                        len(self.filtered_rows) if self.has_data() else 0
-                    ),
-                },
+                "session_state": self._create_session_state_response().model_dump(),
             }
             yield f"data: {json.dumps(initial_event)}\n\n"
 

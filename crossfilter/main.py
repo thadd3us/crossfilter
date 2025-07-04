@@ -12,8 +12,15 @@ import uvicorn
 from fastapi import Depends, FastAPI, Query
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
 
+from crossfilter.core.backend_frontend_shared_schema import (
+    DfIdsFilterRequest,
+    FilterResponse,
+    LoadDataRequest,
+    LoadDataResponse,
+    SessionStateResponse,
+    TemporalPlotResponse,
+)
 from crossfilter.core.schema import FilterEvent, ProjectionType, load_jsonl_to_dataframe
 from crossfilter.core.session_state import SessionState
 from crossfilter.visualization.temporal_cdf_plot import create_temporal_cdf
@@ -46,24 +53,12 @@ if static_path.exists():
     app.mount("/static", StaticFiles(directory=str(static_path)), name="static")
 
 
-class LoadDataRequest(BaseModel):
-    """Request model for loading data."""
-
-    file_path: str
-
-
-class DfIdsFilterRequest(BaseModel):
-    """Request model for filtering to specific df_ids from a plot."""
-
-    # df_ids from the plot (could be from lasso selection, visible area, etc.)
-    df_ids: list[int]
-    event_source: ProjectionType  # Which plot type this filtering comes from
 
 
 @app.post("/api/data/load")
 async def load_data_endpoint(
     request: LoadDataRequest, session_state: SessionState = Depends(get_session_state)
-) -> dict[str, Any]:
+) -> LoadDataResponse:
     """Load data from a JSONL file into the session state."""
     from fastapi import HTTPException
 
@@ -77,11 +72,11 @@ async def load_data_endpoint(
         df = load_jsonl_to_dataframe(jsonl_path)
         session_state.load_dataframe(df)
 
-        return {
-            "success": True,
-            "message": f"Successfully loaded {len(df)} records",
-            "session_state": session_state.get_summary(),
-        }
+        return LoadDataResponse(
+            success=True,
+            message=f"Successfully loaded {len(df)} records",
+            session_state=session_state._create_session_state_response(),
+        )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error loading data: {str(e)}")
 
@@ -113,35 +108,20 @@ async def root() -> str:
 @app.get("/api/session")
 async def get_session_status(
     session_state: SessionState = Depends(get_session_state),
-) -> dict:
+) -> SessionStateResponse:
     """Get the current session state status."""
-    summary = session_state.get_summary()
-
-    # Add filter-specific fields for frontend compatibility
-    summary.update(
-        {
-            "has_data": session_state.has_data(),
-            "row_count": summary.get("all_rows_count", 0),
-            "filtered_count": summary.get("filtered_rows_count", 0),
-            "memory_usage_mb": (
-                f"{session_state.all_rows.memory_usage(deep=True).sum() / 1024 / 1024:.2f}"
-                if session_state.has_data() else "0.00"
-            ),
-        }
-    )
-
-    return summary
+    return session_state._create_session_state_response()
 
 
 @app.get("/api/plots/temporal")
 async def get_temporal_plot_data(
     max_groups: int = Query(100000, ge=1, le=1000000),
     session_state: SessionState = Depends(get_session_state),
-) -> dict[str, Any]:
+) -> TemporalPlotResponse:
     """Get data for the temporal CDF plot."""
     from fastapi import HTTPException
 
-    if not session_state.has_data():
+    if len(session_state.all_rows) == 0:
         raise HTTPException(status_code=404, detail="No data loaded")
 
     try:
@@ -149,13 +129,11 @@ async def get_temporal_plot_data(
         fig = create_temporal_cdf(temporal_data)
         plotly_plot = json.loads(fig.to_json())
 
-        return {
-            "plotly_plot": plotly_plot,
-            "data_type": (
-                "aggregated" if "count" in temporal_data.columns else "individual"
-            ),
-            "point_count": len(temporal_data),
-        }
+        return TemporalPlotResponse(
+            plotly_plot=plotly_plot,
+            data_type="aggregated" if "count" in temporal_data.columns else "individual",
+            point_count=len(temporal_data),
+        )
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Error generating temporal plot: {str(e)}"
@@ -166,7 +144,7 @@ async def get_temporal_plot_data(
 async def filter_to_df_ids(
     request: DfIdsFilterRequest,
     session_state: SessionState = Depends(get_session_state),
-) -> dict[str, Any]:
+) -> FilterResponse:
     """Filter data to only include points with specified df_ids from a plot."""
     from fastapi import HTTPException
 
@@ -179,10 +157,10 @@ async def filter_to_df_ids(
         )
         session_state.apply_filter_event(filter_event)
 
-        return {
-            "success": True,
-            "filter_state": session_state.get_summary(),
-        }
+        return FilterResponse(
+            success=True,
+            filter_state=session_state._create_session_state_response(),
+        )
     except Exception as e:
         # Include the projection type in the error message for better test compatibility
         error_msg = f"Error applying {request.event_source.value} filter: {str(e)}"
@@ -204,14 +182,14 @@ async def filter_to_df_ids(
 @app.post("/api/filters/reset")
 async def reset_filters(
     session_state: SessionState = Depends(get_session_state),
-) -> dict[str, Any]:
+) -> FilterResponse:
     """Reset all filters to show all data."""
     session_state.reset_filters()
 
-    return {
-        "success": True,
-        "filter_state": session_state.get_summary(),
-    }
+    return FilterResponse(
+        success=True,
+        filter_state=session_state._create_session_state_response(),
+    )
 
 
 @app.get("/api/events/filter-changes")

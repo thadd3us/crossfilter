@@ -2,7 +2,6 @@
 
 import json
 import logging
-from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
 from typing import Optional
@@ -10,6 +9,9 @@ from typing import Optional
 import pandas as pd
 import pandera.pandas as pa
 from pandera.typing import Series
+
+# Import shared types from backend_frontend_shared_schema
+from crossfilter.core.backend_frontend_shared_schema import FilterEvent, ProjectionType
 
 logger = logging.getLogger(__name__)
 
@@ -39,22 +41,6 @@ class DataType(StrEnum):
     VIDEO = "VIDEO"
     GPX_TRACKPOINT = "GPX_TRACKPOINT"
     GPX_WAYPOINT = "GPX_WAYPOINT"
-
-
-class ProjectionType(StrEnum):
-    """Types of data projections supported by crossfilter."""
-
-    TEMPORAL = "temporal"
-    GEO = "geo"
-    CLIP_EMBEDDING = "clip_embedding"  # placeholder for future
-
-
-@dataclass(frozen=True)
-class FilterEvent:
-    """Represents a filter event from a specific projection."""
-
-    projection_type: ProjectionType
-    selected_df_ids: set[int]
 
 
 class TemporalLevel(StrEnum):

@@ -1,32 +1,32 @@
 """Test API changes for row index support."""
 
 from pathlib import Path
+from typing import Any
 
+import pandas as pd
 import pytest
 from fastapi.testclient import TestClient
 
 from crossfilter.core.schema import load_jsonl_to_dataframe
 from crossfilter.main import app, get_session_state
 
-# THAD: Add argument and return types for all functions in this file!
-
 
 @pytest.fixture
-def sample_data():
+def sample_data() -> pd.DataFrame:
     """Load sample data for testing."""
     sample_path = Path(__file__).parent.parent / "test_data" / "sample_100.jsonl"
     return load_jsonl_to_dataframe(sample_path)
 
 
 @pytest.fixture
-def client_with_data(sample_data):
+def client_with_data(sample_data: pd.DataFrame) -> TestClient:
     """Create test client with sample data loaded."""
     session_state = get_session_state()
     session_state.load_dataframe(sample_data)
     return TestClient(app)
 
 
-def test_session_status_with_data(client_with_data):
+def test_session_status_with_data(client_with_data: TestClient) -> None:
     """Test that session status includes the new fields."""
     response = client_with_data.get("/api/session")
     assert response.status_code == 200
@@ -38,7 +38,7 @@ def test_session_status_with_data(client_with_data):
     assert "columns" in data
 
 
-def test_load_data_endpoint(sample_data):
+def test_load_data_endpoint(sample_data: pd.DataFrame) -> None:
     """Test the load data endpoint with new request format."""
     client = TestClient(app)
 
@@ -53,7 +53,7 @@ def test_load_data_endpoint(sample_data):
 
 
 @pytest.mark.skip(reason="Not implemented")
-def test_temporal_plot_endpoint(client_with_data):
+def test_temporal_plot_endpoint(client_with_data: TestClient) -> None:
     """Test temporal plot endpoint returns data with row indices."""
     response = client_with_data.get("/api/plots/temporal?max_groups=1000")
     assert response.status_code == 200
@@ -75,7 +75,7 @@ def test_temporal_plot_endpoint(client_with_data):
 
 
 @pytest.mark.skip(reason="Not implemented")
-def test_apply_temporal_filter(client_with_data):
+def test_apply_temporal_filter(client_with_data: TestClient) -> None:
     """Test applying temporal filter with row indices."""
     # Apply a filter with some row indices
     filter_request = {
@@ -97,7 +97,7 @@ def test_apply_temporal_filter(client_with_data):
     assert filter_state["total_count"] == 100
 
 
-def test_reset_filters(client_with_data):
+def test_reset_filters(client_with_data: TestClient) -> None:
     """Test resetting filters."""
     # First apply a filter
     filter_request = {

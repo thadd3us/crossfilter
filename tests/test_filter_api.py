@@ -69,7 +69,6 @@ def test_filter_df_ids_endpoint_direct(
     filter_request = {
         "df_ids": selected_df_ids,
         "event_source": "temporal",
-        "description": "Test filtering from API test",
     }
 
     logger.info(f"Sending filter request: {filter_request}")
@@ -127,7 +126,6 @@ def test_filter_df_ids_endpoint_invalid_request(server_with_data: str) -> None:
     filter_request = {
         "df_ids": [],
         "event_source": "temporal",
-        "description": "Test with empty df_ids",
     }
 
     response = requests.post(
@@ -144,7 +142,6 @@ def test_filter_df_ids_endpoint_invalid_request(server_with_data: str) -> None:
     filter_request = {
         "df_ids": [1, 2, 3],
         "event_source": "invalid_source",
-        "description": "Test with invalid event_source",
     }
 
     response = requests.post(
@@ -163,7 +160,6 @@ def test_filter_df_ids_endpoint_invalid_request(server_with_data: str) -> None:
     filter_request = {
         "df_ids": [1, 2, 3],
         "event_source": "geo",
-        "description": "Test with geo event_source",
     }
 
     response = requests.post(

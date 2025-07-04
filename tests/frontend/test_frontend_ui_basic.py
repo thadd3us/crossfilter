@@ -1,11 +1,14 @@
 """Basic frontend UI test for temporal CDF plot using Playwright."""
 
+import logging
 import pytest
 from playwright.sync_api import Page
 from syrupy import SnapshotAssertion
 from syrupy.extensions.image import PNGImageSnapshotExtension
 
 from tests.fixtures_server import server_with_data
+
+logger = logging.getLogger(__name__)
 
 # NOTE: BAD Example of an overly verbose LLM.
 # class TemporalCDFPNGExtension(PNGImageSnapshotExtension):
@@ -116,31 +119,8 @@ def test_filter_to_selected_ui_elements(
     page.goto(f"{server_url}/")
 
     # Wait for the app to initialize, detect pre-loaded data, and auto-load the plot
-
-    # THAD: Figure out which of these wait_for_function calls is last, and only keep that one.
-    # Wait for the plot to be rendered
-    # page.wait_for_function(
-    #     """
-    #     () => {
-    #         const plotContainer = document.getElementById('plotContainer');
-    #         return plotContainer && plotContainer.querySelector('.main-svg') !== null;
-    #     }
-    # """,
-    #     timeout=5000,
-    # )
-
-    # # Wait for plot controls to appear
-    # page.wait_for_function(
-    #     "document.getElementById('plotControls').style.display === 'flex'", timeout=5000
-    # )
-
-    # # Wait for the app object to be initialized and ready
-    # page.wait_for_function(
-    #     "!!window.app && window.app.hasData !== undefined", timeout=10000
-    # )
-
-    # Wait for the plot toolbar to be visible.
-    page.wait_for_selector(".modebar", timeout=1000)
+    # Wait for the plot toolbar to be visible (increased timeout for plot rendering)
+    page.wait_for_selector(".modebar", timeout=5000)
 
     # Check that Filter to Selected button is initially disabled (no selection)
     filter_button = page.locator("#filterToSelectedBtn")
@@ -199,8 +179,7 @@ def test_filter_to_selected_ui_elements(
     assert "Selected: 36 points" in selection_info
 
     # Click the filterToSelectedBtn and debug JavaScript execution
-    # THAD: These (and other) prints should use logging.
-    print("🔍 Debugging JavaScript execution before click...")
+    logger.info("🔍 Debugging JavaScript execution before click...")
 
     # Check JavaScript console for any errors
     js_debug = page.evaluate(
@@ -221,15 +200,13 @@ def test_filter_to_selected_ui_elements(
         }
     """
     )
-    # THAD: These (and other) prints should use logging.
-    print(f"JavaScript state: {js_debug}")
+    logger.info(f"JavaScript state: {js_debug}")
 
     filter_button.click()
-    # THAD: These (and other) prints should use logging.
-    print("✓ Button clicked")
+    logger.info("✓ Button clicked")
 
     # Wait for the POST request to be sent and response received
-    print("⏳ Waiting for filter request and response...")
+    logger.info("⏳ Waiting for filter request and response...")
 
     try:
         page.wait_for_function(
@@ -247,7 +224,7 @@ def test_filter_to_selected_ui_elements(
         assert "36 after filtering" in filtered_status
     finally:
         current_status = page.locator("#status").text_content()
-        print(f"Current status: {current_status}")
+        logger.info(f"Current status: {current_status}")
 
         # Check if the issue is that SSE is not implemented
         has_event_source = page.evaluate(
@@ -263,8 +240,8 @@ def test_filter_to_selected_ui_elements(
         """
         )
 
-        print(f"EventSource available: {has_event_source}")
-        print(f"SSE connections detected: {sse_connections}")
+        logger.info(f"EventSource available: {has_event_source}")
+        logger.info(f"SSE connections detected: {sse_connections}")
 
         # Check if SSE is working correctly
         sse_status = page.evaluate(
@@ -279,4 +256,4 @@ def test_filter_to_selected_ui_elements(
         """
         )
 
-        print(f"SSE Status: {sse_status}")
+        logger.info(f"SSE Status: {sse_status}")

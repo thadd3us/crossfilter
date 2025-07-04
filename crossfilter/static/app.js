@@ -389,8 +389,7 @@ class CrossfilterApp {
                 },
                 body: JSON.stringify({
                     df_ids: selectedIndices,
-                    event_source: eventSource,
-                    description: `Filter to ${selectedIndices.length} selected ${displayName} from ${eventSource} plot`
+                    event_source: eventSource
                 })
             });
 

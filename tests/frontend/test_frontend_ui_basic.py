@@ -1,16 +1,11 @@
 """Basic frontend UI test for temporal CDF plot using Playwright."""
 
-import subprocess
-import sys
-import time
-from collections.abc import Generator
-from pathlib import Path
-
 import pytest
-import requests
 from playwright.sync_api import Page
 from syrupy import SnapshotAssertion
 from syrupy.extensions.image import PNGImageSnapshotExtension
+
+from tests.fixtures_server import server_with_data
 
 # NOTE: BAD Example of an overly verbose LLM.
 # class TemporalCDFPNGExtension(PNGImageSnapshotExtension):
@@ -25,101 +20,12 @@ from syrupy.extensions.image import PNGImageSnapshotExtension
 #     return playwright.chromium.launch(headless=False, devtools=True)
 
 
-def wait_for_server(url: str, max_attempts: int = 30, delay: float = 1.0) -> bool:
-    """Wait for the server to be ready."""
-    for _ in range(max_attempts):
-        try:
-            response = requests.get(url, timeout=5)
-            if response.status_code == 200:
-                return True
-        except requests.exceptions.RequestException:
-            pass
-        time.sleep(delay)
-    return False
-
-
-@pytest.fixture(scope="function")
-def backend_server_with_data() -> Generator[str, None, None]:
-    """Start the backend server with pre-loaded sample data."""
-    # Path to the sample data
-    sample_data_path = (
-        Path(__file__).parent.parent.parent / "test_data" / "sample_100.jsonl"
-    )
-
-    # Start the server on a test port
-    test_port = 8001
-    server_url = f"http://localhost:{test_port}"
-
-    # Command to start the server with pre-loaded data
-    cmd = (
-        sys.executable,
-        *("-m", "crossfilter.main", "serve"),
-        *("--port", str(test_port)),
-        # *("--host", "127.0.0.1"),
-        *("--preload_jsonl", str(sample_data_path)),
-    )
-
-    # Start the server process
-    server_process = subprocess.Popen(
-        cmd,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,  # Merge stderr into stdout for easier monitoring
-        cwd=Path(__file__).parent.parent.parent,
-        text=True,
-        bufsize=1,  # Line buffered for real-time output
-    )
-
-    # Set up monitoring for server output
-    server_output_lines = []
-
-    def monitor_server_output():
-        """Monitor server output in background thread."""
-        try:
-            for line in iter(server_process.stdout.readline, ""):
-                if line:
-                    server_output_lines.append(line.strip())
-                    # Print server output in real-time for debugging
-                    print(f"[BACKEND] {line.strip()}")
-        except Exception as e:
-            print(f"[BACKEND MONITOR ERROR] {e}")
-
-    import threading
-
-    monitor_thread = threading.Thread(target=monitor_server_output, daemon=True)
-    monitor_thread.start()
-
-    try:
-        # Wait for server to be ready
-        if not wait_for_server(server_url):
-            # Give the monitor thread a moment to capture output
-            time.sleep(2)
-            server_process.terminate()
-            monitor_thread.join(timeout=3)
-
-            pytest.fail(
-                "Server failed to start within timeout.\n"
-                "Server output:\n"
-                + "\n".join(server_output_lines[-50:])  # Show last 50 lines
-            )
-
-        yield server_url
-
-    finally:
-        # Clean up: terminate the server immediately for faster tests
-        print("[BACKEND] Shutting down server...")
-        server_process.kill()
-        server_process.wait()
-
-        # Wait for monitor thread to finish
-        monitor_thread.join(timeout=3)
-
-
 @pytest.mark.e2e
 def test_temporal_cdf_plot_png_snapshot(
-    page: Page, backend_server_with_data: str, snapshot: SnapshotAssertion
+    page: Page, server_with_data: str, snapshot: SnapshotAssertion
 ) -> None:
     """Test that the temporal CDF plot loads and displays correctly."""
-    server_url = backend_server_with_data
+    server_url = server_with_data
 
     # Navigate to the main application page
     page.goto(f"{server_url}/")
@@ -146,9 +52,9 @@ def test_temporal_cdf_plot_png_snapshot(
 
 
 @pytest.mark.e2e
-def test_temporal_cdf_plot_content(page: Page, backend_server_with_data: str) -> None:
+def test_temporal_cdf_plot_content(page: Page, server_with_data: str) -> None:
     """Test that the main application page contains expected content and loads the plot."""
-    server_url = backend_server_with_data
+    server_url = server_with_data
 
     # Navigate to the main application page
     page.goto(f"{server_url}/")
@@ -189,7 +95,7 @@ def test_temporal_cdf_plot_content(page: Page, backend_server_with_data: str) ->
 
 @pytest.mark.e2e
 def test_filter_to_selected_ui_elements(
-    page: Page, backend_server_with_data: str
+    page: Page, server_with_data: str
 ) -> None:
     """Test the complete Filter to Selected workflow including:
 
@@ -204,7 +110,7 @@ def test_filter_to_selected_ui_elements(
     full end-to-end filtering due to JavaScript app initialization
     challenges in the test environment.
     """
-    server_url = backend_server_with_data
+    server_url = server_with_data
 
     # Navigate to the main application page
     page.goto(f"{server_url}/")

@@ -1,79 +1,18 @@
 """Direct API tests for filter endpoints without browser dependency."""
 
 import logging
-import subprocess
-import sys
-import time
-from collections.abc import Generator
-from pathlib import Path
 
 import pytest
 import requests
 
+from tests.fixtures_server import server_with_data
+
 logger = logging.getLogger(__name__)
 
 
-def wait_for_server(url: str, max_attempts: int = 30, delay: float = 1.0) -> bool:
-    """Wait for the server to be ready."""
-    for _ in range(max_attempts):
-        try:
-            response = requests.get(url, timeout=5)
-            if response.status_code == 200:
-                return True
-        except requests.exceptions.RequestException:
-            pass
-        time.sleep(delay)
-    return False
-
-
-@pytest.fixture(scope="function")
-def api_server_with_data() -> Generator[str, None, None]:
-    """Start the backend server with pre-loaded sample data for direct API testing."""
-    # Path to the sample data
-    sample_data_path = (
-        Path(__file__).parent.parent / "test_data" / "sample_100.jsonl"
-    )
-
-    # Start the server on a test port
-    test_port = 8002  # Different port from frontend tests to avoid conflicts
-    server_url = f"http://localhost:{test_port}"
-
-    # Command to start the server with pre-loaded data
-    cmd = (
-        sys.executable,
-        *("-m", "crossfilter.main", "serve"),
-        *("--port", str(test_port)),
-        *("--preload_jsonl", str(sample_data_path)),
-    )
-
-    # Start the server process
-    server_process = subprocess.Popen(
-        cmd,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,  # Merge stderr into stdout for easier monitoring
-        cwd=Path(__file__).parent.parent,
-        text=True,
-        bufsize=1,  # Line buffered for real-time output
-    )
-
-    try:
-        # Wait for server to be ready
-        if not wait_for_server(server_url):
-            server_process.terminate()
-            pytest.fail(f"Server failed to start within timeout at {server_url}")
-
-        yield server_url
-
-    finally:
-        # Clean up: terminate the server immediately for faster tests
-        logger.info("[API TEST] Shutting down server...")
-        server_process.kill()
-        server_process.wait()
-
-
-def test_filter_df_ids_endpoint_direct(api_server_with_data: str) -> None:
+def test_filter_df_ids_endpoint_direct(server_with_data: str) -> None:
     """Test the /api/filters/df_ids endpoint directly with HTTP requests."""
-    server_url = api_server_with_data
+    server_url = server_with_data
 
     # First, get the session status to verify data is loaded
     response = requests.get(f"{server_url}/api/session")
@@ -168,9 +107,9 @@ def test_filter_df_ids_endpoint_direct(api_server_with_data: str) -> None:
     assert updated_session_data["filtered_count"] < 100  # Should be less than original
 
 
-def test_filter_df_ids_endpoint_invalid_request(api_server_with_data: str) -> None:
+def test_filter_df_ids_endpoint_invalid_request(server_with_data: str) -> None:
     """Test the /api/filters/df_ids endpoint with invalid requests."""
-    server_url = api_server_with_data
+    server_url = server_with_data
 
     # Test with empty df_ids list
     filter_request = {

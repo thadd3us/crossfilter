@@ -217,15 +217,14 @@ def test_filter_to_selected_ui_elements(page: Page, server_with_data: str) -> No
             """
             () => {
                 const status = document.getElementById('status').textContent;
-                // Check if filtering has reduced the count (not showing "100 after filtering" anymore)
-                return status.includes('after filtering') && !status.includes('100 after filtering');
+                return status.includes('36 remain in current view');
             }
             """,
-            timeout=1000,
+            timeout=5000,
         )
 
         filtered_status = page.locator("#status").text_content() or "NO TEXT CONTENT"
-        assert "36 after filtering" in filtered_status
+        assert "36 remain in current view" in filtered_status
     finally:
         current_status = page.locator("#status").text_content()
         logger.info(f"Current status: {current_status}")

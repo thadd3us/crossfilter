@@ -5,7 +5,8 @@
         "--headed",
         "-vvvv",
         // Coverage doesn't work with the debugger.    
-        "--no-cov"
+        "--no-cov",
+        "--cov-report=",
     ],
     "python.testing.unittestEnabled": false,
     "python.testing.pytestEnabled": true

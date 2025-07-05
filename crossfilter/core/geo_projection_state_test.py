@@ -4,6 +4,7 @@ import pandas as pd
 import pytest
 from syrupy import SnapshotAssertion
 
+from crossfilter.core.backend_frontend_shared_schema import FilterEvent, FilterOperatorType, ProjectionType
 from crossfilter.core.bucketing import add_bucketed_columns
 from crossfilter.core.geo_projection_state import GeoProjectionState
 from crossfilter.core.schema import SchemaColumns as C
@@ -117,7 +118,8 @@ def test_apply_filter_event_individual_points(sample_data: pd.DataFrame) -> None
 
     # Select first 10 points
     selected_df_ids = set(range(0, 10))
-    result = projection.apply_filter_event(selected_df_ids, sample_data)
+    filter_event = FilterEvent(ProjectionType.GEO, selected_df_ids, FilterOperatorType.INTERSECTION)
+    result = projection.apply_filter_event(filter_event, sample_data)
 
     assert len(result) == 10
     assert all(idx in range(0, 10) for idx in result.index)
@@ -133,7 +135,8 @@ def test_apply_filter_event_aggregated(sample_data: pd.DataFrame) -> None:
 
     # Select first bucket (df_id 0 in the projection)
     selected_df_ids = {0}
-    result = projection.apply_filter_event(selected_df_ids, sample_data)
+    filter_event = FilterEvent(ProjectionType.GEO, selected_df_ids, FilterOperatorType.INTERSECTION)
+    result = projection.apply_filter_event(filter_event, sample_data)
 
     # Should return some subset of original data
     assert len(result) > 0
@@ -145,7 +148,8 @@ def test_apply_filter_event_empty_selection(sample_data: pd.DataFrame) -> None:
     projection = GeoProjectionState(max_rows=100)
     projection.update_projection(sample_data)
 
-    result = projection.apply_filter_event(set(), sample_data)
+    filter_event = FilterEvent(ProjectionType.GEO, set(), FilterOperatorType.INTERSECTION)
+    result = projection.apply_filter_event(filter_event, sample_data)
     assert result.empty
 
 
@@ -156,7 +160,8 @@ def test_apply_filter_event_invalid_ids(sample_data: pd.DataFrame) -> None:
 
     # Use invalid df_ids (beyond projection length)
     invalid_ids = {100, 200}
-    result = projection.apply_filter_event(invalid_ids, sample_data)
+    filter_event = FilterEvent(ProjectionType.GEO, invalid_ids, FilterOperatorType.INTERSECTION)
+    result = projection.apply_filter_event(filter_event, sample_data)
 
     # Should return empty DataFrame for invalid selections
     assert result.empty

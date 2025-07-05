@@ -4,7 +4,7 @@ import pandas as pd
 import pytest
 from syrupy import SnapshotAssertion
 
-from crossfilter.core.schema import FilterEvent, ProjectionType
+from crossfilter.core.backend_frontend_shared_schema import FilterEvent, FilterOperatorType, ProjectionType
 from crossfilter.core.schema import SchemaColumns as C
 from crossfilter.core.session_state import SessionState
 
@@ -172,7 +172,7 @@ def test_apply_filter_event_temporal(sample_df: pd.DataFrame) -> None:
 
     # Apply a temporal filter (select first 10 points)
     selected_df_ids = set(range(0, 10))
-    filter_event = FilterEvent(ProjectionType.TEMPORAL, selected_df_ids)
+    filter_event = FilterEvent(ProjectionType.TEMPORAL, selected_df_ids, FilterOperatorType.INTERSECTION)
     session.apply_filter_event(filter_event)
 
     # Check that filtered_rows was updated
@@ -194,9 +194,52 @@ def test_apply_filter_event_geo(sample_df: pd.DataFrame) -> None:
 
     # Apply a geographic filter (select first 10 points)
     selected_df_ids = set(range(0, 10))
-    filter_event = FilterEvent(ProjectionType.GEO, selected_df_ids)
-    with pytest.raises(ValueError, match="Invalid projection type: geo"):
-        session.apply_filter_event(filter_event)
+    filter_event = FilterEvent(ProjectionType.GEO, selected_df_ids, FilterOperatorType.INTERSECTION)
+    session.apply_filter_event(filter_event)
+
+    # Check that filtered_rows was updated
+    assert len(session.filtered_rows) == 10
+    assert all(idx in range(0, 10) for idx in session.filtered_rows.index)
+
+
+def test_apply_filter_event_subtraction_operations(sample_df: pd.DataFrame) -> None:
+    """Test applying subtraction filter events with both temporal and geo projections."""
+    session = SessionState()
+    session.load_dataframe(sample_df)
+    
+    # Test temporal subtraction - remove first 5 points
+    temporal_filter_event = FilterEvent(
+        projection_type=ProjectionType.TEMPORAL,
+        selected_df_ids=set(range(0, 5)),
+        filter_operator=FilterOperatorType.SUBTRACTION,
+    )
+    session.apply_filter_event(temporal_filter_event)
+    
+    # Check that 5 points were removed (20 - 5 = 15)
+    assert len(session.filtered_rows) == 15
+    # First 5 indices should be missing
+    assert not any(idx in session.filtered_rows.index for idx in range(0, 5))
+    # Rest should be present
+    assert all(idx in session.filtered_rows.index for idx in range(5, 20))
+    
+    # Reset filters for next test
+    session.reset_filters()
+    assert len(session.filtered_rows) == 20
+    
+    # Test geo subtraction - remove last 3 points
+    geo_filter_event = FilterEvent(
+        projection_type=ProjectionType.GEO,
+        selected_df_ids=set(range(17, 20)),
+        filter_operator=FilterOperatorType.SUBTRACTION,
+    )
+    session.apply_filter_event(geo_filter_event)
+    
+    # Check that 3 points were removed (20 - 3 = 17)
+    assert len(session.filtered_rows) == 17
+    # Last 3 indices should be missing
+    assert not any(idx in session.filtered_rows.index for idx in range(17, 20))
+    # Rest should be present
+    assert all(idx in session.filtered_rows.index for idx in range(0, 17))
 
 
 def test_reset_filters(sample_df: pd.DataFrame) -> None:
@@ -206,7 +249,7 @@ def test_reset_filters(sample_df: pd.DataFrame) -> None:
 
     # Apply a filter first
     selected_df_ids = set(range(0, 10))
-    filter_event = FilterEvent(ProjectionType.TEMPORAL, selected_df_ids)
+    filter_event = FilterEvent(ProjectionType.TEMPORAL, selected_df_ids, FilterOperatorType.INTERSECTION)
     session.apply_filter_event(filter_event)
     assert len(session.filtered_rows) == 10
 
@@ -273,7 +316,7 @@ def test_filter_integration_with_aggregation(sample_df: pd.DataFrame) -> None:
 
     # Apply filter to reduce to 10 points
     filtered_df_ids = set(range(5, 15))
-    filter_event = FilterEvent(ProjectionType.TEMPORAL, filtered_df_ids)
+    filter_event = FilterEvent(ProjectionType.TEMPORAL, filtered_df_ids, FilterOperatorType.INTERSECTION)
     session.apply_filter_event(filter_event)
 
     # Get aggregation after filtering
@@ -309,6 +352,50 @@ def test_unknown_projection_type(sample_df: pd.DataFrame) -> None:
     session.load_dataframe(sample_df)
 
     # Try to apply filter with unknown projection type
-    filter_event = FilterEvent(ProjectionType.CLIP_EMBEDDING, set(range(0, 10)))
+    filter_event = FilterEvent(ProjectionType.CLIP_EMBEDDING, set(range(0, 10)), FilterOperatorType.INTERSECTION)
     with pytest.raises(ValueError, match="Invalid projection type: clip_embedding"):
         session.apply_filter_event(filter_event)
+
+
+def test_filter_subtraction_operation(sample_df: pd.DataFrame) -> None:
+    """Test that subtraction filter operation removes selected rows correctly."""
+    session = SessionState()
+    session.load_dataframe(sample_df)
+
+    initial_count = len(session.filtered_rows)
+    selected_ids = set(range(0, 5))  # Select first 5 rows
+
+    # Apply subtraction filter - should remove the selected rows
+    filter_event = FilterEvent(ProjectionType.TEMPORAL, selected_ids, FilterOperatorType.SUBTRACTION)
+    session.apply_filter_event(filter_event)
+
+    # Should have 15 rows remaining (20 - 5)
+    assert len(session.filtered_rows) == initial_count - len(selected_ids)
+    
+    # Verify the correct rows were removed
+    remaining_indices = set(session.filtered_rows.index)
+    expected_remaining = set(range(initial_count)) - selected_ids
+    assert remaining_indices == expected_remaining
+
+
+def test_filter_intersection_vs_subtraction(sample_df: pd.DataFrame) -> None:
+    """Test that intersection and subtraction operations produce complementary results."""
+    session = SessionState()
+    session.load_dataframe(sample_df)
+
+    selected_ids = set(range(5, 15))  # Select middle 10 rows
+    initial_indices = set(session.filtered_rows.index)
+
+    # Test intersection operation
+    session.apply_filter_event(FilterEvent(ProjectionType.TEMPORAL, selected_ids, FilterOperatorType.INTERSECTION))
+    intersection_indices = set(session.filtered_rows.index)
+    assert intersection_indices == selected_ids
+
+    # Reset and test subtraction operation
+    session.reset_filters()
+    session.apply_filter_event(FilterEvent(ProjectionType.TEMPORAL, selected_ids, FilterOperatorType.SUBTRACTION))
+    subtraction_indices = set(session.filtered_rows.index)
+    
+    # Intersection and subtraction should be complementary
+    assert intersection_indices.union(subtraction_indices) == initial_indices
+    assert intersection_indices.intersection(subtraction_indices) == set()

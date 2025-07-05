@@ -3,6 +3,7 @@
 import pandas as pd
 import pytest
 
+from crossfilter.core.backend_frontend_shared_schema import FilterEvent, FilterOperatorType, ProjectionType
 from crossfilter.core.projection_state import ProjectionState
 from crossfilter.core.schema import SchemaColumns as C
 
@@ -53,7 +54,8 @@ def test_apply_filter_event_individual_points(sample_data: pd.DataFrame) -> None
 
     # Select first 10 points
     selected_df_ids = set(range(0, 10))
-    result = projection.apply_filter_event(selected_df_ids, sample_data)
+    filter_event = FilterEvent(ProjectionType.TEMPORAL, selected_df_ids, FilterOperatorType.INTERSECTION)
+    result = projection.apply_filter_event(filter_event, sample_data)
 
     assert len(result) == 10
     assert all(idx in range(0, 10) for idx in result.index)
@@ -64,7 +66,8 @@ def test_apply_filter_event_empty_selection(sample_data: pd.DataFrame) -> None:
     projection = ProjectionState(max_rows=100)
     projection.projection_df = sample_data.copy()
 
-    result = projection.apply_filter_event(set(), sample_data)
+    filter_event = FilterEvent(ProjectionType.TEMPORAL, set(), FilterOperatorType.INTERSECTION)
+    result = projection.apply_filter_event(filter_event, sample_data)
     assert result.empty
 
 
@@ -82,7 +85,8 @@ def test_apply_filter_event_aggregated_mode(sample_data: pd.DataFrame, bucketed_
 
     # Select first bucket (df_id 0 in the projection)
     selected_df_ids = {0}
-    result = projection.apply_filter_event(selected_df_ids, sample_data_with_buckets)
+    filter_event = FilterEvent(ProjectionType.TEMPORAL, selected_df_ids, FilterOperatorType.INTERSECTION)
+    result = projection.apply_filter_event(filter_event, sample_data_with_buckets)
 
     # Should return rows with bucket_a
     assert len(result) == 5
@@ -99,7 +103,8 @@ def test_apply_filter_event_aggregated_mode_missing_column(sample_data: pd.DataF
 
     # Try to apply filter
     selected_df_ids = {0}
-    result = projection.apply_filter_event(selected_df_ids, sample_data)
+    filter_event = FilterEvent(ProjectionType.TEMPORAL, selected_df_ids, FilterOperatorType.INTERSECTION)
+    result = projection.apply_filter_event(filter_event, sample_data)
 
     # Should return original data (fallback behavior)
     assert len(result) == len(sample_data)
@@ -119,7 +124,8 @@ def test_apply_filter_event_invalid_df_ids(sample_data: pd.DataFrame, bucketed_d
 
     # Use invalid df_ids (beyond projection length)
     invalid_ids = {100, 200}
-    result = projection.apply_filter_event(invalid_ids, sample_data_with_buckets)
+    filter_event = FilterEvent(ProjectionType.TEMPORAL, invalid_ids, FilterOperatorType.INTERSECTION)
+    result = projection.apply_filter_event(filter_event, sample_data_with_buckets)
 
     # Should return empty DataFrame for invalid selections
     assert result.empty
@@ -134,7 +140,8 @@ def test_apply_filter_event_aggregated_error_handling(sample_data: pd.DataFrame)
     projection.current_bucketing_column = "bucket_column"
 
     selected_df_ids = {0}
-    result = projection.apply_filter_event(selected_df_ids, sample_data)
+    filter_event = FilterEvent(ProjectionType.TEMPORAL, selected_df_ids, FilterOperatorType.INTERSECTION)
+    result = projection.apply_filter_event(filter_event, sample_data)
 
     # Should return original filtered_rows due to graceful fallback when bucketing column is missing
     assert len(result) == len(sample_data)

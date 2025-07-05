@@ -15,12 +15,20 @@ class ProjectionType(StrEnum):
     CLIP_EMBEDDING = "clip_embedding"  # placeholder for future
 
 
+class FilterOperatorType(StrEnum):
+    """Types of filter operations supported by crossfilter."""
+    
+    INTERSECTION = "intersection"  # Limit to current selection
+    SUBTRACTION = "subtraction"    # Remove current selection
+
+
 @dataclass(frozen=True)
 class FilterEvent:
     """Represents a filter event from a specific projection."""
     
     projection_type: ProjectionType
     selected_df_ids: set[int]
+    filter_operator: FilterOperatorType
 
 
 # API Request Models
@@ -35,6 +43,7 @@ class DfIdsFilterRequest(BaseModel):
     
     df_ids: list[int] = Field(..., description="df_ids from the plot (could be from lasso selection, visible area, etc.)")
     event_source: ProjectionType = Field(..., description="Which plot type this filtering comes from")
+    filter_operator: FilterOperatorType = Field(..., description="Type of filter operation to apply")
 
 
 # API Response Models

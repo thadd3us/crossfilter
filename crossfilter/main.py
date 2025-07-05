@@ -22,7 +22,8 @@ from crossfilter.core.backend_frontend_shared_schema import (
     SessionStateResponse,
     TemporalPlotResponse,
 )
-from crossfilter.core.schema import FilterEvent, ProjectionType, load_jsonl_to_dataframe
+from crossfilter.core.backend_frontend_shared_schema import FilterEvent, ProjectionType
+from crossfilter.core.schema import load_jsonl_to_dataframe
 from crossfilter.core.session_state import SessionState
 from crossfilter.visualization.temporal_cdf_plot import create_temporal_cdf
 from crossfilter.visualization.geo_plot import create_geo_plot
@@ -209,6 +210,7 @@ async def filter_to_df_ids(
         filter_event = FilterEvent(
             projection_type=request.event_source,
             selected_df_ids=set(request.df_ids),
+            filter_operator=request.filter_operator,
         )
         session_state.apply_filter_event(filter_event)
 

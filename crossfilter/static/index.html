@@ -52,6 +52,31 @@
             opacity: 0.6;
             cursor: not-allowed;
         }
+        .filter-button {
+            width: 32px;
+            height: 32px;
+            padding: 4px;
+            font-size: 16px;
+            font-weight: bold;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 4px;
+        }
+        .filter-button.intersection {
+            background-color: #e3f2fd;
+            border-color: #2196f3;
+        }
+        .filter-button.subtraction {
+            background-color: #fff3e0;
+            border-color: #ff9800;
+        }
+        .filter-button:hover.intersection {
+            background-color: #bbdefb;
+        }
+        .filter-button:hover.subtraction {
+            background-color: #ffe0b2;
+        }
         .plot-container {
             height: 400px;
             margin: 20px 0;
@@ -101,8 +126,9 @@
         </div>
 
         <div class="controls" id="plotControls" style="display: none;">
-            <button id="filterToSelectedBtn" onclick="filterTemporalToSelected()" disabled>Filter to Selected</button>
-            <span id="plotSelectionInfo"></span>
+            <button id="filterTemporalIntersectionBtn" class="filter-button intersection" onclick="filterTemporalIntersection()" disabled title="Keep only selected points">∩</button>
+            <button id="filterTemporalSubtractionBtn" class="filter-button subtraction" onclick="filterTemporalSubtraction()" disabled title="Remove selected points">−</button>
+            <span id="temporalPlotSelectionInfo"></span>
         </div>
 
         <div id="geoPlotSection" style="display: none;">
@@ -116,7 +142,8 @@
                 </div>
             </div>
             <div class="controls" id="geoPlotControls" style="display: none;">
-                <button id="filterToSelectedGeoBtn" onclick="filterGeoToSelected()" disabled>Filter to Selected</button>
+                <button id="filterGeoIntersectionBtn" class="filter-button intersection" onclick="filterGeoIntersection()" disabled title="Keep only selected points">∩</button>
+                <button id="filterGeoSubtractionBtn" class="filter-button subtraction" onclick="filterGeoSubtraction()" disabled title="Remove selected points">−</button>
                 <span id="geoPlotSelectionInfo"></span>
             </div>
         </div>

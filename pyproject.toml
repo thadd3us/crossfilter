@@ -28,6 +28,8 @@ dependencies = [
     "requests>=2.31.0",
     "pandera>=0.17.0",
     "nbformat",
+    "sqlalchemy>=2.0.41",
+    "tqdm>=4.67.1",
 ]
 
 [project.optional-dependencies]

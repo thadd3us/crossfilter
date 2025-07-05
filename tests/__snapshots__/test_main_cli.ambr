@@ -41,9 +41,10 @@
     'filtered_rows_count': 100,
     'geo_projection': dict({
       'current_bucketing_column': None,
+      'groupby_column': 'DATA_TYPE',
       'h3_level': None,
       'is_aggregated': False,
-      'max_rows': 100000,
+      'max_rows': 10000,
       'projection_rows': 100,
       'target_column': None,
     }),
@@ -53,10 +54,10 @@
     'temporal_projection': dict({
       'aggregation_level': None,
       'current_bucketing_column': None,
+      'groupby_column': 'DATA_TYPE',
       'is_aggregated': False,
-      'max_rows': 100000,
+      'max_rows': 10000,
       'projection_rows': 100,
-      'target_column': None,
     }),
   })
 # ---

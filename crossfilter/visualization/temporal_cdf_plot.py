@@ -14,7 +14,7 @@ from crossfilter.core.schema import SchemaColumns as C
 
 def create_temporal_cdf(
     df: pd.DataFrame,
-    title: str = "Temporal Distribution (CDF)",
+    title: Optional[str] = None,
     groupby: Optional[str] = str(C.DATA_TYPE),
 ) -> go.Figure:
     """Create a Plotly CDF plot for temporal data."""
@@ -36,6 +36,8 @@ def create_temporal_cdf(
     df[C.DF_ID] = df.index
     if C.COUNT not in df.columns:
         df[C.COUNT] = 1
+    else:
+        assert df[C.COUNT].notna().all(), "Some counts are missing."
 
     # TODO: This could be a cacheable amount of work.
     if not groupby:
@@ -64,7 +66,7 @@ def create_temporal_cdf(
         x=time_column,
         y="CDF",
         color="Group (Count)",
-        custom_data=[C.DF_ID],
+        custom_data=[C.DF_ID, C.COUNT],
         hover_data=hover_data_columns,
         markers=True,
         # hover_data={"label": True},

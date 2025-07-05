@@ -15,7 +15,7 @@ from crossfilter.core.schema import SchemaColumns as C
 
 def create_geo_plot(
     df: pd.DataFrame,
-    title: str = "Geographic Distribution",
+    title: Optional[str] = None,
     groupby: Optional[str] = str(C.DATA_TYPE),
     max_marker_size: int = 10,
 ) -> go.Figure:

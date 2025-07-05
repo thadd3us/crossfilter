@@ -67,10 +67,41 @@ def get_pandas_to_sqlalchemy_dtype(pandas_dtype: str) -> str:
         return "TEXT"
 
 
+def has_unique_constraint_on_uuid(engine, table_name: str) -> bool:
+    """Check if table has a unique constraint or index on UUID_STRING column."""
+    inspector = inspect(engine)
+    
+    # Check for unique constraints
+    try:
+        unique_constraints = inspector.get_unique_constraints(table_name)
+        for constraint in unique_constraints:
+            if SchemaColumns.UUID_STRING in constraint.get("column_names", []):
+                return True
+    except Exception:
+        # Some SQLite versions don't support get_unique_constraints
+        pass
+    
+    # Check for unique indexes
+    try:
+        indexes = inspector.get_indexes(table_name)
+        for index in indexes:
+            if index.get("unique", False) and SchemaColumns.UUID_STRING in index.get("column_names", []):
+                return True
+    except Exception:
+        pass
+    
+    return False
+
+
 def create_or_update_table(
     engine, table_name: str, df: pd.DataFrame
-) -> None:
-    """Create table or add missing columns if table exists."""
+) -> bool:
+    """
+    Create table or add missing columns if table exists.
+    
+    Returns:
+        bool: True if unique constraint exists on UUID_STRING, False otherwise
+    """
     inspector = inspect(engine)
     
     if not inspector.has_table(table_name):
@@ -78,10 +109,11 @@ def create_or_update_table(
         logger.info(f"Creating new table: {table_name}")
         df.to_sql(table_name, engine, if_exists="replace", index=False)
         
-        # Set UUID_STRING as primary key
+        # Set UUID_STRING as unique index
         with engine.connect() as conn:
             conn.execute(text(f"CREATE UNIQUE INDEX IF NOT EXISTS idx_{table_name}_uuid ON {table_name} ({SchemaColumns.UUID_STRING})"))
             conn.commit()
+        return True
     else:
         # Check if we need to add columns
         existing_columns = {col["name"] for col in inspector.get_columns(table_name)}
@@ -96,12 +128,33 @@ def create_or_update_table(
                     dtype = get_pandas_to_sqlalchemy_dtype(str(df[col].dtype))
                     conn.execute(text(f"ALTER TABLE {table_name} ADD COLUMN {col} {dtype}"))
                 conn.commit()
+        
+        # Check if unique constraint exists on UUID_STRING
+        has_unique = has_unique_constraint_on_uuid(engine, table_name)
+        
+        if not has_unique:
+            # Try to create unique index, but handle the case where duplicates exist
+            try:
+                with engine.connect() as conn:
+                    conn.execute(text(f"CREATE UNIQUE INDEX IF NOT EXISTS idx_{table_name}_uuid ON {table_name} ({SchemaColumns.UUID_STRING})"))
+                    conn.commit()
+                logger.info(f"Created unique index on {SchemaColumns.UUID_STRING} for table {table_name}")
+                return True
+            except Exception as e:
+                if "UNIQUE constraint failed" in str(e):
+                    logger.warning(f"Cannot create unique index on {table_name}.{SchemaColumns.UUID_STRING} due to existing duplicates. Using fallback upsert strategy.")
+                    return False
+                else:
+                    # Re-raise other errors
+                    raise e
+        
+        return has_unique
 
 
 def upsert_dataframe_to_sqlite(
     df: pd.DataFrame, destination_sqlite_db: Path, destination_table: str
 ) -> None:
-    """Upsert DataFrame to SQLite database using ON CONFLICT DO UPDATE."""
+    """Upsert DataFrame to SQLite database using ON CONFLICT DO UPDATE or fallback strategy."""
     if df.empty:
         logger.info("No data to upsert")
         return
@@ -112,29 +165,33 @@ def upsert_dataframe_to_sqlite(
     # Create engine
     engine = create_engine(f"sqlite:///{destination_sqlite_db}")
     
-    # Create or update table structure
-    create_or_update_table(engine, destination_table, df)
-    
-    # Perform upsert using SQLAlchemy
-    metadata = MetaData()
-    
-    # Reflect the table structure
-    table = Table(destination_table, metadata, autoload_with=engine)
+    # Create or update table structure and check if unique constraint exists
+    has_unique_constraint = create_or_update_table(engine, destination_table, df)
     
     # Convert DataFrame to list of dictionaries
     records = df.to_dict("records")
     
-    # Perform upsert
+    if has_unique_constraint:
+        # Use proper upsert with ON CONFLICT DO UPDATE
+        _upsert_with_conflict_handling(engine, destination_table, records)
+    else:
+        # Use fallback strategy: simple INSERT with duplicate handling
+        _insert_with_fallback(engine, destination_table, records)
+    
+    logger.info(f"Upserted {len(records)} records to {destination_table} in {destination_sqlite_db}")
+
+
+def _upsert_with_conflict_handling(engine, table_name: str, records: list) -> None:
+    """Perform upsert using ON CONFLICT DO UPDATE (requires unique constraint)."""
+    metadata = MetaData()
+    table = Table(table_name, metadata, autoload_with=engine)
+    
     with engine.connect() as conn:
         for record in records:
             # Clean None values for SQLite
             cleaned_record = {k: v for k, v in record.items() if v is not None}
             
-            # Use INSERT OR REPLACE for SQLite upsert
             stmt = insert(table).values(cleaned_record)
-            
-            # For SQLite, we'll use ON CONFLICT DO UPDATE
-            # First, let's check if UUID_STRING is the primary key
             primary_key_col = SchemaColumns.UUID_STRING
             
             # Create the ON CONFLICT DO UPDATE statement
@@ -151,8 +208,43 @@ def upsert_dataframe_to_sqlite(
             conn.execute(stmt)
         
         conn.commit()
-    
-    logger.info(f"Upserted {len(records)} records to {destination_table} in {destination_sqlite_db}")
+
+
+def _insert_with_fallback(engine, table_name: str, records: list) -> None:
+    """Fallback insert strategy when unique constraint doesn't exist."""
+    with engine.connect() as conn:
+        for record in records:
+            # Clean None values for SQLite
+            cleaned_record = {k: v for k, v in record.items() if v is not None}
+            
+            # Check if record with this UUID already exists
+            uuid_value = cleaned_record.get(SchemaColumns.UUID_STRING)
+            if uuid_value:
+                existing = conn.execute(text(
+                    f"SELECT COUNT(*) FROM {table_name} WHERE {SchemaColumns.UUID_STRING} = :uuid"
+                ), {"uuid": uuid_value}).fetchone()
+                
+                if existing and existing[0] > 0:
+                    # Update existing record
+                    set_clause = ", ".join([f"{k} = :{k}" for k in cleaned_record.keys() if k != SchemaColumns.UUID_STRING])
+                    if set_clause:
+                        update_sql = f"UPDATE {table_name} SET {set_clause} WHERE {SchemaColumns.UUID_STRING} = :uuid_where"
+                        params = {**cleaned_record, "uuid_where": uuid_value}
+                        conn.execute(text(update_sql), params)
+                else:
+                    # Insert new record
+                    columns = ", ".join(cleaned_record.keys())
+                    placeholders = ", ".join([f":{k}" for k in cleaned_record.keys()])
+                    insert_sql = f"INSERT INTO {table_name} ({columns}) VALUES ({placeholders})"
+                    conn.execute(text(insert_sql), cleaned_record)
+            else:
+                # No UUID, just insert (shouldn't happen with our data)
+                columns = ", ".join(cleaned_record.keys())
+                placeholders = ", ".join([f":{k}" for k in cleaned_record.keys()])
+                insert_sql = f"INSERT INTO {table_name} ({columns}) VALUES ({placeholders})"
+                conn.execute(text(insert_sql), cleaned_record)
+        
+        conn.commit()
 
 
 def main(

@@ -154,8 +154,9 @@ def test_filter_to_selected_ui_elements(page: Page, server_with_data: str) -> No
 
     # Now perform the full selection workflow:
 
-    # Click the box select tool in Plotly's mode bar
-    box_select_button = page.locator("[data-attr='dragmode'][data-val='select']")
+    # Click the box select tool in Plotly's mode bar for the temporal plot specifically
+    # Target the box select button within the temporal plot container
+    box_select_button = page.locator("#plotContainer [data-attr='dragmode'][data-val='select']")
     box_select_button.click()
 
     # 2. Get plot container bounds for selection

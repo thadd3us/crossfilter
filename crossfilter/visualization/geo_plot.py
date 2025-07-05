@@ -16,25 +16,33 @@ from shapely.geometry import Point
 from crossfilter.core.schema import SchemaColumns as C
 
 
-def _haversine_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
-    """Calculate the great circle distance between two points using the haversine formula.
+def _haversine_distance_vectorized(lat1: float, lon1: float, lat2_array: np.ndarray, lon2_array: np.ndarray) -> np.ndarray:
+    """Calculate the great circle distance between one point and an array of points using the haversine formula.
     
-    Returns distance in meters.
+    Args:
+        lat1, lon1: Single point coordinates in degrees
+        lat2_array, lon2_array: Array of coordinates in degrees
+    
+    Returns:
+        Array of distances in meters
     """
     # Convert decimal degrees to radians
-    lat1, lon1, lat2, lon2 = map(math.radians, [lat1, lon1, lat2, lon2])
+    lat1_rad = math.radians(lat1)
+    lon1_rad = math.radians(lon1)
+    lat2_rad = np.radians(lat2_array)
+    lon2_rad = np.radians(lon2_array)
     
-    # Haversine formula
-    dlat = lat2 - lat1
-    dlon = lon2 - lon1
-    a = math.sin(dlat/2)**2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon/2)**2
-    c = 2 * math.asin(math.sqrt(a))
+    # Haversine formula (vectorized)
+    dlat = lat2_rad - lat1_rad
+    dlon = lon2_rad - lon1_rad
+    a = np.sin(dlat/2)**2 + np.cos(lat1_rad) * np.cos(lat2_rad) * np.sin(dlon/2)**2
+    c = 2 * np.arcsin(np.sqrt(a))
     
     # Radius of earth in meters
     R = 6371000
-    distance = R * c
+    distances = R * c
     
-    return distance
+    return distances
 
 
 def _calculate_geographic_center_and_radius(latitudes: pd.Series, longitudes: pd.Series) -> Tuple[float, float, float]:
@@ -62,11 +70,9 @@ def _calculate_geographic_center_and_radius(latitudes: pd.Series, longitudes: pd
     center_lat = np.degrees(np.arctan2(z_mean, np.sqrt(x_mean**2 + y_mean**2)))
     center_lon = np.degrees(np.arctan2(y_mean, x_mean))
     
-    # Calculate maximum distance from center to any point using haversine formula
-    max_distance = 0.0
-    for lat, lon in zip(latitudes, longitudes):
-        distance = _haversine_distance(center_lat, center_lon, lat, lon)
-        max_distance = max(max_distance, distance)
+    # Calculate maximum distance from center to any point using vectorized haversine formula
+    distances = _haversine_distance_vectorized(center_lat, center_lon, latitudes.values, longitudes.values)
+    max_distance = np.max(distances)
     
     return center_lat, center_lon, max_distance
 

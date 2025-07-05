@@ -104,10 +104,9 @@ def test_temporal_cdf_plot_content(page: Page, server_with_data: str) -> None:
 
     # Verify that status shows data is loaded with new format
     status_text = page.locator("#status").text_content()
-    assert "100 rows loaded" in status_text
-    assert "columns" in status_text
+    assert "100 (100.0%) of 100 rows loaded" in status_text
+    assert "cols" in status_text
     assert "MB" in status_text
-    assert "remain in current view" in status_text
 
     # Verify the plot container exists and has content
     plot_container = page.locator("#plotContainer")
@@ -139,18 +138,20 @@ def test_filter_to_selected_ui_elements(page: Page, server_with_data: str) -> No
     # Wait for the plot toolbar to be visible (increased timeout for plot rendering)
     page.wait_for_selector(".modebar", timeout=5000)
 
-    # Check that Filter to Selected button is initially disabled (no selection)
-    filter_button = page.locator("#filterToSelectedBtn")
-    assert filter_button.is_disabled()
+    # Check that filter buttons are initially disabled (no selection)
+    intersection_button = page.locator("#filterTemporalIntersectionBtn")
+    subtraction_button = page.locator("#filterTemporalSubtractionBtn")
+    assert intersection_button.is_disabled()
+    assert subtraction_button.is_disabled()
 
     # Verify plot selection info element exists and is initially empty
-    plot_selection_info = page.locator("#plotSelectionInfo")
+    plot_selection_info = page.locator("#temporalPlotSelectionInfo")
     assert plot_selection_info.count() > 0
     assert plot_selection_info.text_content() == ""
 
     # Get initial row count to verify data is loaded
     initial_status = page.locator("#status").text_content() or "NO TEXT CONTENT"
-    assert "Status: 100 remain (100.00%) of 100 rows" in initial_status
+    assert "Status: 100 (100.0%) of 100 rows loaded" in initial_status
 
     # Now perform the full selection workflow:
 
@@ -189,23 +190,24 @@ def test_filter_to_selected_ui_elements(page: Page, server_with_data: str) -> No
     page.mouse.move(end_x, end_y)
     page.mouse.up()
 
-    # Wait for the button to become enabled after selection
+    # Wait for the buttons to become enabled after selection
     page.wait_for_function(
-        "!document.getElementById('filterToSelectedBtn').disabled", timeout=1000
+        "!document.getElementById('filterTemporalIntersectionBtn').disabled",
+        timeout=1000,
     )
 
     # Verify selection info is displayed
     selection_info = plot_selection_info.text_content()
-    assert "Selected: 76 points representing 76 rows" in selection_info
+    assert "Selected 76 rows" in selection_info
 
-    # Click the filterToSelectedBtn and debug JavaScript execution
+    # Click the intersection button and debug JavaScript execution
     logger.info("🔍 Debugging JavaScript execution before click...")
 
     # Check JavaScript console for any errors
     js_debug = page.evaluate(
         """
         () => {
-            const btn = document.getElementById('filterToSelectedBtn');
+            const btn = document.getElementById('filterTemporalIntersectionBtn');
             const app = window.app;
 
             return {
@@ -213,8 +215,8 @@ def test_filter_to_selected_ui_elements(page: Page, server_with_data: str) -> No
                 buttonDisabled: btn ? btn.disabled : 'no button',
                 buttonOnclick: btn ? btn.getAttribute('onclick') : 'no button',
                 hasApp: !!app,
-                hasFilterFunction: !!(app && app.filterTemporalToSelected),
-                selectedCount: app ? app.selectedTemporalRowIndices.size : 'no app',
+                hasFilterFunction: !!(app && app.filterTemporalIntersection),
+                selectedCount: app && app.plotSelections && app.plotSelections.temporal ? app.plotSelections.temporal.selectedDfIds.size : 'no app',
                 hasPlotData: !!(app && app.plotData)
             };
         }
@@ -222,7 +224,7 @@ def test_filter_to_selected_ui_elements(page: Page, server_with_data: str) -> No
     )
     logger.info(f"JavaScript state: {js_debug}")
 
-    filter_button.click()
+    intersection_button.click()
     logger.info("✓ Button clicked")
 
     # Wait for the POST request to be sent and response received
@@ -230,15 +232,17 @@ def test_filter_to_selected_ui_elements(page: Page, server_with_data: str) -> No
 
     try:
         page.wait_for_function(
-            """() => {
+            """
+            () => {
                 const status = document.getElementById('status').textContent;
-                return !status.includes('Status: 100 remain');
-            }""",
+                return status.includes('Status: 76 (76.0%) of 100 rows loaded');
+            }
+            """,
             timeout=5000,
         )
 
         filtered_status = page.locator("#status").text_content() or "NO TEXT CONTENT"
-        assert "Status: 76 remain" in filtered_status
+        assert "Status: 76 (76.0%) of 100 rows loaded" in filtered_status
     finally:
         current_status = page.locator("#status").text_content()
         logger.info(f"Current status: {current_status}")

@@ -4,14 +4,17 @@ import json
 import logging
 import signal
 import sys
+import traceback
 from pathlib import Path
 from typing import Any, Optional
 
 import typer
 import uvicorn
-from fastapi import Depends, FastAPI, Query
-from fastapi.responses import HTMLResponse
+from fastapi import Depends, FastAPI, HTTPException, Query, Request
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
+from fastapi.exceptions import RequestValidationError
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from crossfilter.core.backend_frontend_shared_schema import (
     DfIdsFilterRequest,
@@ -22,7 +25,8 @@ from crossfilter.core.backend_frontend_shared_schema import (
     SessionStateResponse,
     TemporalPlotResponse,
 )
-from crossfilter.core.schema import FilterEvent, ProjectionType, load_jsonl_to_dataframe
+from crossfilter.core.backend_frontend_shared_schema import FilterEvent, ProjectionType
+from crossfilter.core.schema import load_jsonl_to_dataframe
 from crossfilter.core.session_state import SessionState
 from crossfilter.visualization.temporal_cdf_plot import create_temporal_cdf
 from crossfilter.visualization.geo_plot import create_geo_plot
@@ -31,7 +35,11 @@ from crossfilter.visualization.geo_plot import create_geo_plot
 _session_state_instance = SessionState()
 
 # Configure logging for better error visibility
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    handlers=[logging.StreamHandler(sys.stdout)],
+)
 logger = logging.getLogger(__name__)
 
 
@@ -46,7 +54,47 @@ app = FastAPI(
 )
 
 
+# Exception handlers for better error logging
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    """Global exception handler that logs full stack traces."""
+    # Log the full exception with stack trace
+    logger.error(
+        f"Unhandled exception in {request.method} {request.url.path}: {exc}",
+        exc_info=True,
+    )
 
+    return JSONResponse(
+        status_code=500,
+        content={
+            "detail": f"Internal server error: {str(exc)}",
+            "type": type(exc).__name__,
+        },
+    )
+
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException) -> JSONResponse:
+    """Handler for HTTP exceptions with logging."""
+    logger.error(
+        f"HTTP exception in {request.method} {request.url.path}: {exc.status_code} - {exc.detail}",
+        exc_info=True,
+    )
+
+    return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(
+    request: Request, exc: RequestValidationError
+) -> JSONResponse:
+    """Handler for request validation errors with logging."""
+    logger.error(
+        f"Validation error in {request.method} {request.url.path}: {exc.errors()}",
+        exc_info=True,
+    )
+
+    return JSONResponse(status_code=422, content={"detail": exc.errors()})
 
 
 # Mount static files
@@ -55,15 +103,11 @@ if static_path.exists():
     app.mount("/static", StaticFiles(directory=str(static_path)), name="static")
 
 
-
-
 @app.post("/api/data/load")
 async def load_data_endpoint(
     request: LoadDataRequest, session_state: SessionState = Depends(get_session_state)
 ) -> LoadDataResponse:
     """Load data from a JSONL file into the session state."""
-    from fastapi import HTTPException
-
     try:
         jsonl_path = Path(request.file_path)
         if not jsonl_path.exists():
@@ -79,7 +123,12 @@ async def load_data_endpoint(
             message=f"Successfully loaded {len(df)} records",
             session_state=session_state._create_session_state_response(),
         )
+    except HTTPException:
+        # Re-raise HTTP exceptions as-is
+        raise
     except Exception as e:
+        # Log the full exception with stack trace
+        logger.error(f"Error loading data from {request.file_path}: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Error loading data: {str(e)}")
 
 
@@ -121,20 +170,26 @@ async def get_temporal_plot_data(
     session_state: SessionState = Depends(get_session_state),
 ) -> TemporalPlotResponse:
     """Get data for the temporal CDF plot."""
-    from fastapi import HTTPException
-
     if len(session_state.all_rows) == 0:
         raise HTTPException(status_code=404, detail="No data loaded")
 
     try:
         temporal_data = session_state.get_temporal_projection()
         fig = create_temporal_cdf(temporal_data)
-        plotly_plot = json.loads(fig.to_json())
+        fig_json = fig.to_json()
+        if fig_json is None:
+            raise ValueError("Failed to serialize temporal plot to JSON")
+        plotly_plot = json.loads(fig_json)
 
         # Calculate status information
         from crossfilter.core.schema import SchemaColumns as C
-        distinct_point_count = temporal_data[C.COUNT].sum() if C.COUNT in temporal_data.columns else len(temporal_data)
-        
+
+        distinct_point_count = (
+            temporal_data[C.COUNT].sum()
+            if C.COUNT in temporal_data.columns
+            else len(temporal_data)
+        )
+
         # Get aggregation level from temporal projection state
         temporal_summary = session_state.temporal_projection.get_summary()
         target_column = temporal_summary.get("target_column")
@@ -147,12 +202,19 @@ async def get_temporal_plot_data(
 
         return TemporalPlotResponse(
             plotly_plot=plotly_plot,
-            data_type="aggregated" if C.COUNT in temporal_data.columns else "individual",
+            data_type=(
+                "aggregated" if C.COUNT in temporal_data.columns else "individual"
+            ),
             point_count=len(temporal_data),
             distinct_point_count=distinct_point_count,
             aggregation_level=aggregation_level,
         )
+    except HTTPException:
+        # Re-raise HTTP exceptions as-is
+        raise
     except Exception as e:
+        # Log the full exception with stack trace
+        logger.error(f"Error generating temporal plot: {e}", exc_info=True)
         raise HTTPException(
             status_code=500, detail=f"Error generating temporal plot: {str(e)}"
         )
@@ -163,21 +225,25 @@ async def get_geo_plot_data(
     session_state: SessionState = Depends(get_session_state),
 ) -> GeoPlotResponse:
     """Get data for the geographic plot."""
-    from fastapi import HTTPException
-
     if len(session_state.all_rows) == 0:
         raise HTTPException(status_code=404, detail="No data loaded")
 
     try:
         geo_data = session_state.get_geo_aggregation()
         fig = create_geo_plot(geo_data)
-        plotly_plot = json.loads(fig.to_json())
+        fig_json = fig.to_json()
+        if fig_json is None:
+            raise ValueError("Failed to serialize geo plot to JSON")
+        plotly_plot = json.loads(fig_json)
 
         # Calculate status information
         marker_count = len(geo_data)
         from crossfilter.core.schema import SchemaColumns as C
-        distinct_point_count = geo_data[C.COUNT].sum() if C.COUNT in geo_data.columns else len(geo_data)
-        
+
+        distinct_point_count = (
+            geo_data[C.COUNT].sum() if C.COUNT in geo_data.columns else len(geo_data)
+        )
+
         # Get aggregation level from geo projection state
         geo_summary = session_state.geo_projection.get_summary()
         h3_level = geo_summary.get("h3_level")
@@ -189,7 +255,12 @@ async def get_geo_plot_data(
             distinct_point_count=distinct_point_count,
             aggregation_level=aggregation_level,
         )
+    except HTTPException:
+        # Re-raise HTTP exceptions as-is
+        raise
     except Exception as e:
+        # Log the full exception with stack trace
+        logger.error(f"Error generating geo plot: {e}", exc_info=True)
         raise HTTPException(
             status_code=500, detail=f"Error generating geo plot: {str(e)}"
         )
@@ -201,14 +272,13 @@ async def filter_to_df_ids(
     session_state: SessionState = Depends(get_session_state),
 ) -> FilterResponse:
     """Filter data to only include points with specified df_ids from a plot."""
-    from fastapi import HTTPException
-
     logger.info(f"Filtering to df_ids: {request=}")
 
     try:
         filter_event = FilterEvent(
             projection_type=request.event_source,
             selected_df_ids=set(request.df_ids),
+            filter_operator=request.filter_operator,
         )
         session_state.apply_filter_event(filter_event)
 
@@ -216,22 +286,17 @@ async def filter_to_df_ids(
             success=True,
             filter_state=session_state._create_session_state_response(),
         )
+    except HTTPException:
+        # Re-raise HTTP exceptions as-is
+        raise
     except Exception as e:
+        # Log the full exception with stack trace
+        logger.error(
+            f"Error applying {request.event_source.value} filter: {e}", exc_info=True
+        )
         # Include the projection type in the error message for better test compatibility
         error_msg = f"Error applying {request.event_source.value} filter: {str(e)}"
         raise HTTPException(status_code=500, detail=error_msg)
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 @app.post("/api/filters/reset")
@@ -250,7 +315,7 @@ async def reset_filters(
 @app.get("/api/events/filter-changes")
 async def filter_change_stream(
     session_state: SessionState = Depends(get_session_state),
-):
+) -> Any:
     """Server-Sent Events stream for filter change notifications."""
     from fastapi.responses import StreamingResponse
 
@@ -264,12 +329,6 @@ async def filter_change_stream(
             "Access-Control-Allow-Headers": "Cache-Control",
         },
     )
-
-
-
-
-
-
 
 
 # https://github.com/fastapi/typer/issues/341

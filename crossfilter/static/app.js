@@ -6,10 +6,73 @@ const ProjectionType = {
     TEMPORAL: 'temporal'
 };
 
+// FilterOperatorType enum to match backend schema.py
+const FilterOperatorType = {
+    INTERSECTION: 'intersection',
+    SUBTRACTION: 'subtraction'
+};
+
+// Class to manage plot selection data and UI elements for a specific plot
+class PlotSelectionData {
+    constructor(projectionType, intersectionBtnId, subtractionBtnId, selectionInfoId) {
+        this.projectionType = projectionType;
+        this.intersectionBtnId = intersectionBtnId;
+        this.subtractionBtnId = subtractionBtnId;
+        this.selectionInfoId = selectionInfoId;
+        this.selectedDfIds = new Set();
+        this.selectedCount = 0;
+    }
+
+    clearSelection() {
+        this.selectedDfIds.clear();
+        this.selectedCount = 0;
+    }
+
+    updateSelection(selectedDfIds, selectedCount) {
+        this.selectedDfIds = selectedDfIds;
+        this.selectedCount = selectedCount;
+    }
+
+    // TODO: Pass in totalRowCount
+    updateUI() {
+        const intersectionBtn = document.getElementById(this.intersectionBtnId);
+        const subtractionBtn = document.getElementById(this.subtractionBtnId);
+        const selectionInfo = document.getElementById(this.selectionInfoId);
+        
+        const hasSelection = this.selectedDfIds.size > 0;
+        
+        if (intersectionBtn) intersectionBtn.disabled = !hasSelection;
+        if (subtractionBtn) subtractionBtn.disabled = !hasSelection;
+        
+        if (selectionInfo) {
+            if (hasSelection) {
+                // const percent = ((this.selectedCount / totalRowCount) * 100).toFixed(1);
+                // selectionInfo.textContent = `Selected ${this.selectedCount} (${percent}%) of ${totalRowCount} rows`;
+                selectionInfo.textContent = `Selected ${this.selectedCount} rows`;
+            } else {
+                selectionInfo.textContent = '';
+            }
+        }
+    }
+}
+
 class CrossfilterApp {
     constructor() {
-        this.selectedTemporalRowIndices = new Set();
-        this.selectedGeoRowIndices = new Set();
+        // Create plot selection data managers
+        this.plotSelections = {
+            [ProjectionType.TEMPORAL]: new PlotSelectionData(
+                ProjectionType.TEMPORAL,
+                'filterTemporalIntersectionBtn',
+                'filterTemporalSubtractionBtn', 
+                'temporalPlotSelectionInfo'
+            ),
+            [ProjectionType.GEO]: new PlotSelectionData(
+                ProjectionType.GEO,
+                'filterGeoIntersectionBtn',
+                'filterGeoSubtractionBtn',
+                'geoPlotSelectionInfo'
+            )
+        };
         this.plotData = null;
         this.hasData = false;
         this.eventSource = null;
@@ -52,9 +115,9 @@ class CrossfilterApp {
         
         if (status.has_data) {
             if (statusElement) {
-                let percent_remaining = (status.filtered_count / status.row_count * 100).toFixed(2);
+                let percent_remaining = (status.filtered_count / status.row_count * 100).toFixed(1);
                 statusElement.innerHTML = `
-                    <strong>Status:</strong> ${status.filtered_count} remain (${percent_remaining}%) of ${status.row_count} rows (${status.columns.length} cols, ${status.memory_usage_mb} MB)
+                    <strong>Status:</strong> ${status.filtered_count} (${percent_remaining}%) of ${status.row_count} rows loaded (${status.columns.length} cols, ${status.memory_usage_mb} MB)
                 `;
             }
             if (resetFiltersBtn) {
@@ -238,7 +301,7 @@ class CrossfilterApp {
             // Update status line
             const aggregationText = plotData.aggregation_level || 'None';
             statusElement.innerHTML = `
-                Showing ${plotData.point_count} buckets representing ${plotData.distinct_point_count} distinct points, aggregated at ${aggregationText}
+                Showing ${plotData.distinct_point_count} rows, aggregated at ${aggregationText}
             `;
             statusElement.style.display = 'block';
             
@@ -308,7 +371,7 @@ class CrossfilterApp {
             // Update status line
             const aggregationText = plotData.aggregation_level || 'None';
             statusElement.innerHTML = `
-                Showing ${plotData.marker_count} markers representing ${plotData.distinct_point_count} distinct points, aggregated at ${aggregationText}
+                Showing ${plotData.distinct_point_count} rows, aggregated at ${aggregationText}
             `;
             
             // Create the plot using Plotly
@@ -351,63 +414,60 @@ class CrossfilterApp {
         }
     }
 
-    handleTemporalPlotSelection(eventData) {
+    handlePlotSelection(eventData, projectionType) {
         if (!eventData || !eventData.points) {
             return;
         }
 
         // Extract row indices from selected points
-        // The backend should provide df_id (row index) in the customdata
+        // The backend provides df_id (row index) in customdata[0] and count in customdata[1]
         const selectedIndices = new Set();
-        // eventData.points[0].customdata
         let selectedCount = 0;
         eventData.points.forEach((point, index) => {
-            // We know that the first item in customdata is the df_id.
             selectedIndices.add(point.customdata[0]);
             selectedCount += point.customdata[1];
         });
 
-        console.log('CrossfilterApp: handleTemporalPlotSelection() selectedCount:', selectedCount);
+        console.log(`CrossfilterApp: handlePlotSelection(${projectionType}) selectedCount:`, selectedCount);
 
-        this.selectedTemporalRowIndices = selectedIndices;
-        this.selectedTemporalCount = selectedCount;
-        this.updateTemporalFilterButton();
+        // Update selection state using PlotSelectionData
+        const plotSelection = this.plotSelections[projectionType];
+        if (plotSelection) {
+            plotSelection.updateSelection(selectedIndices, selectedCount);
+            this.updateFilterButtons();
+        }
+    }
+
+    handleTemporalPlotSelection(eventData) {
+        this.handlePlotSelection(eventData, ProjectionType.TEMPORAL);
     }
 
     handleGeoPlotSelection(eventData) {
-        if (!eventData || !eventData.points) {
-            return;
+        this.handlePlotSelection(eventData, ProjectionType.GEO);
+    }
+
+    clearSelection(projectionType = null) {
+        if (projectionType === null) {
+            // Clear all selections
+            Object.values(this.plotSelections).forEach(plotSelection => {
+                plotSelection.clearSelection();
+            });
+        } else {
+            // Clear specific projection selection
+            const plotSelection = this.plotSelections[projectionType];
+            if (plotSelection) {
+                plotSelection.clearSelection();
+            }
         }
-        // Extract row indices from selected points
-        // The backend should provide df_id (row index) in the customdata
-        const selectedIndices = new Set();
-        let selectedCount = 0;
-        eventData.points.forEach((point, index) => {
-            // We know that the first item in customdata is the df_id.
-            selectedIndices.add(point.customdata[0]);
-            selectedCount += point.customdata[1];
-        });
-
-        console.log('CrossfilterApp: handleGeoPlotSelection() selectedCount:', selectedCount);
-
-        this.selectedGeoRowIndices = selectedIndices;
-        this.selectedGeoCount = selectedCount;
-        this.updateGeoFilterButton();
+        this.updateFilterButtons();
     }
 
     clearTemporalSelection() {
-        this.selectedTemporalRowIndices.clear();
-        this.updateTemporalFilterButton();
+        this.clearSelection(ProjectionType.TEMPORAL);
     }
 
     clearGeoSelection() {
-        this.selectedGeoRowIndices.clear();
-        this.updateGeoFilterButton();
-    }
-
-    clearSelection() {
-        this.clearTemporalSelection();
-        this.clearGeoSelection();
+        this.clearSelection(ProjectionType.GEO);
     }
 
     async resetFilters() {
@@ -460,59 +520,39 @@ class CrossfilterApp {
         document.getElementById('messages').innerHTML = '';
     }
 
-    updateTemporalFilterButton() {
-        const filterButton = document.getElementById('filterToSelectedBtn');
-        const plotSelectionInfo = document.getElementById('plotSelectionInfo');
-        
-        if (this.selectedTemporalRowIndices.size > 0) {
-            filterButton.disabled = false;
-            plotSelectionInfo.textContent = `Selected: ${this.selectedTemporalRowIndices.size} points representing ${this.selectedTemporalCount} rows`;
-        } else {
-            filterButton.disabled = true;
-            plotSelectionInfo.textContent = '';
-        }
+    updateFilterButtons() {
+        Object.values(this.plotSelections).forEach(plotSelection => {
+            plotSelection.updateUI();
+        });
     }
 
-    updateGeoFilterButton() {
-        const filterButton = document.getElementById('filterToSelectedGeoBtn');
-        const plotSelectionInfo = document.getElementById('geoPlotSelectionInfo');
-        
-        if (this.selectedGeoRowIndices.size > 0) {
-            filterButton.disabled = false;
-            plotSelectionInfo.textContent = `Selected: ${this.selectedGeoRowIndices.size} points representing ${this.selectedGeoCount} rows`;
-        } else {
-            filterButton.disabled = true;
-            plotSelectionInfo.textContent = '';
-        }
-    }
 
-    async filterToSelected(eventSource) {
+
+    async filterToSelected(eventSource, filterOperator) {
         // Get the appropriate selected indices based on event source
-        let selectedIndices;
-        if (eventSource === ProjectionType.TEMPORAL) {
-            selectedIndices = Array.from(this.selectedTemporalRowIndices);
-        } else if (eventSource === ProjectionType.GEO) {
-            selectedIndices = Array.from(this.selectedGeoRowIndices);
-        } else {
+        const plotSelection = this.plotSelections[eventSource];
+        if (!plotSelection) {
             this.showError('Unknown event source: ' + eventSource);
             return;
         }
+        
+        const selectedIndices = Array.from(plotSelection.selectedDfIds);
         
         if (selectedIndices.length === 0) {
             this.showError('No markers selected. Use lasso or box select to choose markers first.');
             return;
         }
 
-        // Get display names for different event sources
-        const displayNames = {
-            [ProjectionType.TEMPORAL]: 'temporal buckets',
-            [ProjectionType.GEO]: 'spatial regions'
+        // Get display names for different operations
+        const operationNames = {
+            [FilterOperatorType.INTERSECTION]: 'keeping only',
+            [FilterOperatorType.SUBTRACTION]: 'removing'
         };
         
-        const displayName = displayNames[eventSource] || 'points';
+        const operationName = operationNames[filterOperator] || 'filtering';
 
         try {
-            this.showInfo(`Filtering to ${selectedIndices.length} selected ${displayName}...`);
+            this.showInfo(`${operationName} ${selectedIndices.length} selected points...`);
             
             const response = await fetch('/api/filters/df_ids', {
                 method: 'POST',
@@ -521,7 +561,8 @@ class CrossfilterApp {
                 },
                 body: JSON.stringify({
                     df_ids: selectedIndices,
-                    event_source: eventSource
+                    event_source: eventSource,
+                    filter_operator: filterOperator
                 })
             });
 
@@ -530,20 +571,39 @@ class CrossfilterApp {
             }
 
             const result = await response.json();
-            this.showInfo(`Filtered to selected ${displayName}: ${result.filtered_count} rows remaining`);
+            this.showInfo(`Filter applied: ${result.filter_state.filtered_count} rows remaining`);
             
             // SSE will handle the refresh automatically when the filter_applied event is received
         } catch (error) {
-            this.showError(`Failed to apply ${eventSource} selection filter: ` + error.message);
+            this.showError(`Failed to apply ${eventSource} ${filterOperator} filter: ` + error.message);
         }
     }
 
+    // Methods for intersection operations
+    async filterTemporalIntersection() {
+        return this.filterToSelected(ProjectionType.TEMPORAL, FilterOperatorType.INTERSECTION);
+    }
+
+    async filterGeoIntersection() {
+        return this.filterToSelected(ProjectionType.GEO, FilterOperatorType.INTERSECTION);
+    }
+
+    // Methods for subtraction operations
+    async filterTemporalSubtraction() {
+        return this.filterToSelected(ProjectionType.TEMPORAL, FilterOperatorType.SUBTRACTION);
+    }
+
+    async filterGeoSubtraction() {
+        return this.filterToSelected(ProjectionType.GEO, FilterOperatorType.SUBTRACTION);
+    }
+
+    // Legacy methods for backward compatibility
     async filterTemporalToSelected() {
-        return this.filterToSelected(ProjectionType.TEMPORAL);
+        return this.filterTemporalIntersection();
     }
 
     async filterGeoToSelected() {
-        return this.filterToSelected(ProjectionType.GEO);
+        return this.filterGeoIntersection();
     }
 }
 
@@ -554,17 +614,26 @@ function loadSampleData() {
     app.loadSampleData();
 }
 
-
 function resetFilters() {
     app.resetFilters();
 }
 
-function filterTemporalToSelected() {
-    app.filterTemporalToSelected();
+// Intersection filter functions
+function filterTemporalIntersection() {
+    app.filterTemporalIntersection();
 }
 
-function filterGeoToSelected() {
-    app.filterGeoToSelected();
+function filterGeoIntersection() {
+    app.filterGeoIntersection();
+}
+
+// Subtraction filter functions
+function filterTemporalSubtraction() {
+    app.filterTemporalSubtraction();
+}
+
+function filterGeoSubtraction() {
+    app.filterGeoSubtraction();
 }
 
 // Initialize the application when the page loads

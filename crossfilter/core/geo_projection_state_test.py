@@ -4,6 +4,11 @@ import pandas as pd
 import pytest
 from syrupy import SnapshotAssertion
 
+from crossfilter.core.backend_frontend_shared_schema import (
+    FilterEvent,
+    FilterOperatorType,
+    ProjectionType,
+)
 from crossfilter.core.bucketing import add_bucketed_columns
 from crossfilter.core.geo_projection_state import GeoProjectionState
 from crossfilter.core.schema import SchemaColumns as C
@@ -108,58 +113,6 @@ def test_update_projection_no_gps(sample_data: pd.DataFrame) -> None:
     assert len(projection.projection_state.projection_df) == 0
     assert projection.current_h3_level is None
     assert projection.projection_state.current_bucketing_column is None
-
-
-def test_apply_filter_event_individual_points(sample_data: pd.DataFrame) -> None:
-    """Test applying filter event in individual points mode."""
-    projection = GeoProjectionState(max_rows=100)
-    projection.update_projection(sample_data)
-
-    # Select first 10 points
-    selected_df_ids = set(range(0, 10))
-    result = projection.apply_filter_event(selected_df_ids, sample_data)
-
-    assert len(result) == 10
-    assert all(idx in range(0, 10) for idx in result.index)
-
-
-def test_apply_filter_event_aggregated(sample_data: pd.DataFrame) -> None:
-    """Test applying filter event in aggregated mode."""
-    projection = GeoProjectionState(max_rows=5)
-    projection.update_projection(sample_data)
-
-    # Should be in aggregated mode
-    assert projection.current_h3_level is not None
-
-    # Select first bucket (df_id 0 in the projection)
-    selected_df_ids = {0}
-    result = projection.apply_filter_event(selected_df_ids, sample_data)
-
-    # Should return some subset of original data
-    assert len(result) > 0
-    assert len(result) <= 20
-
-
-def test_apply_filter_event_empty_selection(sample_data: pd.DataFrame) -> None:
-    """Test applying filter event with empty selection."""
-    projection = GeoProjectionState(max_rows=100)
-    projection.update_projection(sample_data)
-
-    result = projection.apply_filter_event(set(), sample_data)
-    assert result.empty
-
-
-def test_apply_filter_event_invalid_ids(sample_data: pd.DataFrame) -> None:
-    """Test applying filter event with invalid df_ids."""
-    projection = GeoProjectionState(max_rows=5)  # Force aggregation
-    projection.update_projection(sample_data)
-
-    # Use invalid df_ids (beyond projection length)
-    invalid_ids = {100, 200}
-    result = projection.apply_filter_event(invalid_ids, sample_data)
-
-    # Should return empty DataFrame for invalid selections
-    assert result.empty
 
 
 def test_get_summary(sample_data: pd.DataFrame) -> None:

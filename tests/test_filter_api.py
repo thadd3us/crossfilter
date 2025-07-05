@@ -70,6 +70,7 @@ def test_filter_df_ids_endpoint_direct(
     filter_request = {
         "df_ids": selected_df_ids,
         "event_source": "temporal",
+        "filter_operator": "intersection",
     }
 
     logger.info(f"Sending filter request: {filter_request}")
@@ -97,6 +98,33 @@ def test_filter_df_ids_endpoint_direct(
 
     assert response.status_code == 200
     assert filter_result == snapshot
+
+    # Test subtraction operation as well
+    logger.info("Testing subtraction filter operation...")
+    
+    # Reset filters first by calling the reset endpoint
+    reset_response = requests.post(f"{server_url}/api/filters/reset")
+    assert reset_response.status_code == 200
+    
+    # Test subtraction filter with some df_ids  
+    subtraction_request = {
+        "df_ids": selected_df_ids[:5],  # Remove first 5 selected points
+        "event_source": "temporal",
+        "filter_operator": "subtraction",
+    }
+    
+    subtraction_response = requests.post(
+        f"{server_url}/api/filters/df_ids",
+        json=subtraction_request,
+        headers={"Content-Type": "application/json"},
+    )
+    
+    assert subtraction_response.status_code == 200
+    subtraction_result = subtraction_response.json()
+    assert subtraction_result["success"] is True
+    
+    # After subtraction, we should have 100 - 5 = 95 rows remaining
+    assert subtraction_result["filter_state"]["filtered_count"] == 95
 
     # # Verify the response structure
     # assert filter_result["success"] is True
@@ -127,6 +155,7 @@ def test_filter_df_ids_endpoint_invalid_request(server_with_data: str) -> None:
     filter_request = {
         "df_ids": [],
         "event_source": "temporal",
+        "filter_operator": "intersection",
     }
 
     response = requests.post(
@@ -143,6 +172,7 @@ def test_filter_df_ids_endpoint_invalid_request(server_with_data: str) -> None:
     filter_request = {
         "df_ids": [1, 2, 3],
         "event_source": "invalid_source",
+        "filter_operator": "intersection",
     }
 
     response = requests.post(
@@ -156,11 +186,12 @@ def test_filter_df_ids_endpoint_invalid_request(server_with_data: str) -> None:
         response.status_code == 422
     )  # FastAPI validation error for invalid enum value
 
-    logger.info("Test with geo event_source, should fail.")
-    # Test with geo event_source (should return 501 - not implemented)
+    logger.info("Test with geo event_source, should succeed.")
+    # Test with geo event_source (now implemented)
     filter_request = {
         "df_ids": [1, 2, 3],
         "event_source": "geo",
+        "filter_operator": "intersection",
     }
 
     response = requests.post(
@@ -169,10 +200,7 @@ def test_filter_df_ids_endpoint_invalid_request(server_with_data: str) -> None:
         headers={"Content-Type": "application/json"},
     )
 
-    # Should return 501 for geo filtering (not implemented) or 500 if there's an error
-    assert response.status_code in [500, 501]
-    if response.status_code == 501:
-        assert "not yet implemented" in response.text.lower()
-    else:
-        # If 500, it should still be related to geo filtering not being implemented
-        assert "geo" in response.text.lower() or "spatial" in response.text.lower()
+    # Geo filtering should now work (return 200)
+    assert response.status_code == 200
+    geo_result = response.json()
+    assert geo_result["success"] is True

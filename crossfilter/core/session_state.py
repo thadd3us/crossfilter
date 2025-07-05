@@ -13,6 +13,7 @@ from crossfilter.core.backend_frontend_shared_schema import (
     ProjectionType,
     SessionStateResponse,
 )
+from crossfilter.core.schema import SchemaColumns as C
 from crossfilter.core.bucketing import add_bucketed_columns
 from crossfilter.core.geo_projection_state import GeoProjectionState
 from crossfilter.core.temporal_projection_state import TemporalProjectionState
@@ -70,16 +71,6 @@ class SessionState:
         # Broadcast data loaded event
         self.broadcast_filter_change("data_loaded", ["temporal", "geo"])
 
-
-
-    def clear(self) -> None:
-        """Clear all data from the session state."""
-        self.all_rows = pd.DataFrame()
-        self.filtered_rows = pd.DataFrame()
-
-        # Update all projections with empty data
-        self.update_all_projections()
-
     def update_all_projections(self) -> None:
         """Update all projection states with the current filtered data."""
         self.temporal_projection.update_projection(self.filtered_rows)
@@ -93,16 +84,17 @@ class SessionState:
             filter_event: The filter event containing projection type and selected df_ids
         """
         if filter_event.projection_type == ProjectionType.TEMPORAL:
-            new_filtered_rows = self.temporal_projection.apply_filter_event(
-                filter_event.selected_df_ids, self.filtered_rows
-            )
+            projection_state = self.temporal_projection.projection_state
         elif filter_event.projection_type == ProjectionType.GEO:
-            new_filtered_rows = self.geo_projection.apply_filter_event(
-                filter_event.selected_df_ids, self.filtered_rows
-            )
+            projection_state = self.geo_projection.projection_state
         else:
             logger.error(f"Invalid projection type: {filter_event.projection_type}")
             raise ValueError(f"Invalid projection type: {filter_event.projection_type}")
+
+        new_filtered_rows = projection_state.apply_filter_event(
+            filter_event, self.filtered_rows
+        )
+        assert C.TIMESTAMP_UTC in new_filtered_rows.columns
 
         # Update filtered_rows with the new selection
         self.filtered_rows = new_filtered_rows

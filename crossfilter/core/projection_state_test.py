@@ -3,6 +3,11 @@
 import pandas as pd
 import pytest
 
+from crossfilter.core.backend_frontend_shared_schema import (
+    FilterEvent,
+    FilterOperatorType,
+    ProjectionType,
+)
 from crossfilter.core.projection_state import ProjectionState
 from crossfilter.core.schema import SchemaColumns as C
 
@@ -10,12 +15,14 @@ from crossfilter.core.schema import SchemaColumns as C
 @pytest.fixture
 def sample_data() -> pd.DataFrame:
     """Create sample data for testing."""
-    df = pd.DataFrame({
-        C.UUID_STRING: [f"uuid_{i}" for i in range(20)],
-        C.GPS_LATITUDE: [37.7749 + i * 0.001 for i in range(20)],
-        C.GPS_LONGITUDE: [-122.4194 + i * 0.001 for i in range(20)],
-        C.TIMESTAMP_UTC: [f"2024-01-01T{10 + i // 4}:00:00Z" for i in range(20)],
-    })
+    df = pd.DataFrame(
+        {
+            C.UUID_STRING: [f"uuid_{i}" for i in range(20)],
+            C.GPS_LATITUDE: [37.7749 + i * 0.001 for i in range(20)],
+            C.GPS_LONGITUDE: [-122.4194 + i * 0.001 for i in range(20)],
+            C.TIMESTAMP_UTC: [f"2024-01-01T{10 + i // 4}:00:00Z" for i in range(20)],
+        }
+    )
     df[C.TIMESTAMP_UTC] = pd.to_datetime(df[C.TIMESTAMP_UTC], utc=True)
     df.index.name = C.DF_ID
     return df
@@ -24,12 +31,14 @@ def sample_data() -> pd.DataFrame:
 @pytest.fixture
 def bucketed_data() -> pd.DataFrame:
     """Create sample bucketed data for testing."""
-    df = pd.DataFrame({
-        "bucket_column": ["bucket_a", "bucket_b", "bucket_c"],
-        C.GPS_LATITUDE: [37.7749, 37.7759, 37.7769],
-        C.GPS_LONGITUDE: [-122.4194, -122.4204, -122.4214],
-        "count": [5, 8, 7],
-    })
+    df = pd.DataFrame(
+        {
+            "bucket_column": ["bucket_a", "bucket_b", "bucket_c"],
+            C.GPS_LATITUDE: [37.7749, 37.7759, 37.7769],
+            C.GPS_LONGITUDE: [-122.4194, -122.4204, -122.4214],
+            "count": [5, 8, 7],
+        }
+    )
     df.index.name = C.DF_ID
     return df
 
@@ -53,7 +62,10 @@ def test_apply_filter_event_individual_points(sample_data: pd.DataFrame) -> None
 
     # Select first 10 points
     selected_df_ids = set(range(0, 10))
-    result = projection.apply_filter_event(selected_df_ids, sample_data)
+    filter_event = FilterEvent(
+        ProjectionType.TEMPORAL, selected_df_ids, FilterOperatorType.INTERSECTION
+    )
+    result = projection.apply_filter_event(filter_event, sample_data)
 
     assert len(result) == 10
     assert all(idx in range(0, 10) for idx in result.index)
@@ -64,11 +76,16 @@ def test_apply_filter_event_empty_selection(sample_data: pd.DataFrame) -> None:
     projection = ProjectionState(max_rows=100)
     projection.projection_df = sample_data.copy()
 
-    result = projection.apply_filter_event(set(), sample_data)
+    filter_event = FilterEvent(
+        ProjectionType.TEMPORAL, set(), FilterOperatorType.INTERSECTION
+    )
+    result = projection.apply_filter_event(filter_event, sample_data)
     assert result.empty
 
 
-def test_apply_filter_event_aggregated_mode(sample_data: pd.DataFrame, bucketed_data: pd.DataFrame) -> None:
+def test_apply_filter_event_aggregated_mode(
+    sample_data: pd.DataFrame, bucketed_data: pd.DataFrame
+) -> None:
     """Test applying filter event in aggregated mode."""
     projection = ProjectionState(max_rows=100)
 
@@ -78,18 +95,25 @@ def test_apply_filter_event_aggregated_mode(sample_data: pd.DataFrame, bucketed_
 
     # Add bucket column to sample data
     sample_data_with_buckets = sample_data.copy()
-    sample_data_with_buckets["bucket_column"] = ["bucket_a"] * 5 + ["bucket_b"] * 8 + ["bucket_c"] * 7
+    sample_data_with_buckets["bucket_column"] = (
+        ["bucket_a"] * 5 + ["bucket_b"] * 8 + ["bucket_c"] * 7
+    )
 
     # Select first bucket (df_id 0 in the projection)
     selected_df_ids = {0}
-    result = projection.apply_filter_event(selected_df_ids, sample_data_with_buckets)
+    filter_event = FilterEvent(
+        ProjectionType.TEMPORAL, selected_df_ids, FilterOperatorType.INTERSECTION
+    )
+    result = projection.apply_filter_event(filter_event, sample_data_with_buckets)
 
     # Should return rows with bucket_a
     assert len(result) == 5
     assert all(result["bucket_column"] == "bucket_a")
 
 
-def test_apply_filter_event_aggregated_mode_missing_column(sample_data: pd.DataFrame, bucketed_data: pd.DataFrame) -> None:
+def test_apply_filter_event_aggregated_mode_missing_column(
+    sample_data: pd.DataFrame, bucketed_data: pd.DataFrame
+) -> None:
     """Test applying filter event when bucketing column is missing from filtered data."""
     projection = ProjectionState(max_rows=100)
 
@@ -99,13 +123,16 @@ def test_apply_filter_event_aggregated_mode_missing_column(sample_data: pd.DataF
 
     # Try to apply filter
     selected_df_ids = {0}
-    result = projection.apply_filter_event(selected_df_ids, sample_data)
+    filter_event = FilterEvent(
+        ProjectionType.TEMPORAL, selected_df_ids, FilterOperatorType.INTERSECTION
+    )
+    with pytest.raises(ValueError):
+        projection.apply_filter_event(filter_event, sample_data)
 
-    # Should return original data (fallback behavior)
-    assert len(result) == len(sample_data)
 
-
-def test_apply_filter_event_invalid_df_ids(sample_data: pd.DataFrame, bucketed_data: pd.DataFrame) -> None:
+def test_apply_filter_event_invalid_df_ids(
+    sample_data: pd.DataFrame, bucketed_data: pd.DataFrame
+) -> None:
     """Test applying filter event with invalid df_ids."""
     projection = ProjectionState(max_rows=100)
 
@@ -119,13 +146,16 @@ def test_apply_filter_event_invalid_df_ids(sample_data: pd.DataFrame, bucketed_d
 
     # Use invalid df_ids (beyond projection length)
     invalid_ids = {100, 200}
-    result = projection.apply_filter_event(invalid_ids, sample_data_with_buckets)
+    filter_event = FilterEvent(
+        ProjectionType.TEMPORAL, invalid_ids, FilterOperatorType.INTERSECTION
+    )
+    with pytest.raises(ValueError):
+        projection.apply_filter_event(filter_event, sample_data_with_buckets)
 
-    # Should return empty DataFrame for invalid selections
-    assert result.empty
 
-
-def test_apply_filter_event_aggregated_error_handling(sample_data: pd.DataFrame) -> None:
+def test_apply_filter_event_aggregated_error_handling(
+    sample_data: pd.DataFrame,
+) -> None:
     """Test error handling in aggregated mode."""
     projection = ProjectionState(max_rows=100)
 
@@ -134,10 +164,11 @@ def test_apply_filter_event_aggregated_error_handling(sample_data: pd.DataFrame)
     projection.current_bucketing_column = "bucket_column"
 
     selected_df_ids = {0}
-    result = projection.apply_filter_event(selected_df_ids, sample_data)
-
-    # Should return original filtered_rows due to graceful fallback when bucketing column is missing
-    assert len(result) == len(sample_data)
+    filter_event = FilterEvent(
+        ProjectionType.TEMPORAL, selected_df_ids, FilterOperatorType.INTERSECTION
+    )
+    with pytest.raises(ValueError):
+        projection.apply_filter_event(filter_event, sample_data)
 
 
 def test_get_summary() -> None:

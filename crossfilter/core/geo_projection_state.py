@@ -5,6 +5,10 @@ from typing import Optional
 
 import pandas as pd
 
+from crossfilter.core.backend_frontend_shared_schema import (
+    FilterEvent,
+    FilterOperatorType,
+)
 from crossfilter.core.bucketing import (
     bucket_by_target_column,
     get_h3_column_name,
@@ -43,6 +47,7 @@ class GeoProjectionState:
         Args:
             filtered_rows: Current filtered subset of all_rows
         """
+        # Drop rows with missing GPS coordinates
         filtered_rows = filtered_rows.dropna(subset=[C.GPS_LATITUDE, C.GPS_LONGITUDE])
 
         optimal_level = get_optimal_h3_level(
@@ -65,21 +70,6 @@ class GeoProjectionState:
         logger.info(
             f"Bucketed data at optimal H3 level {optimal_level=}, {len(self.projection_state.projection_df)=}"
         )
-
-    def apply_filter_event(
-        self, selected_df_ids: set[int], filtered_rows: pd.DataFrame
-    ) -> pd.DataFrame:
-        """
-        Apply a geographic filter event and return the new filtered rows.
-
-        Args:
-            selected_df_ids: Set of df_ids selected in the geographic visualization
-            filtered_rows: Current filtered rows to apply filter to
-
-        Returns:
-            New filtered DataFrame containing only rows matching the selection
-        """
-        return self.projection_state.apply_filter_event(selected_df_ids, filtered_rows)
 
     def get_summary(self) -> dict:
         """Get a summary of the current geographic projection state."""

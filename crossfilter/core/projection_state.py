@@ -5,6 +5,10 @@ from typing import Optional
 
 import pandas as pd
 
+from crossfilter.core.backend_frontend_shared_schema import (
+    FilterEvent,
+    FilterOperatorType,
+)
 from crossfilter.core.bucketing import filter_df_to_selected_buckets
 
 logger = logging.getLogger(__name__)
@@ -31,7 +35,9 @@ class ProjectionState:
         self.projection_df = pd.DataFrame()
         self.current_bucketing_column: Optional[str] = None
 
-    def apply_filter_event(self, selected_df_ids: set[int], filtered_rows: pd.DataFrame) -> pd.DataFrame:
+    def apply_filter_event(
+        self, filter_event: FilterEvent, filtered_rows: pd.DataFrame
+    ) -> pd.DataFrame:
         """
         Apply a filter event and return the new filtered rows.
 
@@ -40,46 +46,49 @@ class ProjectionState:
         - Aggregated buckets: Use filter_df_to_selected_buckets to map selections back to original rows
 
         Args:
-            selected_df_ids: Set of df_ids selected in the visualization
+            filter_event: FilterEvent containing selected df_ids and filter operation
             filtered_rows: Current filtered rows to apply filter to
 
         Returns:
             New filtered DataFrame containing only rows matching the selection
         """
-        if not selected_df_ids:
+        if not filter_event.selected_df_ids:
             return pd.DataFrame()
 
+        # Get the selected rows based on the projection mode
         if self.current_bucketing_column is None:
             # Individual points mode - filter by df_id directly
-            return filtered_rows.loc[filtered_rows.index.isin(selected_df_ids)].copy()
+            selected_rows = filtered_rows.loc[
+                filtered_rows.index.isin(filter_event.selected_df_ids)
+            ]
+        else:
+            # Aggregated mode - need to map bucket selections back to original rows
+            if self.current_bucketing_column not in filtered_rows.columns:
+                raise ValueError(
+                    f"Current bucketing column {self.current_bucketing_column} not found in filtered rows"
+                )
 
-        # Aggregated mode - need to map bucket selections back to original rows
-        if self.current_bucketing_column not in filtered_rows.columns:
-            logger.warning(f"Bucketing column {self.current_bucketing_column} not found in filtered data")
-            return filtered_rows
+            # Get the bucket values for the selected df_ids
+            selected_bucket_df_ids = list(filter_event.selected_df_ids)
 
-        # Get the bucket values for the selected df_ids
-        selected_bucket_df_ids = list(selected_df_ids)
-
-        # Make sure all selected ids are valid
-        valid_ids = [id for id in selected_bucket_df_ids if id < len(self.projection_df)]
-        if len(valid_ids) != len(selected_bucket_df_ids):
-            logger.warning(f"Some selected df_ids are invalid: {set(selected_bucket_df_ids) - set(valid_ids)}")
-
-        if not valid_ids:
-            return pd.DataFrame()
-
-        # Use the bucketing utility to filter original data
-        try:
-            return filter_df_to_selected_buckets(
+            # Use the bucketing utility to filter original data
+            selected_rows = filter_df_to_selected_buckets(
                 filtered_rows,
                 self.projection_df,
                 self.current_bucketing_column,
-                valid_ids
+                selected_bucket_df_ids,
             )
-        except Exception as e:
-            logger.error(f"Error filtering buckets: {e}")
-            return pd.DataFrame()
+
+        # Apply the filter operation
+        if filter_event.filter_operator == FilterOperatorType.INTERSECTION:
+            # Keep only the selected rows
+            return selected_rows.copy()
+        elif filter_event.filter_operator == FilterOperatorType.SUBTRACTION:
+            # Remove the selected rows from the filtered data
+            # THAD: Make sure this line is covered by tests.
+            return filtered_rows.drop(selected_rows.index).copy()
+        else:
+            raise ValueError(f"Invalid filter operator: {filter_event.filter_operator}")
 
     def get_summary(self) -> dict:
         """Get a summary of the current projection state."""

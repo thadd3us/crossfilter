@@ -5,6 +5,10 @@ from typing import Optional
 
 import pandas as pd
 
+from crossfilter.core.backend_frontend_shared_schema import (
+    FilterEvent,
+    FilterOperatorType,
+)
 from crossfilter.core.bucketing import (
     bucket_by_target_column,
     get_optimal_temporal_level,
@@ -66,21 +70,6 @@ class TemporalProjectionState:
         logger.info(
             f"Bucketed data at optimal temporal level {optimal_level=}, {len(self.projection_state.projection_df)=}"
         )
-
-    def apply_filter_event(
-        self, selected_df_ids: set[int], filtered_rows: pd.DataFrame
-    ) -> pd.DataFrame:
-        """
-        Apply a temporal filter event and return the new filtered rows.
-
-        Args:
-            selected_df_ids: Set of df_ids selected in the temporal visualization
-            filtered_rows: Current filtered rows to apply filter to
-
-        Returns:
-            New filtered DataFrame containing only rows matching the selection
-        """
-        return self.projection_state.apply_filter_event(selected_df_ids, filtered_rows)
 
     def get_summary(self) -> dict:
         """Get a summary of the current temporal projection state."""

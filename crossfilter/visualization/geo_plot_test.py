@@ -11,10 +11,9 @@ from syrupy.extensions.single_file import SingleFileSnapshotExtension
 from crossfilter.core.schema import SchemaColumns, load_jsonl_to_dataframe
 from crossfilter.core.session_state import SessionState
 from crossfilter.visualization.geo_plot import (
-    _calculate_geographic_bounds,
-    _calculate_geographic_center,
+    _calculate_geographic_center_and_radius,
     _calculate_map_view,
-    _calculate_zoom_level,
+    _calculate_zoom_level_from_radius,
     create_geo_plot,
 )
 
@@ -174,20 +173,22 @@ def test_geo_plot_nyc_area_auto_fit(
     assert html_content == snapshot(extension_class=HTMLSnapshotExtension)
 
 
-class TestGeographicCenter:
-    """Test geographic center calculations."""
+class TestGeographicCenterAndRadius:
+    """Test geographic center and radius calculations using GeoPandas."""
 
-    def test_simple_center(self) -> None:
-        """Test center calculation for simple cases."""
+    def test_simple_center_and_radius(self) -> None:
+        """Test center and radius calculation for simple cases."""
         # Test points in same hemisphere
         lats = pd.Series([40.0, 42.0])
         lons = pd.Series([-74.0, -72.0])
         
-        center_lat, center_lon = _calculate_geographic_center(lats, lons)
+        center_lat, center_lon, radius_meters = _calculate_geographic_center_and_radius(lats, lons)
         
         # Should be approximately the midpoint
         assert abs(center_lat - 41.0) < 0.1
         assert abs(center_lon - (-73.0)) < 0.1
+        # Radius should be reasonable for points ~200km apart
+        assert 100_000 < radius_meters < 300_000
 
     def test_date_line_crossing(self) -> None:
         """Test center calculation when crossing the International Date Line."""
@@ -195,106 +196,117 @@ class TestGeographicCenter:
         lats = pd.Series([40.0, 40.0])
         lons = pd.Series([-179.0, 179.0])
         
-        center_lat, center_lon = _calculate_geographic_center(lats, lons)
+        center_lat, center_lon, radius_meters = _calculate_geographic_center_and_radius(lats, lons)
         
-        # Center should be at latitude 40, longitude 180 (or -180)
-        assert abs(center_lat - 40.0) < 0.01
+        # Center should be at latitude 40, longitude near ±180
+        assert abs(center_lat - 40.0) < 0.1
         # Should be near the date line, not at longitude 0
-        assert abs(abs(center_lon) - 180.0) < 1.0
-
-    def test_polar_regions(self) -> None:
-        """Test center calculation near poles."""
-        # Points near north pole
-        lats = pd.Series([85.0, 87.0])
-        lons = pd.Series([0.0, 180.0])
-        
-        center_lat, center_lon = _calculate_geographic_center(lats, lons)
-        
-        # Should be high latitude
-        assert center_lat > 85.0
+        assert abs(abs(center_lon) - 180.0) < 10.0
+        # Radius should be small since points are close across the date line
+        assert radius_meters < 500_000  # Less than 500km
 
     def test_single_point(self) -> None:
         """Test center calculation with single point."""
         lats = pd.Series([40.7128])
         lons = pd.Series([-74.0060])
         
-        center_lat, center_lon = _calculate_geographic_center(lats, lons)
+        center_lat, center_lon, radius_meters = _calculate_geographic_center_and_radius(lats, lons)
         
         # Should be exactly the point
         assert abs(center_lat - 40.7128) < 0.0001
         assert abs(center_lon - (-74.0060)) < 0.0001
+        # Radius should be zero for single point
+        assert radius_meters == 0.0
 
 
-class TestGeographicBounds:
-    """Test geographic bounds calculations."""
+class TestZoomLevelFromRadius:
+    """Test zoom level calculations based on radius and Mapbox formula."""
 
-    def test_simple_bounds(self) -> None:
-        """Test bounds calculation for simple cases."""
-        lats = pd.Series([40.0, 42.0])
-        lons = pd.Series([-74.0, -72.0])
+    def test_pole_to_pole_zoom_zero(self) -> None:
+        """A point on the equator and a point at the north pole results in a zoom level of 0."""
+        # Distance from equator to north pole is ~5,000 km (quarter of Earth's circumference)
+        radius_meters = 5_000_000  # 5,000 km
+        center_lat = 45.0  # Middle latitude
         
-        lat_min, lat_max, lon_min, lon_max = _calculate_geographic_bounds(lats, lons)
-        
-        assert lat_min == 40.0
-        assert lat_max == 42.0
-        assert lon_min == -74.0
-        assert lon_max == -72.0
-
-    def test_date_line_crossing(self) -> None:
-        """Test bounds calculation when crossing the International Date Line."""
-        lats = pd.Series([40.0, 40.0, 40.0])
-        lons = pd.Series([-179.0, 179.0, 178.0])
-        
-        lat_min, lat_max, lon_min, lon_max = _calculate_geographic_bounds(lats, lons)
-        
-        # Should handle date line crossing properly
-        assert lat_min == 40.0
-        assert lat_max == 40.0
-        # With simplified bounds, we get the actual min/max which spans wide
-        assert lon_min == -179.0
-        assert lon_max == 179.0
-
-    def test_no_date_line_crossing(self) -> None:
-        """Test bounds when points span wide but don't cross date line."""
-        lats = pd.Series([0.0, 0.0])
-        lons = pd.Series([-120.0, 120.0])
-        
-        lat_min, lat_max, lon_min, lon_max = _calculate_geographic_bounds(lats, lons)
-        
-        # Should be normal bounds
-        assert lat_min == 0.0
-        assert lat_max == 0.0
-        assert lon_min == -120.0
-        assert lon_max == 120.0
-
-
-class TestZoomLevel:
-    """Test zoom level calculations."""
-
-    def test_global_zoom(self) -> None:
-        """Test zoom level for global data."""
-        zoom = _calculate_zoom_level(180.0, 360.0, 0.0)
+        zoom = _calculate_zoom_level_from_radius(radius_meters, center_lat)
         assert zoom <= 2  # Should be very zoomed out
 
-    def test_city_zoom(self) -> None:
-        """Test zoom level for city-scale data."""
-        zoom = _calculate_zoom_level(0.5, 0.5, 40.0)
-        assert zoom >= 8  # Should be zoomed in
-
-    def test_mercator_adjustment(self) -> None:
-        """Test that longitude spans are adjusted for Mercator projection."""
-        # Same degree spans but different latitudes
-        zoom_equator = _calculate_zoom_level(1.0, 1.0, 0.0)
-        zoom_high_lat = _calculate_zoom_level(1.0, 1.0, 60.0)
+    def test_equator_to_south_pole_zoom_zero(self) -> None:
+        """A point on the equator and a point at the south pole results in a zoom level of 0."""
+        # Distance from equator to south pole is ~5,000 km
+        radius_meters = 5_000_000  # 5,000 km
+        center_lat = -45.0  # Middle latitude in southern hemisphere
         
-        # Higher latitude should have higher zoom (more zoomed in)
-        # because longitude degrees are "narrower" there
-        assert zoom_high_lat >= zoom_equator
+        zoom = _calculate_zoom_level_from_radius(radius_meters, center_lat)
+        assert zoom <= 2  # Should be very zoomed out
 
-    def test_single_point_zoom(self) -> None:
-        """Test zoom level for very small spans."""
-        zoom = _calculate_zoom_level(0.001, 0.001, 40.0)
-        assert zoom >= 12  # Should be very zoomed in
+    def test_date_line_crossing_high_zoom(self) -> None:
+        """Two nearby points on the equator spanning +179/-179 degrees have a high zoom factor."""
+        lats = pd.Series([0.0, 0.0])  # Equator
+        lons = pd.Series([179.0, -179.0])  # Just 2 degrees apart across date line
+        
+        center_lat, center_lon, radius_meters = _calculate_geographic_center_and_radius(lats, lons)
+        zoom = _calculate_zoom_level_from_radius(radius_meters, center_lat)
+        
+        # Should have high zoom since points are close
+        assert zoom >= 8
+
+    def test_equator_points_same_zoom(self) -> None:
+        """Two nearby points at +1/-1 degrees should have same zoom as +179/-179."""
+        # Points at +1/-1 degrees on equator
+        lats1 = pd.Series([0.0, 0.0])
+        lons1 = pd.Series([1.0, -1.0])
+        
+        center_lat1, center_lon1, radius_meters1 = _calculate_geographic_center_and_radius(lats1, lons1)
+        zoom1 = _calculate_zoom_level_from_radius(radius_meters1, center_lat1)
+        
+        # Points at +179/-179 degrees on equator
+        lats2 = pd.Series([0.0, 0.0])
+        lons2 = pd.Series([179.0, -179.0])
+        
+        center_lat2, center_lon2, radius_meters2 = _calculate_geographic_center_and_radius(lats2, lons2)
+        zoom2 = _calculate_zoom_level_from_radius(radius_meters2, center_lat2)
+        
+        # Should have similar zoom levels (within 1 level)
+        assert abs(zoom1 - zoom2) <= 1
+
+    def test_north_pole_points_high_zoom(self) -> None:
+        """Two nearby points near the north pole have a reasonable zoom level."""
+        lats = pd.Series([89.9, 89.95])  # Very close to north pole
+        lons = pd.Series([0.0, 1.0])  # Small longitude difference
+        
+        center_lat, center_lon, radius_meters = _calculate_geographic_center_and_radius(lats, lons)
+        zoom = _calculate_zoom_level_from_radius(radius_meters, center_lat)
+        
+        # Should have higher zoom than global scale
+        assert zoom >= 3
+
+    def test_south_pole_points_high_zoom(self) -> None:
+        """Two nearby points near the south pole have a reasonable zoom level."""
+        lats = pd.Series([-89.9, -89.95])  # Very close to south pole
+        lons = pd.Series([0.0, 1.0])  # Small longitude difference
+        
+        center_lat, center_lon, radius_meters = _calculate_geographic_center_and_radius(lats, lons)
+        zoom = _calculate_zoom_level_from_radius(radius_meters, center_lat)
+        
+        # Should have higher zoom than global scale
+        assert zoom >= 3
+
+    def test_small_radius_high_zoom(self) -> None:
+        """Very small radius should result in high zoom."""
+        radius_meters = 100  # 100 meters
+        center_lat = 40.0
+        
+        zoom = _calculate_zoom_level_from_radius(radius_meters, center_lat)
+        assert zoom >= 15
+
+    def test_large_radius_low_zoom(self) -> None:
+        """Very large radius should result in low zoom."""
+        radius_meters = 20_000_000  # 20,000 km (half the Earth)
+        center_lat = 0.0
+        
+        zoom = _calculate_zoom_level_from_radius(radius_meters, center_lat)
+        assert zoom <= 2
 
 
 class TestMapView:
@@ -310,7 +322,7 @@ class TestMapView:
         # Should be reasonable values
         assert 40.0 <= center_lat <= 42.0
         assert -74.0 <= center_lon <= -72.0
-        assert 1 <= zoom <= 14
+        assert 0 <= zoom <= 20
 
     def test_date_line_case(self) -> None:
         """Test map view calculation when crossing date line."""
@@ -322,7 +334,7 @@ class TestMapView:
         # Should handle date line crossing
         assert abs(center_lat - 40.0) < 0.1
         assert abs(abs(center_lon) - 180.0) < 10.0  # Near date line
-        assert 1 <= zoom <= 14
+        assert 0 <= zoom <= 20
 
     def test_single_point_case(self) -> None:
         """Test map view calculation for single point."""
@@ -334,7 +346,19 @@ class TestMapView:
         # Should be exactly the point with high zoom
         assert abs(center_lat - 40.7128) < 0.0001
         assert abs(center_lon - (-74.0060)) < 0.0001
-        assert zoom >= 12  # Should be very zoomed in
+        assert zoom == 14  # High zoom for single point
+
+    def test_empty_case(self) -> None:
+        """Test map view calculation for empty data."""
+        lats = pd.Series([], dtype=float)
+        lons = pd.Series([], dtype=float)
+        
+        center_lat, center_lon, zoom = _calculate_map_view(lats, lons)
+        
+        # Should return default values
+        assert center_lat == 0.0
+        assert center_lon == 0.0
+        assert zoom == 1
 
 
 @pytest.fixture

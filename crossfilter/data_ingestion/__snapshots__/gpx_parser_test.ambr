@@ -1,0 +1,158 @@
+# serializer version: 1
+# name: test_load_gpx_file_to_df_empty_file
+  list([
+    tuple(
+      <SchemaColumns.UUID_STRING: 'UUID_STRING'>,
+      dtype('O'),
+    ),
+    tuple(
+      <SchemaColumns.DATA_TYPE: 'DATA_TYPE'>,
+      dtype('O'),
+    ),
+    tuple(
+      <SchemaColumns.NAME: 'NAME'>,
+      dtype('O'),
+    ),
+    tuple(
+      <SchemaColumns.SOURCE_FILE: 'SOURCE_FILE'>,
+      dtype('O'),
+    ),
+    tuple(
+      <SchemaColumns.TIMESTAMP_MAYBE_TIMEZONE_AWARE: 'TIMESTAMP_MAYBE_TIMEZONE_AWARE'>,
+      dtype('O'),
+    ),
+    tuple(
+      <SchemaColumns.TIMESTAMP_UTC: 'TIMESTAMP_UTC'>,
+      dtype('O'),
+    ),
+    tuple(
+      <SchemaColumns.GPS_LATITUDE: 'GPS_LATITUDE'>,
+      dtype('O'),
+    ),
+    tuple(
+      <SchemaColumns.GPS_LONGITUDE: 'GPS_LONGITUDE'>,
+      dtype('O'),
+    ),
+  ])
+# ---
+# name: test_load_gpx_file_to_df_empty_file.1
+  list([
+  ])
+# ---
+# name: test_load_gpx_file_to_df_trackpoints_without_time
+  list([
+    tuple(
+      <SchemaColumns.UUID_STRING: 'UUID_STRING'>,
+      dtype('O'),
+    ),
+    tuple(
+      <SchemaColumns.DATA_TYPE: 'DATA_TYPE'>,
+      dtype('O'),
+    ),
+    tuple(
+      <SchemaColumns.NAME: 'NAME'>,
+      dtype('O'),
+    ),
+    tuple(
+      <SchemaColumns.SOURCE_FILE: 'SOURCE_FILE'>,
+      dtype('O'),
+    ),
+    tuple(
+      <SchemaColumns.TIMESTAMP_MAYBE_TIMEZONE_AWARE: 'TIMESTAMP_MAYBE_TIMEZONE_AWARE'>,
+      dtype('O'),
+    ),
+    tuple(
+      <SchemaColumns.TIMESTAMP_UTC: 'TIMESTAMP_UTC'>,
+      dtype('O'),
+    ),
+    tuple(
+      <SchemaColumns.GPS_LATITUDE: 'GPS_LATITUDE'>,
+      dtype('O'),
+    ),
+    tuple(
+      <SchemaColumns.GPS_LONGITUDE: 'GPS_LONGITUDE'>,
+      dtype('O'),
+    ),
+  ])
+# ---
+# name: test_load_gpx_file_to_df_trackpoints_without_time.1
+  list([
+  ])
+# ---
+# name: test_load_gpx_file_to_df_valid_file
+  list([
+    tuple(
+      <SchemaColumns.DATA_TYPE: 'DATA_TYPE'>,
+      dtype('O'),
+    ),
+    tuple(
+      <SchemaColumns.SOURCE_FILE: 'SOURCE_FILE'>,
+      dtype('O'),
+    ),
+    tuple(
+      <SchemaColumns.TIMESTAMP_MAYBE_TIMEZONE_AWARE: 'TIMESTAMP_MAYBE_TIMEZONE_AWARE'>,
+      dtype('O'),
+    ),
+    tuple(
+      <SchemaColumns.TIMESTAMP_UTC: 'TIMESTAMP_UTC'>,
+      datetime64[ns, UTC],
+    ),
+    tuple(
+      <SchemaColumns.GPS_LATITUDE: 'GPS_LATITUDE'>,
+      dtype('float64'),
+    ),
+    tuple(
+      <SchemaColumns.GPS_LONGITUDE: 'GPS_LONGITUDE'>,
+      dtype('float64'),
+    ),
+    tuple(
+      <SchemaColumns.NAME: 'NAME'>,
+      dtype('O'),
+    ),
+    tuple(
+      <SchemaColumns.CAPTION: 'CAPTION'>,
+      dtype('O'),
+    ),
+    tuple(
+      <SchemaColumns.UUID_STRING: 'UUID_STRING'>,
+      dtype('O'),
+    ),
+  ])
+# ---
+# name: test_load_gpx_file_to_df_valid_file.1
+  list([
+    dict({
+      <SchemaColumns.CAPTION: 'CAPTION'>: nan,
+      <SchemaColumns.DATA_TYPE: 'DATA_TYPE'>: <DataType.GPX_TRACKPOINT: 'GPX_TRACKPOINT'>,
+      <SchemaColumns.GPS_LATITUDE: 'GPS_LATITUDE'>: 37.7749,
+      <SchemaColumns.GPS_LONGITUDE: 'GPS_LONGITUDE'>: -122.4194,
+      <SchemaColumns.NAME: 'NAME'>: nan,
+      <SchemaColumns.SOURCE_FILE: 'SOURCE_FILE'>: '/private/var/folders/0_/66dx5ghs3tb_2_j2r36qzvqr0000gn/T/pytest-of-thad/pytest-118/test_load_gpx_file_to_df_valid0/test.gpx',
+      <SchemaColumns.TIMESTAMP_MAYBE_TIMEZONE_AWARE: 'TIMESTAMP_MAYBE_TIMEZONE_AWARE'>: '2023-01-01T12:00:00+00:00',
+      <SchemaColumns.TIMESTAMP_UTC: 'TIMESTAMP_UTC'>: Timestamp('2023-01-01 12:00:00+0000', tz='UTC'),
+      <SchemaColumns.UUID_STRING: 'UUID_STRING'>: 'f50ca1b8-4ef2-5277-f204-ead8ff90010b',
+    }),
+    dict({
+      <SchemaColumns.CAPTION: 'CAPTION'>: nan,
+      <SchemaColumns.DATA_TYPE: 'DATA_TYPE'>: <DataType.GPX_TRACKPOINT: 'GPX_TRACKPOINT'>,
+      <SchemaColumns.GPS_LATITUDE: 'GPS_LATITUDE'>: 37.775,
+      <SchemaColumns.GPS_LONGITUDE: 'GPS_LONGITUDE'>: -122.4195,
+      <SchemaColumns.NAME: 'NAME'>: nan,
+      <SchemaColumns.SOURCE_FILE: 'SOURCE_FILE'>: '/private/var/folders/0_/66dx5ghs3tb_2_j2r36qzvqr0000gn/T/pytest-of-thad/pytest-118/test_load_gpx_file_to_df_valid0/test.gpx',
+      <SchemaColumns.TIMESTAMP_MAYBE_TIMEZONE_AWARE: 'TIMESTAMP_MAYBE_TIMEZONE_AWARE'>: '2023-01-01T12:05:00+00:00',
+      <SchemaColumns.TIMESTAMP_UTC: 'TIMESTAMP_UTC'>: Timestamp('2023-01-01 12:05:00+0000', tz='UTC'),
+      <SchemaColumns.UUID_STRING: 'UUID_STRING'>: 'd8cc04e9-eaf6-faa8-fc15-8e67a8f6918d',
+    }),
+    dict({
+      <SchemaColumns.CAPTION: 'CAPTION'>: 'A test waypoint',
+      <SchemaColumns.DATA_TYPE: 'DATA_TYPE'>: <DataType.GPX_WAYPOINT: 'GPX_WAYPOINT'>,
+      <SchemaColumns.GPS_LATITUDE: 'GPS_LATITUDE'>: 37.7751,
+      <SchemaColumns.GPS_LONGITUDE: 'GPS_LONGITUDE'>: -122.4196,
+      <SchemaColumns.NAME: 'NAME'>: 'Test Waypoint',
+      <SchemaColumns.SOURCE_FILE: 'SOURCE_FILE'>: '/private/var/folders/0_/66dx5ghs3tb_2_j2r36qzvqr0000gn/T/pytest-of-thad/pytest-118/test_load_gpx_file_to_df_valid0/test.gpx',
+      <SchemaColumns.TIMESTAMP_MAYBE_TIMEZONE_AWARE: 'TIMESTAMP_MAYBE_TIMEZONE_AWARE'>: '2023-01-01T12:10:00+00:00',
+      <SchemaColumns.TIMESTAMP_UTC: 'TIMESTAMP_UTC'>: Timestamp('2023-01-01 12:10:00+0000', tz='UTC'),
+      <SchemaColumns.UUID_STRING: 'UUID_STRING'>: '0b1274cd-b196-2831-b4f6-166e73220eb8',
+    }),
+  ])
+# ---

@@ -64,6 +64,8 @@ def test_temporal_cdf_plot_png_snapshot(
     """,
         timeout=5000,
     )
+    page.wait_for_timeout(1000)
+
     # Take a screenshot of the entire page
     screenshot_bytes = page.screenshot(full_page=True)
 

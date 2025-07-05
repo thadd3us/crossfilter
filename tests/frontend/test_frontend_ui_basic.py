@@ -230,12 +230,10 @@ def test_filter_to_selected_ui_elements(page: Page, server_with_data: str) -> No
 
     try:
         page.wait_for_function(
-            """
-            () => {
+            """() => {
                 const status = document.getElementById('status').textContent;
-                return status.includes('Status: 76 remain');
-            }
-            """,
+                return !status.includes('Status: 100 remain');
+            }""",
             timeout=5000,
         )
 

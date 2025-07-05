@@ -8,6 +8,8 @@ import traceback
 from pathlib import Path
 from typing import Any, Optional
 
+from crossfilter.core.schema import SchemaColumns as C
+import pandas as pd
 import typer
 import uvicorn
 from fastapi import Depends, FastAPI, HTTPException, Query, Request
@@ -26,7 +28,7 @@ from crossfilter.core.backend_frontend_shared_schema import (
     TemporalPlotResponse,
 )
 from crossfilter.core.backend_frontend_shared_schema import FilterEvent, ProjectionType
-from crossfilter.core.schema import load_jsonl_to_dataframe
+from crossfilter.core.schema import load_jsonl_to_dataframe, load_sqlite_to_dataframe
 from crossfilter.core.session_state import SessionState
 from crossfilter.visualization.temporal_cdf_plot import create_temporal_cdf
 from crossfilter.visualization.geo_plot import create_geo_plot
@@ -335,7 +337,9 @@ async def filter_change_stream(
 typer.main.get_command_name = lambda name: name
 
 cli = typer.Typer(
-    help="Crossfilter - Interactive crossfilter application for geospatial and temporal data analysis"
+    help="Crossfilter - Interactive crossfilter application for geospatial and temporal data analysis",
+    pretty_exceptions_show_locals=False,
+    pretty_exceptions_enable=False,
 )
 
 
@@ -351,25 +355,53 @@ def serve(
     host: str = typer.Option("localhost", help="Host to bind to"),
     reload: bool = typer.Option(False, help="Enable auto-reload"),
     preload_jsonl: Optional[Path] = typer.Option(
-        None, help="Path to JSONL file to preload into session state"
+        None,
+        help="Path to JSONL file to preload into session state",
+        exists=True,
+        dir_okay=False,
+        file_okay=True,
+    ),
+    preload_sqlite_db: Optional[Path] = typer.Option(
+        None,
+        help="Path to SQLite database file to preload into session state",
+        exists=True,
+        dir_okay=False,
+        file_okay=True,
+    ),
+    preload_sqlite_table: str = typer.Option(
+        "data", help="Table name in SQLite database to preload (default: 'data')"
     ),
 ) -> None:
     """Start the Crossfilter web application."""
 
     # Handle preload data if provided
+    dataframes = []
+
     if preload_jsonl:
         if not preload_jsonl.exists():
             typer.echo(f"Error: JSONL file '{preload_jsonl}' does not exist.", err=True)
             raise typer.Exit(1)
 
         typer.echo(f"Loading data from {preload_jsonl}...")
-        try:
-            df = load_jsonl_to_dataframe(preload_jsonl)
-            _session_state_instance.load_dataframe(df)
-            typer.echo(f"Successfully loaded {len(df)} records")
-        except Exception as e:
-            typer.echo(f"Error loading data: {str(e)}", err=True)
-            raise typer.Exit(1)
+        df_jsonl = load_jsonl_to_dataframe(preload_jsonl)
+        dataframes.append(df_jsonl)
+        typer.echo(f"Successfully loaded {len(df_jsonl)} records from JSONL")
+
+    if preload_sqlite_db:
+        typer.echo(
+            f"Loading data from {preload_sqlite_db} table '{preload_sqlite_table}'..."
+        )
+        df_sqlite = load_sqlite_to_dataframe(preload_sqlite_db, preload_sqlite_table)
+        dataframes.append(df_sqlite)
+        typer.echo(f"Successfully loaded {len(df_sqlite)} records from SQLite")
+
+    assert dataframes, "No data loaded."
+
+    final_df = pd.concat(dataframes, axis="index", ignore_index=True)
+    logger.info(f"Concatenated {len(dataframes)=} dataframes into {final_df.shape=}")
+    final_df = final_df.reset_index(drop=True)
+    final_df.index.name = C.DF_ID
+    _session_state_instance.load_dataframe(final_df)
 
     def signal_handler(signum: int, frame: Any) -> None:
         """Handle shutdown signals gracefully."""

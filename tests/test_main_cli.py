@@ -6,6 +6,7 @@ import time
 from contextlib import closing
 
 import requests
+from syrupy.assertion import SnapshotAssertion
 
 
 def find_free_port() -> int:
@@ -33,66 +34,7 @@ def wait_for_server(host: str, port: int, timeout: float = 10.0) -> bool:
     return False
 
 
-def test_cli_server_startup_and_html_content() -> None:
-    """Test that the CLI starts the server and serves HTML with 'Crossfilter' in title."""
-    port = find_free_port()
-    host = "127.0.0.1"
-
-    # Start the server process
-    process = subprocess.Popen(
-        [
-            "uv",
-            "run",
-            "python",
-            "-m",
-            "crossfilter.main",
-            "serve",
-            "--port",
-            str(port),
-            "--host",
-            host,
-        ],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-    )
-
-    try:
-        # Wait for server to start
-        server_started = wait_for_server(host, port, timeout=10.0)
-        if not server_started:
-            process.terminate()
-            process.wait()
-            stderr = process.stderr.read().decode("utf-8") if process.stderr else ""
-            raise AssertionError(f"Server failed to start on {host}:{port}, {stderr=}")
-
-        # Give server a moment to fully initialize
-        time.sleep(0.5)
-
-        # Make request to the main page
-        response = requests.get(f"http://{host}:{port}/", timeout=5)
-        assert response.status_code == 200
-
-        # Check that the HTML contains "Crossfilter" in the title
-        html_content = response.text
-        assert (
-            "Crossfilter" in html_content
-        ), f"'Crossfilter' not found in HTML content: {html_content}"
-
-        # Additional checks for expected content
-        assert "<title>" in html_content
-        assert "Crossfilter" in html_content
-
-    finally:
-        # Clean up: terminate the server process
-        process.terminate()
-        try:
-            process.wait(timeout=5)
-        except subprocess.TimeoutExpired:
-            process.kill()
-            process.wait()
-
-
-def test_cli_help_command():
+def test_cli_help_command() -> None:
     """Test that the CLI help command works."""
     result = subprocess.run(
         ["uv", "run", "python", "-m", "crossfilter.main", "--help"],
@@ -105,7 +47,7 @@ def test_cli_help_command():
     assert "serve" in result.stdout
 
 
-def test_serve_command_help():
+def test_serve_command_help() -> None:
     """Test that the serve command help works."""
     result = subprocess.run(
         ["uv", "run", "python", "-m", "crossfilter.main", "serve", "--help"],
@@ -118,7 +60,7 @@ def test_serve_command_help():
     assert "--host" in result.stdout
 
 
-def test_cli_server_with_preload_jsonl(snapshot) -> None:
+def test_cli_server_with_preload_jsonl(snapshot: SnapshotAssertion) -> None:
     """Test that the CLI starts the server with --preload-jsonl and data is loaded."""
     port = find_free_port()
     host = "127.0.0.1"

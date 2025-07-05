@@ -2,6 +2,7 @@
 
 import json
 import logging
+import sqlite3
 from enum import StrEnum
 from pathlib import Path
 from typing import Optional
@@ -93,6 +94,21 @@ def get_temporal_column_name(level: TemporalLevel) -> str:
     return f"QUANTIZED_TIMESTAMP_{level}"
 
 
+required_columns = [
+    SchemaColumns.UUID_STRING,
+    SchemaColumns.DATA_TYPE,
+    SchemaColumns.NAME,
+    SchemaColumns.CAPTION,
+    SchemaColumns.SOURCE_FILE,
+    SchemaColumns.TIMESTAMP_MAYBE_TIMEZONE_AWARE,
+    SchemaColumns.TIMESTAMP_UTC,
+    SchemaColumns.GPS_LATITUDE,
+    SchemaColumns.GPS_LONGITUDE,
+    SchemaColumns.RATING_0_TO_5,
+    SchemaColumns.SIZE_IN_BYTES,
+]
+
+
 def load_jsonl_to_dataframe(jsonl_path: Path) -> pd.DataFrame:
     """
     Load a JSONL file into a DataFrame conforming to DataSchema.
@@ -127,19 +143,6 @@ def load_jsonl_to_dataframe(jsonl_path: Path) -> pd.DataFrame:
     df = pd.DataFrame(records)
 
     # Ensure all required columns exist, adding missing ones with null values
-    required_columns = [
-        SchemaColumns.UUID_STRING,
-        SchemaColumns.DATA_TYPE,
-        SchemaColumns.NAME,
-        SchemaColumns.CAPTION,
-        SchemaColumns.SOURCE_FILE,
-        SchemaColumns.TIMESTAMP_MAYBE_TIMEZONE_AWARE,
-        SchemaColumns.TIMESTAMP_UTC,
-        SchemaColumns.GPS_LATITUDE,
-        SchemaColumns.GPS_LONGITUDE,
-        SchemaColumns.RATING_0_TO_5,
-        SchemaColumns.SIZE_IN_BYTES,
-    ]
 
     for col in required_columns:
         if col not in df.columns:
@@ -169,5 +172,40 @@ def load_jsonl_to_dataframe(jsonl_path: Path) -> pd.DataFrame:
     result_df.index.name = SchemaColumns.DF_ID
 
     logger.info(f"Loaded {len(result_df)} records from {jsonl_path=}")
+
+    return result_df
+
+
+def load_sqlite_to_dataframe(sqlite_db_path: Path, table_name: str) -> pd.DataFrame:
+    if not sqlite_db_path.exists():
+        raise FileNotFoundError(f"SQLite database not found: {sqlite_db_path}")
+
+    # Read data from SQLite table
+    with sqlite3.connect(sqlite_db_path) as conn:
+        df = pd.read_sql(f"SELECT * FROM {table_name}", conn)
+
+    for col in required_columns:
+        if col not in df.columns:
+            df[col] = None
+
+    # Convert TIMESTAMP_UTC to UTC timezone-aware datetime, handling missing values
+    # df[SchemaColumns.TIMESTAMP_UTC] = pd.to_datetime(
+    #     df[SchemaColumns.TIMESTAMP_UTC], utc=True, errors="coerce"
+    # )
+
+    # Validate and coerce only the schema columns
+    schema_df = df[required_columns].copy()
+    validated_schema_df = DataSchema.validate(schema_df, lazy=True)
+
+    # Combine validated schema columns with any extra columns from original data
+    extra_columns = [col for col in df.columns if col not in required_columns]
+    if extra_columns:
+        result_df = pd.concat([validated_schema_df, df[extra_columns]], axis=1)
+    else:
+        result_df = validated_schema_df
+
+    logger.info(
+        f"Loaded {len(result_df)} records from {sqlite_db_path=} table '{table_name}'"
+    )
 
     return result_df

@@ -52,8 +52,9 @@ class CrossfilterApp {
         
         if (status.has_data) {
             if (statusElement) {
+                let percent_remaining = (status.filtered_count / status.row_count * 100).toFixed(2);
                 statusElement.innerHTML = `
-                    <strong>Status:</strong> ${status.row_count} rows loaded with ${status.columns.length} columns (${status.memory_usage_mb} MB), ${status.filtered_count} remain in current view
+                    <strong>Status:</strong> ${status.filtered_count} remain (${percent_remaining}%) of ${status.row_count} rows (${status.columns.length} cols, ${status.memory_usage_mb} MB)
                 `;
             }
             if (resetFiltersBtn) {
@@ -358,24 +359,18 @@ class CrossfilterApp {
         // Extract row indices from selected points
         // The backend should provide df_id (row index) in the customdata
         const selectedIndices = new Set();
+        // eventData.points[0].customdata
+        let selectedCount = 0;
         eventData.points.forEach((point, index) => {
-            let df_id = null;
-            
-            // Try to get df_id from customdata first
-            if (point.customdata && point.customdata.df_id !== undefined) {
-                df_id = point.customdata.df_id;
-            } 
-            // Fallback: For individual points, pointNumber should correspond to df_id
-            else if (point.pointNumber !== undefined) {
-                df_id = point.pointNumber;
-            }
-            
-            if (df_id !== null) {
-                selectedIndices.add(df_id);
-            }
+            // We know that the first item in customdata is the df_id.
+            selectedIndices.add(point.customdata[0]);
+            selectedCount += point.customdata[1];
         });
 
+        console.log('CrossfilterApp: handleTemporalPlotSelection() selectedCount:', selectedCount);
+
         this.selectedTemporalRowIndices = selectedIndices;
+        this.selectedTemporalCount = selectedCount;
         this.updateTemporalFilterButton();
     }
 
@@ -383,28 +378,20 @@ class CrossfilterApp {
         if (!eventData || !eventData.points) {
             return;
         }
-
         // Extract row indices from selected points
         // The backend should provide df_id (row index) in the customdata
         const selectedIndices = new Set();
+        let selectedCount = 0;
         eventData.points.forEach((point, index) => {
-            let df_id = null;
-            
-            // Try to get df_id from customdata first
-            if (point.customdata && point.customdata[0] !== undefined) {
-                df_id = point.customdata[0]; // First item in customdata is df_id
-            } 
-            // Fallback: For individual points, pointNumber should correspond to df_id
-            else if (point.pointNumber !== undefined) {
-                df_id = point.pointNumber;
-            }
-            
-            if (df_id !== null) {
-                selectedIndices.add(df_id);
-            }
+            // We know that the first item in customdata is the df_id.
+            selectedIndices.add(point.customdata[0]);
+            selectedCount += point.customdata[1];
         });
 
+        console.log('CrossfilterApp: handleGeoPlotSelection() selectedCount:', selectedCount);
+
         this.selectedGeoRowIndices = selectedIndices;
+        this.selectedGeoCount = selectedCount;
         this.updateGeoFilterButton();
     }
 
@@ -479,7 +466,7 @@ class CrossfilterApp {
         
         if (this.selectedTemporalRowIndices.size > 0) {
             filterButton.disabled = false;
-            plotSelectionInfo.textContent = `Selected: ${this.selectedTemporalRowIndices.size} points`;
+            plotSelectionInfo.textContent = `Selected: ${this.selectedTemporalRowIndices.size} points representing ${this.selectedTemporalCount} rows`;
         } else {
             filterButton.disabled = true;
             plotSelectionInfo.textContent = '';
@@ -492,7 +479,7 @@ class CrossfilterApp {
         
         if (this.selectedGeoRowIndices.size > 0) {
             filterButton.disabled = false;
-            plotSelectionInfo.textContent = `Selected: ${this.selectedGeoRowIndices.size} points`;
+            plotSelectionInfo.textContent = `Selected: ${this.selectedGeoRowIndices.size} points representing ${this.selectedGeoCount} rows`;
         } else {
             filterButton.disabled = true;
             plotSelectionInfo.textContent = '';
@@ -512,7 +499,7 @@ class CrossfilterApp {
         }
         
         if (selectedIndices.length === 0) {
-            this.showError('No points selected. Use lasso or box select to choose points first.');
+            this.showError('No markers selected. Use lasso or box select to choose markers first.');
             return;
         }
 

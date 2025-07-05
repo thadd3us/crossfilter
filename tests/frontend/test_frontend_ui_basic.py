@@ -150,13 +150,15 @@ def test_filter_to_selected_ui_elements(page: Page, server_with_data: str) -> No
 
     # Get initial row count to verify data is loaded
     initial_status = page.locator("#status").text_content() or "NO TEXT CONTENT"
-    assert "100 remain in current view" in initial_status
+    assert "Status: 100 remain (100.00%) of 100 rows" in initial_status
 
     # Now perform the full selection workflow:
 
     # Click the box select tool in Plotly's mode bar for the temporal plot specifically
     # Target the box select button within the temporal plot container
-    box_select_button = page.locator("#plotContainer [data-attr='dragmode'][data-val='select']")
+    box_select_button = page.locator(
+        "#plotContainer [data-attr='dragmode'][data-val='select']"
+    )
     box_select_button.click()
 
     # 2. Get plot container bounds for selection
@@ -194,7 +196,7 @@ def test_filter_to_selected_ui_elements(page: Page, server_with_data: str) -> No
 
     # Verify selection info is displayed
     selection_info = plot_selection_info.text_content()
-    assert "Selected: 36 points" in selection_info
+    assert "Selected: 76 points representing 76 rows" in selection_info
 
     # Click the filterToSelectedBtn and debug JavaScript execution
     logger.info("🔍 Debugging JavaScript execution before click...")
@@ -231,14 +233,14 @@ def test_filter_to_selected_ui_elements(page: Page, server_with_data: str) -> No
             """
             () => {
                 const status = document.getElementById('status').textContent;
-                return status.includes('36 remain in current view');
+                return status.includes('Status: 76 remain');
             }
             """,
             timeout=5000,
         )
 
         filtered_status = page.locator("#status").text_content() or "NO TEXT CONTENT"
-        assert "36 remain in current view" in filtered_status
+        assert "Status: 76 remain" in filtered_status
     finally:
         current_status = page.locator("#status").text_content()
         logger.info(f"Current status: {current_status}")

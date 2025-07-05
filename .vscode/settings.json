@@ -4,9 +4,11 @@
         "-s",
         "--headed",
         "-vvvv",
+        "--tb=short",
         // Coverage doesn't work with the debugger.    
         "--no-cov",
         "--cov-report=",
+
     ],
     "python.testing.unittestEnabled": false,
     "python.testing.pytestEnabled": true

@@ -42,7 +42,7 @@ def generate_uuid_from_components(
     hash_digest = hashlib.sha256(component_string.encode("utf-8")).digest()
 
     # Create a UUID from the hash
-    return str(uuid.UUID(bytes=hash_digest))
+    return str(uuid.UUID(bytes=hash_digest[:16]))
 
 
 def generate_uuid_for_row(
@@ -135,7 +135,7 @@ def load_gpx_file_to_df(gpx_file_path: Path) -> pd.DataFrame:
     if not records:
         logger.warning(f"No valid trackpoints or waypoints found in {gpx_file_path}")
         # Return empty DataFrame with correct schema
-        return pd.DataFrame(
+        df = pd.DataFrame(
             columns=[
                 C.UUID_STRING,
                 C.DATA_TYPE,
@@ -147,9 +147,9 @@ def load_gpx_file_to_df(gpx_file_path: Path) -> pd.DataFrame:
                 C.GPS_LONGITUDE,
             ]
         )
-
-    # Create DataFrame
-    df = pd.DataFrame(records)
+    else:
+        # Create DataFrame
+        df = pd.DataFrame(records)
 
     # Convert TIMESTAMP_UTC to proper datetime with UTC timezone
     df[C.TIMESTAMP_UTC] = pd.to_datetime(df[C.TIMESTAMP_UTC], utc=True)
@@ -159,19 +159,20 @@ def load_gpx_file_to_df(gpx_file_path: Path) -> pd.DataFrame:
         by=[C.TIMESTAMP_UTC, C.DATA_TYPE, C.GPS_LATITUDE, C.GPS_LONGITUDE]
     )
 
-    # Find the first point for UUID generation (first chronologically)
-    first_row = df.iloc[0]
-    first_point_timestamp = first_row[C.TIMESTAMP_UTC].to_pydatetime()
-    first_point_lat = first_row[C.GPS_LATITUDE]
-    first_point_lon = first_row[C.GPS_LONGITUDE]
+    if not df.empty:
+        # Find the first point for UUID generation (first chronologically)
+        first_row = df.iloc[0]
+        first_point_timestamp = first_row[C.TIMESTAMP_UTC].to_pydatetime()
+        first_point_lat = first_row[C.GPS_LATITUDE]
+        first_point_lon = first_row[C.GPS_LONGITUDE]
 
-    # Generate UUIDs for all rows using vectorized operation
-    df[C.UUID_STRING] = df.apply(
-        lambda row: generate_uuid_for_row(
-            row, first_point_timestamp, first_point_lat, first_point_lon
-        ),
-        axis=1,
-    )
+        # Generate UUIDs for all rows using vectorized operation
+        df[C.UUID_STRING] = df.apply(
+            lambda row: generate_uuid_for_row(
+                row, first_point_timestamp, first_point_lat, first_point_lon
+            ),
+            axis=1,
+        )
 
     # Set index name
     df.index.name = C.DF_ID

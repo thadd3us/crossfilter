@@ -13,6 +13,7 @@ from crossfilter.data_ingestion.ingest_gpx_files import (
     create_or_update_table,
     find_gpx_files,
     get_pandas_to_sqlalchemy_dtype,
+    has_unique_constraint_on_uuid,
     process_single_gpx_file,
     upsert_dataframe_to_sqlite,
 )
@@ -310,3 +311,157 @@ def test_upsert_dataframe_to_sqlite_with_none_values(tmp_path: Path) -> None:
     conn.close()
     
     assert count == 1
+
+
+def test_existing_table_without_unique_constraint(tmp_path: Path) -> None:
+    """Test handling of existing table without unique constraint on UUID_STRING."""
+    
+    db_path = tmp_path / "test.db"
+    
+    # Create a table manually without unique constraint (simulating old database)
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    cursor.execute("""
+        CREATE TABLE data (
+            UUID_STRING TEXT,
+            DATA_TYPE TEXT,
+            GPS_LATITUDE REAL,
+            GPS_LONGITUDE REAL
+        )
+    """)
+    
+    # Insert some data with unique UUIDs initially
+    cursor.execute("INSERT INTO data VALUES ('uuid-1', 'GPX_TRACKPOINT', 37.7749, -122.4194)")
+    cursor.execute("INSERT INTO data VALUES ('uuid-2', 'GPX_TRACKPOINT', 37.7750, -122.4195)")
+    conn.commit()
+    conn.close()
+    
+    # Now try to update the table structure and upsert new data
+    df = pd.DataFrame({
+        SchemaColumns.UUID_STRING: ["uuid-3"],
+        SchemaColumns.DATA_TYPE: [DataType.GPX_TRACKPOINT],
+        SchemaColumns.GPS_LATITUDE: [37.7751],
+        SchemaColumns.GPS_LONGITUDE: [-122.4196],
+    })
+    
+    # This should work - the function should handle missing unique constraint
+    upsert_dataframe_to_sqlite(df, db_path, "data")
+    
+    # Verify the data was inserted
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    cursor.execute("SELECT COUNT(*) FROM data")
+    count = cursor.fetchone()[0]
+    assert count == 3
+    
+    # Verify unique constraint was created
+    engine = create_engine(f"sqlite:///{db_path}")
+    assert has_unique_constraint_on_uuid(engine, "data")
+    
+    conn.close()
+
+
+def test_existing_table_with_duplicate_uuids(tmp_path: Path) -> None:
+    """Test handling of existing table with duplicate UUIDs."""
+    
+    db_path = tmp_path / "test.db"
+    
+    # Create a table manually without unique constraint
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    cursor.execute("""
+        CREATE TABLE data (
+            UUID_STRING TEXT,
+            DATA_TYPE TEXT,
+            GPS_LATITUDE REAL,
+            GPS_LONGITUDE REAL
+        )
+    """)
+    
+    # Insert duplicate UUIDs
+    cursor.execute("INSERT INTO data VALUES ('duplicate-uuid', 'GPX_TRACKPOINT', 37.7749, -122.4194)")
+    cursor.execute("INSERT INTO data VALUES ('duplicate-uuid', 'GPX_TRACKPOINT', 37.7750, -122.4195)")
+    conn.commit()
+    conn.close()
+    
+    # Try to upsert new data
+    df = pd.DataFrame({
+        SchemaColumns.UUID_STRING: ["new-uuid"],
+        SchemaColumns.DATA_TYPE: [DataType.GPX_TRACKPOINT],
+        SchemaColumns.GPS_LATITUDE: [37.7751],
+        SchemaColumns.GPS_LONGITUDE: [-122.4196],
+    })
+    
+    # This should handle the case gracefully using fallback strategy
+    upsert_dataframe_to_sqlite(df, db_path, "data")
+    
+    # Verify the data was inserted (should have 3 records total)
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    cursor.execute("SELECT COUNT(*) FROM data")
+    count = cursor.fetchone()[0]
+    assert count == 3
+    
+    # Verify unique constraint could NOT be created due to duplicates
+    engine = create_engine(f"sqlite:///{db_path}")
+    assert not has_unique_constraint_on_uuid(engine, "data")
+    
+    conn.close()
+
+
+def test_upsert_with_duplicate_uuid_using_fallback(tmp_path: Path) -> None:
+    """Test that upsert with duplicate UUID updates existing record when using fallback strategy."""
+    
+    db_path = tmp_path / "test.db"
+    
+    # Create a table with duplicate UUIDs to force fallback strategy
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    cursor.execute("""
+        CREATE TABLE data (
+            UUID_STRING TEXT,
+            DATA_TYPE TEXT,
+            GPS_LATITUDE REAL,
+            GPS_LONGITUDE REAL
+        )
+    """)
+    
+    # Insert duplicate UUIDs
+    cursor.execute("INSERT INTO data VALUES ('dup-uuid', 'GPX_TRACKPOINT', 37.7749, -122.4194)")
+    cursor.execute("INSERT INTO data VALUES ('dup-uuid', 'GPX_TRACKPOINT', 37.7750, -122.4195)")
+    # Insert a unique UUID that we'll update
+    cursor.execute("INSERT INTO data VALUES ('update-me', 'GPX_TRACKPOINT', 37.7751, -122.4196)")
+    conn.commit()
+    conn.close()
+    
+    # Try to upsert data that updates the existing record
+    df = pd.DataFrame({
+        SchemaColumns.UUID_STRING: ["update-me", "new-uuid"],
+        SchemaColumns.DATA_TYPE: [DataType.GPX_TRACKPOINT, DataType.GPX_WAYPOINT],
+        SchemaColumns.GPS_LATITUDE: [37.7799, 37.7800],  # Updated latitude
+        SchemaColumns.GPS_LONGITUDE: [-122.4200, -122.4201],  # Updated longitude
+    })
+    
+    # This should update the existing record and insert the new one
+    upsert_dataframe_to_sqlite(df, db_path, "data")
+    
+    # Verify the data
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    
+    # Should have 4 total records (3 original, 1 updated in place, 1 new)
+    cursor.execute("SELECT COUNT(*) FROM data")
+    count = cursor.fetchone()[0]
+    assert count == 4
+    
+    # Check that the record was updated
+    cursor.execute("SELECT GPS_LATITUDE FROM data WHERE UUID_STRING = 'update-me'")
+    updated_lat = cursor.fetchone()[0]
+    assert updated_lat == 37.7799
+    
+    # Check that new record was inserted
+    cursor.execute("SELECT COUNT(*) FROM data WHERE UUID_STRING = 'new-uuid'")
+    new_count = cursor.fetchone()[0]
+    assert new_count == 1
+    
+    conn.close()

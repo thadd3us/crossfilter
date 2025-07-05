@@ -100,7 +100,7 @@ def load_gpx_file_to_df(gpx_file_path: Path) -> pd.DataFrame:
                     records.append(
                         {
                             C.DATA_TYPE: DataType.GPX_TRACKPOINT,
-                            C.SOURCE_FILE: str(gpx_file_path),
+                            C.SOURCE_FILE: str(gpx_file_path.name),
                             C.TIMESTAMP_MAYBE_TIMEZONE_AWARE: point.time.isoformat(),
                             C.TIMESTAMP_UTC: (
                                 point.time
@@ -120,7 +120,7 @@ def load_gpx_file_to_df(gpx_file_path: Path) -> pd.DataFrame:
                     C.DATA_TYPE: DataType.GPX_WAYPOINT,
                     C.NAME: waypoint.name,
                     C.CAPTION: waypoint.comment or waypoint.description,
-                    C.SOURCE_FILE: str(gpx_file_path),
+                    C.SOURCE_FILE: str(gpx_file_path.name),
                     C.TIMESTAMP_MAYBE_TIMEZONE_AWARE: waypoint.time.isoformat(),
                     C.TIMESTAMP_UTC: (
                         waypoint.time

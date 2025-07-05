@@ -34,10 +34,10 @@ from crossfilter.visualization.geo_plot import create_geo_plot
 # Create a single session state instance for dependency injection
 _session_state_instance = SessionState()
 
-# Configure logging for better error visibility
+# Configure logging for better error visibility with IDE-clickable file paths
 logging.basicConfig(
     level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    format="%(levelname)s %(pathname)s:%(lineno)d %(message)s",
     handlers=[logging.StreamHandler(sys.stdout)],
 )
 logger = logging.getLogger(__name__)

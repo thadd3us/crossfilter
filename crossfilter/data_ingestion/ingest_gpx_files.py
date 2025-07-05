@@ -70,6 +70,34 @@ def get_pandas_to_sqlalchemy_dtype(pandas_dtype: str) -> str:
         return "TEXT"
 
 
+def has_unique_constraint_on_uuid(engine, table_name: str) -> bool:
+    """Check if table has a unique constraint or index on UUID_STRING column."""
+    inspector = inspect(engine)
+
+    # Check for unique constraints
+    try:
+        unique_constraints = inspector.get_unique_constraints(table_name)
+        for constraint in unique_constraints:
+            if SchemaColumns.UUID_STRING in constraint.get("column_names", []):
+                return True
+    except Exception:
+        # Some SQLite versions don't support get_unique_constraints
+        pass
+
+    # Check for unique indexes
+    try:
+        indexes = inspector.get_indexes(table_name)
+        for index in indexes:
+            if index.get("unique", False) and SchemaColumns.UUID_STRING in index.get(
+                "column_names", []
+            ):
+                return True
+    except Exception:
+        pass
+
+    return False
+
+
 def create_or_update_table(engine, table_name: str, df: pd.DataFrame) -> None:
     """Create table or add missing columns if table exists."""
     inspector = inspect(engine)
@@ -242,6 +270,7 @@ def main(
 
     if combined_df[C.UUID_STRING].duplicated().any():
         logger.warning("Duplicate UUIDs found in data")
+        assert False
         combined_df = combined_df.drop_duplicates(subset=[C.UUID_STRING])
 
     logger.info(f"Total records: {len(combined_df)}")

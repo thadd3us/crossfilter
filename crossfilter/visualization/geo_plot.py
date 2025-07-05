@@ -4,13 +4,112 @@ Geographic scatter plot using Plotly tile scatter maps.
 """
 
 import math
-from typing import Optional
+from typing import Optional, Tuple
 
+import numpy as np
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 
 from crossfilter.core.schema import SchemaColumns as C
+
+
+def _calculate_geographic_center(latitudes: pd.Series, longitudes: pd.Series) -> Tuple[float, float]:
+    """Calculate the geographic center of a set of points, handling longitude wrapping."""
+    # Convert to radians
+    lat_rad = np.radians(latitudes)
+    lon_rad = np.radians(longitudes)
+    
+    # Convert to Cartesian coordinates
+    x = np.cos(lat_rad) * np.cos(lon_rad)
+    y = np.cos(lat_rad) * np.sin(lon_rad)
+    z = np.sin(lat_rad)
+    
+    # Calculate mean in Cartesian space
+    x_mean = np.mean(x)
+    y_mean = np.mean(y)
+    z_mean = np.mean(z)
+    
+    # Convert back to spherical coordinates
+    center_lat = np.degrees(np.arctan2(z_mean, np.sqrt(x_mean**2 + y_mean**2)))
+    center_lon = np.degrees(np.arctan2(y_mean, x_mean))
+    
+    return center_lat, center_lon
+
+
+def _calculate_geographic_bounds(latitudes: pd.Series, longitudes: pd.Series) -> Tuple[float, float, float, float]:
+    """Calculate geographic bounds. For most use cases, simple min/max works fine."""
+    lat_min, lat_max = latitudes.min(), latitudes.max()
+    lon_min, lon_max = longitudes.min(), longitudes.max()
+    
+    # Simple bounds - let Plotly handle the complex projection issues
+    return lat_min, lat_max, lon_min, lon_max
+
+
+def _calculate_zoom_level(lat_span: float, lon_span: float, center_lat: float) -> int:
+    """Calculate appropriate zoom level based on geographic span and latitude."""
+    # Account for Mercator projection distortion - longitude degrees get "wider" near the poles
+    # Adjust longitude span by the cosine of the latitude
+    adjusted_lon_span = lon_span * np.cos(np.radians(center_lat))
+    
+    # Use the larger of the two spans (latitude or adjusted longitude)
+    effective_span = max(lat_span, adjusted_lon_span)
+    
+    # Zoom level calculation based on effective span
+    # These thresholds are tuned for good visual results
+    if effective_span > 120:  # Global view
+        zoom = 1
+    elif effective_span > 60:  # Continental view
+        zoom = 2
+    elif effective_span > 30:  # Large country/region
+        zoom = 3
+    elif effective_span > 15:  # Country view
+        zoom = 4
+    elif effective_span > 8:  # State/province view
+        zoom = 5
+    elif effective_span > 4:  # Regional view
+        zoom = 6
+    elif effective_span > 2:  # Metropolitan area
+        zoom = 7
+    elif effective_span > 1:  # City view
+        zoom = 8
+    elif effective_span > 0.5:  # District view
+        zoom = 9
+    elif effective_span > 0.25:  # Neighborhood view
+        zoom = 10
+    elif effective_span > 0.1:  # Local area
+        zoom = 11
+    elif effective_span > 0.05:  # Street level
+        zoom = 12
+    elif effective_span > 0.01:  # Block level
+        zoom = 13
+    else:  # Very local/building level
+        zoom = 14
+    
+    return zoom
+
+
+def _calculate_map_view(latitudes: pd.Series, longitudes: pd.Series) -> Tuple[float, float, int]:
+    """Calculate the optimal map center and zoom level for the given geographic points."""
+    # Calculate geographic center using proper spherical geometry
+    center_lat, center_lon = _calculate_geographic_center(latitudes, longitudes)
+    
+    # Calculate proper bounds
+    lat_min, lat_max, lon_min, lon_max = _calculate_geographic_bounds(latitudes, longitudes)
+    
+    # Calculate spans
+    lat_span = lat_max - lat_min
+    lon_span = lon_max - lon_min
+    
+    # Handle longitude wrapping for span calculation
+    if lon_span > 180:
+        # We're crossing the date line, so the actual span is smaller
+        lon_span = 360 - lon_span
+    
+    # Calculate zoom level
+    zoom = _calculate_zoom_level(lat_span, lon_span, center_lat)
+    
+    return center_lat, center_lon, zoom
 
 
 def create_geo_plot(
@@ -103,32 +202,8 @@ def create_geo_plot(
         size_max=max_marker_size,
     )
 
-    # Calculate bounds for auto-fitting the map
-    lat_min, lat_max = df[C.GPS_LATITUDE].min(), df[C.GPS_LATITUDE].max()
-    lon_min, lon_max = df[C.GPS_LONGITUDE].min(), df[C.GPS_LONGITUDE].max()
-
-    # Calculate center
-    center_lat = (lat_min + lat_max) / 2
-    center_lon = (lon_min + lon_max) / 2
-
-    # Calculate zoom level based on data span
-    lat_span = lat_max - lat_min
-    lon_span = lon_max - lon_min
-    max_span = max(lat_span, lon_span)
-
-    # Heuristic zoom calculation (adjust as needed)
-    if max_span > 60:  # Very wide spread
-        zoom = 2
-    elif max_span > 20:  # Continental scale
-        zoom = 4
-    elif max_span > 5:  # Regional scale
-        zoom = 6
-    elif max_span > 1:  # City scale
-        zoom = 8
-    elif max_span > 0.1:  # Neighborhood scale
-        zoom = 10
-    else:  # Very local
-        zoom = 12
+    # Calculate proper geographic bounds and center
+    center_lat, center_lon, zoom = _calculate_map_view(df[C.GPS_LATITUDE], df[C.GPS_LONGITUDE])
 
     # Configure layout with auto-fitted bounds
     fig.update_layout(

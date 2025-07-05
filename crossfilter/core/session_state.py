@@ -37,7 +37,7 @@ class SessionState:
     maintain their own visualization state and aggregation levels.
     """
 
-    def __init__(self, default_max_rows: int = 100000) -> None:
+    def __init__(self) -> None:
         """Initialize session state with empty DataFrame."""
         # Complete unaggregated dataset with pre-computed quantized columns for H3 spatial cells and temporal buckets
         self.all_rows = pd.DataFrame()
@@ -45,8 +45,8 @@ class SessionState:
         self.filtered_rows = pd.DataFrame()
 
         # Initialize projection states
-        self.temporal_projection = TemporalProjectionState(max_rows=default_max_rows)
-        self.geo_projection = GeoProjectionState(max_rows=default_max_rows)
+        self.temporal_projection = TemporalProjectionState(max_rows=10_000)
+        self.geo_projection = GeoProjectionState(max_rows=10_000)
 
         # SSE event broadcasting
         self.filter_version = 0

@@ -124,6 +124,7 @@ def add_quantized_temporal_columns(df: pd.DataFrame) -> pd.DataFrame:
 
 def _add_h3_columns(df: pd.DataFrame) -> pd.DataFrame:
     """Add H3 hexagon columns at multiple resolutions."""
+    logger.info(f"Adding H3 columns to DataFrame with {len(df)=} rows")
     for level in H3_LEVELS:
         col_name = get_h3_column_name(level)
         df[col_name] = df.apply(
@@ -144,13 +145,18 @@ def _add_h3_columns(df: pd.DataFrame) -> pd.DataFrame:
 
 def _add_temporal_columns(df: pd.DataFrame) -> pd.DataFrame:
     """Add temporal quantization columns at multiple levels."""
+    logger.info(f"Adding temporal columns to DataFrame with {len(df)=} rows.")
     # Convert to datetime if string
     timestamps = pd.to_datetime(df[SchemaColumns.TIMESTAMP_UTC])
-    
+
     # For non-empty DataFrames, enforce that timestamps are timezone-aware and in UTC
     if len(df) > 0:
-        assert timestamps.dt.tz is not None, f"TIMESTAMP_UTC column must be timezone-aware, got {timestamps.dt.tz}"
-        assert str(timestamps.dt.tz) == "UTC", f"TIMESTAMP_UTC column must be in UTC timezone, got {timestamps.dt.tz}"
+        assert (
+            timestamps.dt.tz is not None
+        ), f"TIMESTAMP_UTC column must be timezone-aware, got {timestamps.dt.tz}"
+        assert (
+            str(timestamps.dt.tz) == "UTC"
+        ), f"TIMESTAMP_UTC column must be in UTC timezone, got {timestamps.dt.tz}"
 
     # Second level (round to nearest second)
     df[get_temporal_column_name(TemporalLevel.SECOND)] = timestamps.dt.floor("s")
@@ -168,19 +174,23 @@ def _add_temporal_columns(df: pd.DataFrame) -> pd.DataFrame:
     if len(df) > 0:
         # Non-empty: convert to timezone-naive, apply period conversion, then restore UTC timezone
         df[get_temporal_column_name(TemporalLevel.MONTH)] = (
-            timestamps.dt.tz_convert(None).dt.to_period("M").dt.start_time.dt.tz_localize("UTC")
+            timestamps.dt.tz_convert(None)
+            .dt.to_period("M")
+            .dt.start_time.dt.tz_localize("UTC")
         )
         df[get_temporal_column_name(TemporalLevel.YEAR)] = (
-            timestamps.dt.tz_convert(None).dt.to_period("Y").dt.start_time.dt.tz_localize("UTC")
+            timestamps.dt.tz_convert(None)
+            .dt.to_period("Y")
+            .dt.start_time.dt.tz_localize("UTC")
         )
     else:
         # Empty: apply period conversion directly (no timezone to preserve)
-        df[get_temporal_column_name(TemporalLevel.MONTH)] = (
-            timestamps.dt.to_period("M").dt.start_time
-        )
-        df[get_temporal_column_name(TemporalLevel.YEAR)] = (
-            timestamps.dt.to_period("Y").dt.start_time
-        )
+        df[get_temporal_column_name(TemporalLevel.MONTH)] = timestamps.dt.to_period(
+            "M"
+        ).dt.start_time
+        df[get_temporal_column_name(TemporalLevel.YEAR)] = timestamps.dt.to_period(
+            "Y"
+        ).dt.start_time
 
     return df
 
@@ -260,9 +270,7 @@ def get_optimal_h3_level(df: pd.DataFrame, max_rows: int) -> Optional[int]:
         Optimal H3 aggregation level, or None if no H3 aggregation is required.
     """
     if len(df.index) <= max_rows:
-        logger.info(
-            f"No need to bucket data at any H3 level, {len(df)=}, {max_rows=}"
-        )
+        logger.info(f"No need to bucket data at any H3 level, {len(df)=}, {max_rows=}")
         return None
 
     # Check if H3 columns are available (they won't be if GPS columns are missing)

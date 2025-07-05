@@ -116,19 +116,22 @@
             <span id="selectionInfo"></span>
         </div>
 
-        <div id="temporalPlotStatus" class="info" style="margin-bottom: 10px; display: none;">
-            Loading temporal data...
-        </div>
-        <div class="plot-container" id="plotContainer">
-            <div style="display: flex; align-items: center; justify-content: center; height: 100%; color: #666;">
-                No data loaded. Click "Load Sample Data" to begin.
+        <div id="temporalPlotSection">
+            <h3>Temporal CDF <a href="https://www.andata.at/en/software-blog-reader/why-we-love-the-cdf-and-do-not-like-histograms-that-much.html">Why CDF?</a></h3>
+            <div id="temporalPlotStatus" class="info" style="margin-bottom: 10px; display: none;">
+                Loading temporal data...
             </div>
-        </div>
+            <div class="plot-container" id="plotContainer">
+                <div style="display: flex; align-items: center; justify-content: center; height: 100%; color: #666;">
+                    No data loaded. Click "Load Sample Data" to begin.
+                </div>
+            </div>
 
-        <div class="controls" id="plotControls" style="display: none;">
-            <button id="filterTemporalIntersectionBtn" class="filter-button intersection" onclick="filterTemporalIntersection()" disabled title="Keep only selected points">∩</button>
-            <button id="filterTemporalSubtractionBtn" class="filter-button subtraction" onclick="filterTemporalSubtraction()" disabled title="Remove selected points">−</button>
-            <span id="temporalPlotSelectionInfo"></span>
+            <div class="controls" id="plotControls" style="display: none;">
+                <button id="filterTemporalIntersectionBtn" class="filter-button intersection" onclick="filterTemporalIntersection()" disabled title="Keep only selected points">∩</button>
+                <button id="filterTemporalSubtractionBtn" class="filter-button subtraction" onclick="filterTemporalSubtraction()" disabled title="Remove selected points">−</button>
+                <span id="temporalPlotSelectionInfo"></span>
+            </div>
         </div>
 
         <div id="geoPlotSection" style="display: none;">

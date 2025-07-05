@@ -10,12 +10,13 @@ import plotly.express as px
 import plotly.graph_objects as go
 
 from crossfilter.core.schema import SchemaColumns as C
+from crossfilter.core.temporal_projection_state import TemporalProjectionState
 
 
 def create_temporal_cdf(
     df: pd.DataFrame,
+    temporal_projection_state: TemporalProjectionState,
     title: Optional[str] = None,
-    groupby: Optional[str] = str(C.DATA_TYPE),
 ) -> go.Figure:
     """Create a Plotly CDF plot for temporal data."""
     if df.empty:
@@ -40,10 +41,13 @@ def create_temporal_cdf(
         assert df[C.COUNT].notna().all(), "Some counts are missing."
 
     # TODO: This could be a cacheable amount of work.
+    groupby = temporal_projection_state.projection_state.groupby_column
     if not groupby:
         groupby = "Data"
         df[groupby] = "All"
+    assert groupby in df.columns, f"Groupby column {groupby} not found in DataFrame"
     df[groupby] = df[groupby].astype(str).fillna("Unknown")
+
     df["groupby_count_sum"] = df.groupby(groupby)[C.COUNT].transform("sum")
     df["Group (Count)"] = df[groupby] + " (" + df["groupby_count_sum"].astype(str) + ")"
     df = df.sort_values(by=["groupby_count_sum", groupby], ascending=[False, True])

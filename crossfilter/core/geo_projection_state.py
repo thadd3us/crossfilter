@@ -40,6 +40,9 @@ class GeoProjectionState:
         self.projection_state = ProjectionState(max_rows)
         self.current_h3_level: Optional[int] = None
 
+        # User selectable.
+        self.max_marker_size: int = 10
+
     def update_projection(self, filtered_rows: pd.DataFrame) -> None:
         """
         Update the geographic projection based on the current filtered data.
@@ -65,7 +68,9 @@ class GeoProjectionState:
             optimal_level
         )
         self.projection_state.projection_df = bucket_by_target_column(
-            filtered_rows, self.projection_state.current_bucketing_column
+            filtered_rows,
+            self.projection_state.current_bucketing_column,
+            self.projection_state.groupby_column,
         )
         logger.info(
             f"Bucketed data at optimal H3 level {optimal_level=}, {len(self.projection_state.projection_df)=}"

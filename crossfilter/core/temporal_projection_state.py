@@ -65,7 +65,9 @@ class TemporalProjectionState:
             optimal_level
         )
         self.projection_state.projection_df = bucket_by_target_column(
-            filtered_rows, self.projection_state.current_bucketing_column
+            filtered_rows,
+            self.projection_state.current_bucketing_column,
+            self.projection_state.groupby_column,
         )
         logger.info(
             f"Bucketed data at optimal temporal level {optimal_level=}, {len(self.projection_state.projection_df)=}"
@@ -76,5 +78,4 @@ class TemporalProjectionState:
         summary = self.projection_state.get_summary()
         # Add temporal-specific information
         summary["aggregation_level"] = self.current_aggregation_level
-        summary["target_column"] = self.projection_state.current_bucketing_column
         return summary

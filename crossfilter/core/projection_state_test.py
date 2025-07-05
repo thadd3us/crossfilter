@@ -9,7 +9,7 @@ from crossfilter.core.backend_frontend_shared_schema import (
     ProjectionType,
 )
 from crossfilter.core.projection_state import ProjectionState
-from crossfilter.core.schema import SchemaColumns as C
+from crossfilter.core.schema import SchemaColumns as C, DataType
 
 
 @pytest.fixture
@@ -18,6 +18,9 @@ def sample_data() -> pd.DataFrame:
     df = pd.DataFrame(
         {
             C.UUID_STRING: [f"uuid_{i}" for i in range(20)],
+            C.DATA_TYPE: [
+                [DataType.GPX_TRACKPOINT, DataType.PHOTO][i % 2] for i in range(20)
+            ],
             C.GPS_LATITUDE: [37.7749 + i * 0.001 for i in range(20)],
             C.GPS_LONGITUDE: [-122.4194 + i * 0.001 for i in range(20)],
             C.TIMESTAMP_UTC: [f"2024-01-01T{10 + i // 4}:00:00Z" for i in range(20)],

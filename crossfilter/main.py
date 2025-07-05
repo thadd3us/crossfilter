@@ -177,7 +177,9 @@ async def get_temporal_plot_data(
 
     try:
         temporal_data = session_state.get_temporal_projection()
-        fig = create_temporal_cdf(temporal_data)
+        fig = create_temporal_cdf(
+            temporal_data, temporal_projection_state=session_state.temporal_projection
+        )
         fig_json = fig.to_json()
         if fig_json is None:
             raise ValueError("Failed to serialize temporal plot to JSON")
@@ -232,7 +234,9 @@ async def get_geo_plot_data(
 
     try:
         geo_data = session_state.get_geo_aggregation()
-        fig = create_geo_plot(geo_data)
+        fig = create_geo_plot(
+            geo_data, geo_projection_state=session_state.geo_projection
+        )
         fig_json = fig.to_json()
         if fig_json is None:
             raise ValueError("Failed to serialize geo plot to JSON")

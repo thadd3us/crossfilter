@@ -9,6 +9,7 @@ from syrupy.extensions.single_file import SingleFileSnapshotExtension
 
 from crossfilter.core.schema import SchemaColumns, load_jsonl_to_dataframe
 from crossfilter.core.session_state import SessionState
+from crossfilter.core.temporal_projection_state import TemporalProjectionState
 from crossfilter.visualization.temporal_cdf_plot import create_temporal_cdf
 
 
@@ -55,7 +56,9 @@ def test_temporal_cdf_no_data(
     snapshot: SnapshotAssertion, individual_temporal_data: pd.DataFrame
 ) -> None:
     fig = create_temporal_cdf(
-        individual_temporal_data.head(0), title="Test Individual CDF"
+        individual_temporal_data.head(0),
+        title="Test Individual CDF",
+        temporal_projection_state=TemporalProjectionState(max_rows=10_000),
     )
     html_content = fig.to_html(include_plotlyjs="cdn", div_id="test-plot-div")
     assert html_content == snapshot(extension_class=HTMLSnapshotExtension)
@@ -64,7 +67,11 @@ def test_temporal_cdf_no_data(
 def test_temporal_cdf_individual_data(
     snapshot: SnapshotAssertion, individual_temporal_data: pd.DataFrame
 ) -> None:
-    fig = create_temporal_cdf(individual_temporal_data, title="Test Individual CDF")
+    fig = create_temporal_cdf(
+        individual_temporal_data,
+        title="Test Individual CDF",
+        temporal_projection_state=TemporalProjectionState(max_rows=10_000),
+    )
     html_content = fig.to_html(include_plotlyjs="cdn", div_id="test-plot-div")
     assert html_content == snapshot(extension_class=HTMLSnapshotExtension)
 
@@ -74,8 +81,8 @@ def test_temporal_cdf_individual_data_grouped(
 ) -> None:
     fig = create_temporal_cdf(
         individual_temporal_data,
-        groupby=SchemaColumns.DATA_TYPE,
         title="Test Individual CDF, Grouped By Type",
+        temporal_projection_state=TemporalProjectionState(max_rows=10_000),
     )
     html_content = fig.to_html(include_plotlyjs="cdn", div_id="test-plot-div")
     assert html_content == snapshot(extension_class=HTMLSnapshotExtension)

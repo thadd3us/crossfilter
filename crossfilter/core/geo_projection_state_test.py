@@ -11,7 +11,7 @@ from crossfilter.core.backend_frontend_shared_schema import (
 )
 from crossfilter.core.bucketing import add_bucketed_columns
 from crossfilter.core.geo_projection_state import GeoProjectionState
-from crossfilter.core.schema import SchemaColumns as C
+from crossfilter.core.schema import SchemaColumns as C, DataType
 
 
 @pytest.fixture
@@ -20,6 +20,9 @@ def sample_data() -> pd.DataFrame:
     df = pd.DataFrame(
         {
             C.UUID_STRING: [f"uuid_{i}" for i in range(20)],
+            C.DATA_TYPE: [
+                [DataType.GPX_WAYPOINT, DataType.PHOTO][i % 2] for i in range(20)
+            ],
             C.GPS_LATITUDE: [37.7749 + i * 0.001 for i in range(20)],
             C.GPS_LONGITUDE: [-122.4194 + i * 0.001 for i in range(20)],
             C.TIMESTAMP_UTC: [f"2024-01-01T{10 + i // 4}:00:00Z" for i in range(20)],
@@ -132,6 +135,7 @@ def test_get_summary(sample_data: pd.DataFrame) -> None:
 def test_get_summary_aggregated(sample_data: pd.DataFrame) -> None:
     """Test getting projection summary for aggregated data."""
     projection = GeoProjectionState(max_rows=5)
+    projection.projection_state.groupby_column = None
     projection.update_projection(sample_data)
 
     summary = projection.get_summary()

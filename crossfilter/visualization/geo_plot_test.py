@@ -8,6 +8,7 @@ import pytest
 from syrupy import SnapshotAssertion
 from syrupy.extensions.single_file import SingleFileSnapshotExtension
 
+from crossfilter.core.geo_projection_state import GeoProjectionState
 from crossfilter.core.schema import SchemaColumns, load_jsonl_to_dataframe
 from crossfilter.core.session_state import SessionState
 from crossfilter.visualization.geo_plot import (
@@ -109,7 +110,9 @@ def test_geo_plot_no_data(
     snapshot: SnapshotAssertion, individual_geo_data: pd.DataFrame
 ) -> None:
     fig = create_geo_plot(
-        individual_geo_data.head(0), title="Test Geographic Plot - No Data"
+        individual_geo_data.head(0),
+        title="Test Geographic Plot - No Data",
+        geo_projection_state=GeoProjectionState(max_rows=10_000),
     )
     html_content = fig.to_html(include_plotlyjs="cdn", div_id="test-plot-div")
     assert html_content == snapshot(extension_class=HTMLSnapshotExtension)
@@ -119,7 +122,9 @@ def test_geo_plot_individual_data(
     snapshot: SnapshotAssertion, individual_geo_data: pd.DataFrame
 ) -> None:
     fig = create_geo_plot(
-        individual_geo_data, title="Test Geographic Plot - Individual"
+        individual_geo_data,
+        title="Test Geographic Plot - Individual",
+        geo_projection_state=GeoProjectionState(max_rows=10_000),
     )
     html_content = fig.to_html(include_plotlyjs="cdn", div_id="test-plot-div")
     assert html_content == snapshot(extension_class=HTMLSnapshotExtension)
@@ -130,8 +135,8 @@ def test_geo_plot_individual_data_grouped(
 ) -> None:
     fig = create_geo_plot(
         individual_geo_data,
-        groupby=SchemaColumns.DATA_TYPE,
         title="Test Geographic Plot - Individual, Grouped By Type",
+        geo_projection_state=GeoProjectionState(max_rows=10_000),
     )
     html_content = fig.to_html(include_plotlyjs="cdn", div_id="test-plot-div")
     assert html_content == snapshot(extension_class=HTMLSnapshotExtension)
@@ -143,6 +148,7 @@ def test_geo_plot_with_count_data(
     fig = create_geo_plot(
         grouped_geo_data,
         title="Test Geographic Plot - With Count Data",
+        geo_projection_state=GeoProjectionState(max_rows=10_000),
     )
     html_content = fig.to_html(include_plotlyjs="cdn", div_id="test-plot-div")
     assert html_content == snapshot(extension_class=HTMLSnapshotExtension)
@@ -153,8 +159,8 @@ def test_geo_plot_with_count_data_grouped(
 ) -> None:
     fig = create_geo_plot(
         grouped_geo_data,
-        groupby=SchemaColumns.DATA_TYPE,
         title="Test Geographic Plot - With Count Data, Grouped By Type",
+        geo_projection_state=GeoProjectionState(max_rows=10_000),
     )
     html_content = fig.to_html(include_plotlyjs="cdn", div_id="test-plot-div")
     assert html_content == snapshot(extension_class=HTMLSnapshotExtension)
@@ -166,8 +172,8 @@ def test_geo_plot_nyc_area_auto_fit(
     """Test that plot auto-fits to NYC area data, demonstrating zoom behavior."""
     fig = create_geo_plot(
         nyc_area_data,
-        groupby=SchemaColumns.DATA_TYPE,
         title="Test Geographic Plot - NYC Area Auto-Fit",
+        geo_projection_state=GeoProjectionState(max_rows=10_000),
     )
     html_content = fig.to_html(include_plotlyjs="cdn", div_id="test-plot-div")
     assert html_content == snapshot(extension_class=HTMLSnapshotExtension)
@@ -181,9 +187,11 @@ class TestGeographicCenterAndRadius:
         # Test points in same hemisphere
         lats = pd.Series([40.0, 42.0])
         lons = pd.Series([-74.0, -72.0])
-        
-        center_lat, center_lon, radius_meters = _calculate_geographic_center_and_radius(lats, lons)
-        
+
+        center_lat, center_lon, radius_meters = _calculate_geographic_center_and_radius(
+            lats, lons
+        )
+
         # Should be approximately the midpoint
         assert abs(center_lat - 41.0) < 0.1
         assert abs(center_lon - (-73.0)) < 0.1
@@ -195,9 +203,11 @@ class TestGeographicCenterAndRadius:
         # Points on either side of date line
         lats = pd.Series([40.0, 40.0])
         lons = pd.Series([-179.0, 179.0])
-        
-        center_lat, center_lon, radius_meters = _calculate_geographic_center_and_radius(lats, lons)
-        
+
+        center_lat, center_lon, radius_meters = _calculate_geographic_center_and_radius(
+            lats, lons
+        )
+
         # Center should be at latitude 40, longitude near ±180
         assert abs(center_lat - 40.0) < 0.1
         # Should be near the date line, not at longitude 0
@@ -209,9 +219,11 @@ class TestGeographicCenterAndRadius:
         """Test center calculation with single point."""
         lats = pd.Series([40.7128])
         lons = pd.Series([-74.0060])
-        
-        center_lat, center_lon, radius_meters = _calculate_geographic_center_and_radius(lats, lons)
-        
+
+        center_lat, center_lon, radius_meters = _calculate_geographic_center_and_radius(
+            lats, lons
+        )
+
         # Should be exactly the point
         assert abs(center_lat - 40.7128) < 0.0001
         assert abs(center_lon - (-74.0060)) < 0.0001
@@ -227,7 +239,7 @@ class TestZoomLevelFromRadius:
         # Distance from equator to north pole is ~5,000 km (quarter of Earth's circumference)
         radius_meters = 5_000_000  # 5,000 km
         center_lat = 45.0  # Middle latitude
-        
+
         zoom = _calculate_zoom_level_from_radius(radius_meters, center_lat)
         assert zoom <= 2  # Should be very zoomed out
 
@@ -236,7 +248,7 @@ class TestZoomLevelFromRadius:
         # Distance from equator to south pole is ~5,000 km
         radius_meters = 5_000_000  # 5,000 km
         center_lat = -45.0  # Middle latitude in southern hemisphere
-        
+
         zoom = _calculate_zoom_level_from_radius(radius_meters, center_lat)
         assert zoom <= 2  # Should be very zoomed out
 
@@ -244,10 +256,12 @@ class TestZoomLevelFromRadius:
         """Two nearby points on the equator spanning +179/-179 degrees have a high zoom factor."""
         lats = pd.Series([0.0, 0.0])  # Equator
         lons = pd.Series([179.0, -179.0])  # Just 2 degrees apart across date line
-        
-        center_lat, center_lon, radius_meters = _calculate_geographic_center_and_radius(lats, lons)
+
+        center_lat, center_lon, radius_meters = _calculate_geographic_center_and_radius(
+            lats, lons
+        )
         zoom = _calculate_zoom_level_from_radius(radius_meters, center_lat)
-        
+
         # Should have high zoom since points are close
         assert zoom >= 8
 
@@ -256,17 +270,21 @@ class TestZoomLevelFromRadius:
         # Points at +1/-1 degrees on equator
         lats1 = pd.Series([0.0, 0.0])
         lons1 = pd.Series([1.0, -1.0])
-        
-        center_lat1, center_lon1, radius_meters1 = _calculate_geographic_center_and_radius(lats1, lons1)
+
+        center_lat1, center_lon1, radius_meters1 = (
+            _calculate_geographic_center_and_radius(lats1, lons1)
+        )
         zoom1 = _calculate_zoom_level_from_radius(radius_meters1, center_lat1)
-        
+
         # Points at +179/-179 degrees on equator
         lats2 = pd.Series([0.0, 0.0])
         lons2 = pd.Series([179.0, -179.0])
-        
-        center_lat2, center_lon2, radius_meters2 = _calculate_geographic_center_and_radius(lats2, lons2)
+
+        center_lat2, center_lon2, radius_meters2 = (
+            _calculate_geographic_center_and_radius(lats2, lons2)
+        )
         zoom2 = _calculate_zoom_level_from_radius(radius_meters2, center_lat2)
-        
+
         # Should have similar zoom levels (within 1 level)
         assert abs(zoom1 - zoom2) <= 1
 
@@ -274,10 +292,12 @@ class TestZoomLevelFromRadius:
         """Two nearby points near the north pole have a reasonable zoom level."""
         lats = pd.Series([89.9, 89.95])  # Very close to north pole
         lons = pd.Series([0.0, 1.0])  # Small longitude difference
-        
-        center_lat, center_lon, radius_meters = _calculate_geographic_center_and_radius(lats, lons)
+
+        center_lat, center_lon, radius_meters = _calculate_geographic_center_and_radius(
+            lats, lons
+        )
         zoom = _calculate_zoom_level_from_radius(radius_meters, center_lat)
-        
+
         # Should have higher zoom than global scale
         assert zoom >= 3
 
@@ -285,10 +305,12 @@ class TestZoomLevelFromRadius:
         """Two nearby points near the south pole have a reasonable zoom level."""
         lats = pd.Series([-89.9, -89.95])  # Very close to south pole
         lons = pd.Series([0.0, 1.0])  # Small longitude difference
-        
-        center_lat, center_lon, radius_meters = _calculate_geographic_center_and_radius(lats, lons)
+
+        center_lat, center_lon, radius_meters = _calculate_geographic_center_and_radius(
+            lats, lons
+        )
         zoom = _calculate_zoom_level_from_radius(radius_meters, center_lat)
-        
+
         # Should have higher zoom than global scale
         assert zoom >= 3
 
@@ -296,7 +318,7 @@ class TestZoomLevelFromRadius:
         """Very small radius should result in high zoom."""
         radius_meters = 100  # 100 meters
         center_lat = 40.0
-        
+
         zoom = _calculate_zoom_level_from_radius(radius_meters, center_lat)
         assert zoom >= 15
 
@@ -304,7 +326,7 @@ class TestZoomLevelFromRadius:
         """Very large radius should result in low zoom."""
         radius_meters = 20_000_000  # 20,000 km (half the Earth)
         center_lat = 0.0
-        
+
         zoom = _calculate_zoom_level_from_radius(radius_meters, center_lat)
         assert zoom <= 2
 
@@ -316,9 +338,9 @@ class TestMapView:
         """Test map view calculation for normal case."""
         lats = pd.Series([40.0, 42.0])
         lons = pd.Series([-74.0, -72.0])
-        
+
         center_lat, center_lon, zoom = _calculate_map_view(lats, lons)
-        
+
         # Should be reasonable values
         assert 40.0 <= center_lat <= 42.0
         assert -74.0 <= center_lon <= -72.0
@@ -328,9 +350,9 @@ class TestMapView:
         """Test map view calculation when crossing date line."""
         lats = pd.Series([40.0, 40.0])
         lons = pd.Series([-179.0, 179.0])
-        
+
         center_lat, center_lon, zoom = _calculate_map_view(lats, lons)
-        
+
         # Should handle date line crossing
         assert abs(center_lat - 40.0) < 0.1
         assert abs(abs(center_lon) - 180.0) < 10.0  # Near date line
@@ -340,9 +362,9 @@ class TestMapView:
         """Test map view calculation for single point."""
         lats = pd.Series([40.7128])
         lons = pd.Series([-74.0060])
-        
+
         center_lat, center_lon, zoom = _calculate_map_view(lats, lons)
-        
+
         # Should be exactly the point with high zoom
         assert abs(center_lat - 40.7128) < 0.0001
         assert abs(center_lon - (-74.0060)) < 0.0001
@@ -352,9 +374,9 @@ class TestMapView:
         """Test map view calculation for empty data."""
         lats = pd.Series([], dtype=float)
         lons = pd.Series([], dtype=float)
-        
+
         center_lat, center_lon, zoom = _calculate_map_view(lats, lons)
-        
+
         # Should return default values
         assert center_lat == 0.0
         assert center_lon == 0.0
@@ -365,7 +387,7 @@ class TestMapView:
 def date_line_crossing_data() -> pd.DataFrame:
     """Create test data that crosses the International Date Line."""
     import datetime
-    
+
     data = []
     # Points crossing the date line around Pacific islands
     locations = [
@@ -375,25 +397,27 @@ def date_line_crossing_data() -> pd.DataFrame:
         ("Samoa", -14.0, -171.0),  # Further east
         ("Tonga", -21.0, -175.0),  # Further east
     ]
-    
+
     for i, (name, lat, lon) in enumerate(locations):
-        data.append({
-            SchemaColumns.UUID_STRING: f"dateline_uuid_{i}",
-            SchemaColumns.DATA_TYPE: "PHOTO",
-            SchemaColumns.NAME: name,
-            SchemaColumns.CAPTION: f"Photo at {name}",
-            SchemaColumns.SOURCE_FILE: f"dateline_file_{i}.jpg",
-            SchemaColumns.TIMESTAMP_MAYBE_TIMEZONE_AWARE: "2024-01-15T12:00:00",
-            SchemaColumns.TIMESTAMP_UTC: datetime.datetime(
-                2024, 1, 15, 12, i, 0, tzinfo=datetime.timezone.utc
-            ),
-            SchemaColumns.GPS_LATITUDE: lat,
-            SchemaColumns.GPS_LONGITUDE: lon,
-            SchemaColumns.RATING_0_TO_5: 4,
-            SchemaColumns.SIZE_IN_BYTES: 1024000,
-            SchemaColumns.COUNT: 1,
-        })
-    
+        data.append(
+            {
+                SchemaColumns.UUID_STRING: f"dateline_uuid_{i}",
+                SchemaColumns.DATA_TYPE: "PHOTO",
+                SchemaColumns.NAME: name,
+                SchemaColumns.CAPTION: f"Photo at {name}",
+                SchemaColumns.SOURCE_FILE: f"dateline_file_{i}.jpg",
+                SchemaColumns.TIMESTAMP_MAYBE_TIMEZONE_AWARE: "2024-01-15T12:00:00",
+                SchemaColumns.TIMESTAMP_UTC: datetime.datetime(
+                    2024, 1, 15, 12, i, 0, tzinfo=datetime.timezone.utc
+                ),
+                SchemaColumns.GPS_LATITUDE: lat,
+                SchemaColumns.GPS_LONGITUDE: lon,
+                SchemaColumns.RATING_0_TO_5: 4,
+                SchemaColumns.SIZE_IN_BYTES: 1024000,
+                SchemaColumns.COUNT: 1,
+            }
+        )
+
     df = pd.DataFrame(data)
     df.index.name = SchemaColumns.DF_ID
     return df
@@ -406,11 +430,12 @@ def test_geo_plot_date_line_crossing(
     fig = create_geo_plot(
         date_line_crossing_data,
         title="Test Geographic Plot - Date Line Crossing",
+        geo_projection_state=GeoProjectionState(max_rows=10_000),
     )
-    
+
     # Check that the center is reasonable (near Pacific, not at longitude 0)
     center_lon = fig.layout.map.center.lon
     assert abs(abs(center_lon) - 180.0) < 20.0  # Should be near date line
-    
+
     html_content = fig.to_html(include_plotlyjs="cdn", div_id="test-plot-div")
     assert html_content == snapshot(extension_class=HTMLSnapshotExtension)

@@ -9,7 +9,7 @@ from crossfilter.core.backend_frontend_shared_schema import (
     FilterOperatorType,
     ProjectionType,
 )
-from crossfilter.core.schema import SchemaColumns as C
+from crossfilter.core.schema import SchemaColumns as C, DataType
 from crossfilter.core.session_state import SessionState
 
 
@@ -19,6 +19,9 @@ def sample_df() -> pd.DataFrame:
     df = pd.DataFrame(
         {
             C.UUID_STRING: [f"uuid_{i}" for i in range(20)],
+            C.DATA_TYPE: [
+                [DataType.GPX_WAYPOINT, DataType.PHOTO][i % 2] for i in range(20)
+            ],
             C.GPS_LATITUDE: [37.7749 + i * 0.001 for i in range(20)],
             C.GPS_LONGITUDE: [-122.4194 + i * 0.001 for i in range(20)],
             C.TIMESTAMP_UTC: [f"2024-01-01T{10 + i // 4}:00:00Z" for i in range(20)],
@@ -87,13 +90,13 @@ def test_projection_states(sample_df: pd.DataFrame) -> None:
 
     # Check temporal projection
     temporal_proj = session.temporal_projection
-    assert temporal_proj.projection_state.max_rows == 100000  # default
+    assert temporal_proj.projection_state.max_rows == 10_000  # default
     assert len(temporal_proj.projection_state.projection_df) == 20
     assert temporal_proj.current_aggregation_level is None  # individual points
 
     # Check geo projection
     geo_proj = session.geo_projection
-    assert geo_proj.projection_state.max_rows == 100000  # default
+    assert geo_proj.projection_state.max_rows == 10_000  # default
     assert len(geo_proj.projection_state.projection_df) == 20
     assert geo_proj.current_h3_level is None  # individual points
 
@@ -162,7 +165,7 @@ def test_temporal_aggregation_aggregated(
     session.temporal_projection.projection_state.max_rows = 3
     session.temporal_projection.update_projection(session.filtered_rows)
     result = session.get_temporal_projection()
-
+    assert len(result) <= 3
     assert result.to_dict(orient="records") == snapshot
 
 

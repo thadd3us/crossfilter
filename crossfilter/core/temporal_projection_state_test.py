@@ -12,6 +12,7 @@ from crossfilter.core.backend_frontend_shared_schema import (
 from crossfilter.core.bucketing import add_bucketed_columns
 from crossfilter.core.schema import (
     SchemaColumns as C,
+    DataType,
 )
 from crossfilter.core.schema import (
     TemporalLevel,
@@ -26,6 +27,9 @@ def sample_data() -> pd.DataFrame:
     df = pd.DataFrame(
         {
             C.UUID_STRING: [f"uuid_{i}" for i in range(20)],
+            C.DATA_TYPE: [
+                [DataType.GPX_WAYPOINT, DataType.PHOTO][i % 2] for i in range(20)
+            ],
             C.GPS_LATITUDE: [37.7749 + i * 0.001 for i in range(20)],
             C.GPS_LONGITUDE: [-122.4194 + i * 0.001 for i in range(20)],
             C.TIMESTAMP_UTC: [f"2024-01-01T{10 + i // 4}:00:00Z" for i in range(20)],
@@ -100,13 +104,14 @@ def test_get_summary(sample_data: pd.DataFrame) -> None:
     assert summary["max_rows"] == 100
     assert summary["projection_rows"] == 20
     assert summary["aggregation_level"] is None  # Individual points
-    assert summary["target_column"] is None
+    assert summary["current_bucketing_column"] is None
     assert summary["is_aggregated"] is False
 
 
 def test_get_summary_aggregated(sample_data: pd.DataFrame) -> None:
     """Test getting projection summary for aggregated data."""
     projection = TemporalProjectionState(max_rows=5)
+    projection.projection_state.groupby_column = None
     projection.update_projection(sample_data)
 
     summary = projection.get_summary()
@@ -114,7 +119,7 @@ def test_get_summary_aggregated(sample_data: pd.DataFrame) -> None:
     assert summary["max_rows"] == 5
     assert summary["projection_rows"] <= 5
     assert summary["aggregation_level"] is not None
-    assert summary["target_column"] is not None
+    assert summary["current_bucketing_column"] is not None
     assert summary["is_aggregated"] is True
 
 

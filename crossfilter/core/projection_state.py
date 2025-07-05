@@ -10,6 +10,7 @@ from crossfilter.core.backend_frontend_shared_schema import (
     FilterOperatorType,
 )
 from crossfilter.core.bucketing import filter_df_to_selected_buckets
+from crossfilter.core.schema import SchemaColumns as C
 
 logger = logging.getLogger(__name__)
 
@@ -34,6 +35,7 @@ class ProjectionState:
         self.max_rows = max_rows
         self.projection_df = pd.DataFrame()
         self.current_bucketing_column: Optional[str] = None
+        self.groupby_column: Optional[str] = str(C.DATA_TYPE)
 
     def apply_filter_event(
         self, filter_event: FilterEvent, filtered_rows: pd.DataFrame
@@ -97,4 +99,5 @@ class ProjectionState:
             "projection_rows": len(self.projection_df),
             "current_bucketing_column": self.current_bucketing_column,
             "is_aggregated": self.current_bucketing_column is not None,
+            "groupby_column": self.groupby_column,
         }

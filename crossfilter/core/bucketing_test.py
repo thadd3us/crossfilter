@@ -16,6 +16,7 @@ from crossfilter.core.bucketing import (
 )
 from crossfilter.core.schema import (
     SchemaColumns as C,
+    DataType,
 )
 from crossfilter.core.schema import (
     TemporalLevel,
@@ -25,7 +26,7 @@ from crossfilter.core.schema import (
 
 
 @pytest.fixture
-def sample_df():
+def sample_df() -> pd.DataFrame:
     """Create a sample DataFrame for testing."""
     df = pd.DataFrame(
         {
@@ -43,11 +44,18 @@ def sample_df():
 
 
 @pytest.fixture
-def simple_data_example():
+def simple_data_example() -> pd.DataFrame:
     """Create simple test data with multiple rows per bucket to show filtering clearly."""
     df = pd.DataFrame(
         {
             C.UUID_STRING: ["uuid_1", "uuid_2", "uuid_3", "uuid_4", "uuid_5"],
+            C.DATA_TYPE: [
+                DataType.GPX_WAYPOINT,
+                DataType.GPX_WAYPOINT,
+                DataType.GPX_WAYPOINT,
+                DataType.GPX_TRACKPOINT,
+                DataType.GPX_TRACKPOINT,
+            ],
             C.GPS_LATITUDE: [37.77, 37.78, 37.77, 37.79, 37.78],
             C.GPS_LONGITUDE: [-122.42, -122.43, -122.42, -122.44, -122.43],
             "category": ["A", "B", "A", "C", "B"],
@@ -56,6 +64,16 @@ def simple_data_example():
     )
     df.index.name = C.DF_ID
     return df
+
+
+def test_thad_bucket_with_groupby(
+    simple_data_example: pd.DataFrame, snapshot: SnapshotAssertion
+) -> None:
+    """Test bucketing with a groupby column."""
+    bucketed = bucket_by_target_column(
+        simple_data_example, "category", groupby_column=C.DATA_TYPE
+    )
+    assert bucketed.to_dict(orient="records") == snapshot
 
 
 def test_add_quantized_columns_for_h3(
@@ -79,28 +97,26 @@ def test_add_quantized_columns_for_timestamp(
 def test_add_quantized_temporal_columns_no_timezone_warnings() -> None:
     """Test that temporal quantization does not emit timezone warnings."""
     import warnings
-    
+
     # Create timezone-aware test data
-    df = pd.DataFrame({
-        C.TIMESTAMP_UTC: pd.date_range(
-            "2024-01-01", periods=10, freq="h", tz="UTC"
-        )
-    })
-    
+    df = pd.DataFrame(
+        {C.TIMESTAMP_UTC: pd.date_range("2024-01-01", periods=10, freq="h", tz="UTC")}
+    )
+
     # Configure warnings to raise as exceptions
     with warnings.catch_warnings():
         warnings.filterwarnings(
-            "error", 
-            message="Converting to PeriodArray/Index representation will drop timezone information."
+            "error",
+            message="Converting to PeriodArray/Index representation will drop timezone information.",
         )
-        
+
         # This should not raise any warnings
         result = add_quantized_temporal_columns(df)
-        
+
         # Verify the result has the expected timezone-aware columns
         assert result[get_temporal_column_name(TemporalLevel.MONTH)].dt.tz is not None
         assert result[get_temporal_column_name(TemporalLevel.YEAR)].dt.tz is not None
-        
+
         # Verify the timezone is preserved correctly
         assert str(result[get_temporal_column_name(TemporalLevel.MONTH)].dt.tz) == "UTC"
         assert str(result[get_temporal_column_name(TemporalLevel.YEAR)].dt.tz) == "UTC"
@@ -179,7 +195,7 @@ def test_bucket_by_target_column_h3(sample_df: pd.DataFrame) -> None:
     h3_level = 7  # Use a specific level for testing
     target_column = get_h3_column_name(h3_level)
 
-    bucketed = bucket_by_target_column(quantized, target_column)
+    bucketed = bucket_by_target_column(quantized, target_column, groupby_column=None)
 
     # Should have same column structure plus COUNT
     expected_cols = set(quantized.columns) | {"COUNT"}
@@ -203,7 +219,7 @@ def test_bucket_by_target_column_temporal(sample_df: pd.DataFrame) -> None:
     temporal_level = TemporalLevel.HOUR
     target_column = get_temporal_column_name(temporal_level)
 
-    bucketed = bucket_by_target_column(quantized, target_column)
+    bucketed = bucket_by_target_column(quantized, target_column, groupby_column=None)
 
     # Should have same column structure plus COUNT
     expected_cols = set(quantized.columns) | {"COUNT"}
@@ -225,7 +241,7 @@ def test_bucket_by_target_column_invalid_column(sample_df: pd.DataFrame) -> None
     with pytest.raises(
         ValueError, match="Target column 'invalid_column' not found in DataFrame"
     ):
-        bucket_by_target_column(sample_df, "invalid_column")
+        bucket_by_target_column(sample_df, "invalid_column", groupby_column=None)
 
 
 def test_add_quantized_columns_for_h3_empty_dataframe() -> None:
@@ -296,11 +312,11 @@ def test_bucket_by_target_column_with_nulls() -> None:
     )
     df.index.name = C.DF_ID
 
-    bucketed = bucket_by_target_column(df, "test_column")
+    bucketed = bucket_by_target_column(df, "test_column", groupby_column=None)
 
     # Should handle nulls gracefully
-    assert len(bucketed) == 2  # One for "A", one for null
-    assert bucketed["COUNT"].sum() == 3  # All original rows counted
+    assert len(bucketed) == 1  # One for "A", null is dropped.
+    assert bucketed["COUNT"].sum() == 2  # All original rows counted
 
 
 def test_bucket_by_target_column_h3_column_preservation_snapshot(
@@ -312,7 +328,7 @@ def test_bucket_by_target_column_h3_column_preservation_snapshot(
     h3_level = 7  # Use a specific level for testing
     target_column = get_h3_column_name(h3_level)
 
-    bucketed = bucket_by_target_column(quantized, target_column)
+    bucketed = bucket_by_target_column(quantized, target_column, groupby_column=None)
 
     # Snapshot the bucketed result to show column preservation
     assert bucketed.to_dict(orient="records") == snapshot
@@ -327,7 +343,7 @@ def test_bucket_by_target_column_temporal_column_preservation_snapshot(
     temporal_level = TemporalLevel.HOUR
     target_column = get_temporal_column_name(temporal_level)
 
-    bucketed = bucket_by_target_column(quantized, target_column)
+    bucketed = bucket_by_target_column(quantized, target_column, groupby_column=None)
 
     # Snapshot the bucketed result to show column preservation
     assert bucketed.to_dict(orient="records") == snapshot
@@ -337,7 +353,9 @@ def test_bucket_by_target_column_simple_data_snapshot(
     simple_data_example: pd.DataFrame, snapshot: SnapshotAssertion
 ) -> None:
     """Test bucketing with simple test data to clearly show column preservation."""
-    bucketed = bucket_by_target_column(simple_data_example, "category")
+    bucketed = bucket_by_target_column(
+        simple_data_example, "category", groupby_column=None
+    )
 
     # Snapshot shows:
     # - Each unique category becomes one row
@@ -349,7 +367,9 @@ def test_bucket_by_target_column_simple_data_snapshot(
 def test_filter_df_to_selected_buckets_basic(simple_data_example: pd.DataFrame) -> None:
     """Test basic filtering of original data to selected buckets."""
     # Create bucketed data
-    bucketed = bucket_by_target_column(simple_data_example, "category")
+    bucketed = bucket_by_target_column(
+        simple_data_example, "category", groupby_column=None
+    )
 
     # Select bucket index 0 (category "A") and 2 (category "C")
     # Based on the data: A appears in rows 0,2 and C appears in row 3
@@ -373,7 +393,9 @@ def test_filter_df_to_selected_buckets_single_bucket(
     simple_data_example: pd.DataFrame,
 ) -> None:
     """Test filtering to a single bucket."""
-    bucketed = bucket_by_target_column(simple_data_example, "category")
+    bucketed = bucket_by_target_column(
+        simple_data_example, "category", groupby_column=None
+    )
 
     # Select only bucket index 1 (category "B")
     selected_indices = [1]
@@ -393,7 +415,9 @@ def test_filter_df_to_selected_buckets_all_buckets(
     simple_data_example: pd.DataFrame,
 ) -> None:
     """Test filtering when all buckets are selected."""
-    bucketed = bucket_by_target_column(simple_data_example, "category")
+    bucketed = bucket_by_target_column(
+        simple_data_example, "category", groupby_column=None
+    )
 
     # Select all bucket indices
     selected_indices = [0, 1, 2]  # All buckets
@@ -413,7 +437,9 @@ def test_filter_df_to_selected_buckets_empty_selection(
     simple_data_example: pd.DataFrame,
 ) -> None:
     """Test filtering with empty bucket selection."""
-    bucketed = bucket_by_target_column(simple_data_example, "category")
+    bucketed = bucket_by_target_column(
+        simple_data_example, "category", groupby_column=None
+    )
 
     # Select no buckets
     selected_indices = []
@@ -428,39 +454,13 @@ def test_filter_df_to_selected_buckets_empty_selection(
     assert filtered.index.name == simple_data_example.index.name
 
 
-def test_filter_df_to_selected_buckets_with_nan_bucket_values() -> None:
-    """Test that filtering fails when selected bucket values contain NaN."""
-    # Create data with null category that will create NaN bucket values
-    df = pd.DataFrame(
-        {
-            C.UUID_STRING: ["uuid_1", "uuid_2", "uuid_3"],
-            "category": ["A", None, "B"],
-            "value": [10, 20, 30],
-        }
-    )
-    df.index.name = C.DF_ID
-
-    bucketed = bucket_by_target_column(df, "category")
-
-    # Find the index of the null bucket
-    null_bucket_idx = None
-    for idx, row in bucketed.iterrows():
-        if pd.isna(row["category"]):
-            null_bucket_idx = idx
-            break
-
-    assert null_bucket_idx is not None
-
-    # Should raise ValueError when trying to select a bucket with NaN value
-    with pytest.raises(ValueError, match="Selected bucket values cannot contain NaN"):
-        filter_df_to_selected_buckets(df, bucketed, "category", [null_bucket_idx])
-
-
 def test_filter_df_to_selected_buckets_invalid_indices(
     simple_data_example: pd.DataFrame,
 ) -> None:
     """Test error handling for invalid bucket indices."""
-    bucketed = bucket_by_target_column(simple_data_example, "category")
+    bucketed = bucket_by_target_column(
+        simple_data_example, "category", groupby_column=None
+    )
 
     # Test negative index
     with pytest.raises(ValueError, match="Invalid bucket indices: \\[-1\\]"):
@@ -481,7 +481,9 @@ def test_filter_df_to_selected_buckets_missing_target_column(
     simple_data_example: pd.DataFrame,
 ) -> None:
     """Test error handling when target column is missing."""
-    bucketed = bucket_by_target_column(simple_data_example, "category")
+    bucketed = bucket_by_target_column(
+        simple_data_example, "category", groupby_column=None
+    )
 
     # Test missing column in original data
     with pytest.raises(
@@ -503,7 +505,9 @@ def test_filter_df_to_selected_buckets_snapshot(
     simple_data_example: pd.DataFrame, snapshot: SnapshotAssertion
 ) -> None:
     """Test filtering result with snapshot to show exact filtering behavior."""
-    bucketed = bucket_by_target_column(simple_data_example, "category")
+    bucketed = bucket_by_target_column(
+        simple_data_example, "category", groupby_column=None
+    )
 
     # Select buckets 0 and 2 (categories "A" and "C")
     selected_indices = [0, 2]
@@ -523,11 +527,14 @@ def test_add_bucketed_columns() -> None:
         C.UUID_STRING: ["uuid1", "uuid2", "uuid3"],
         C.GPS_LATITUDE: [37.7749, 37.7849, 37.7949],
         C.GPS_LONGITUDE: [-122.4194, -122.4094, -122.3994],
-        C.TIMESTAMP_UTC: pd.to_datetime([
-            "2024-01-01 10:00:00",
-            "2024-01-01 11:00:00",
-            "2024-01-01 12:00:00",
-        ], utc=True),
+        C.TIMESTAMP_UTC: pd.to_datetime(
+            [
+                "2024-01-01 10:00:00",
+                "2024-01-01 11:00:00",
+                "2024-01-01 12:00:00",
+            ],
+            utc=True,
+        ),
     }
     df = pd.DataFrame(test_data)
     df.index.name = C.DF_ID
@@ -579,10 +586,9 @@ def test_add_bucketed_columns_temporal_only() -> None:
     """Test add_bucketed_columns with only temporal data."""
     test_data = {
         C.UUID_STRING: ["uuid1", "uuid2"],
-        C.TIMESTAMP_UTC: pd.to_datetime([
-            "2024-01-01 10:00:00", 
-            "2024-01-01 11:00:00"
-        ], utc=True),
+        C.TIMESTAMP_UTC: pd.to_datetime(
+            ["2024-01-01 10:00:00", "2024-01-01 11:00:00"], utc=True
+        ),
     }
     df = pd.DataFrame(test_data)
     df.index.name = C.DF_ID

@@ -196,7 +196,7 @@ def _add_temporal_columns(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def bucket_by_target_column(
-    original_data: pd.DataFrame, target_column: str
+    original_data: pd.DataFrame, target_column: str, groupby_column: Optional[str]
 ) -> pd.DataFrame:
     """
     Create a bucketed DataFrame by grouping on the target column.
@@ -205,12 +205,10 @@ def bucket_by_target_column(
     All original columns are preserved with values from the first row in each bucket.
     A COUNT column is added showing the number of original rows in each bucket.
 
-    Args:
-        original_data: The original DataFrame to bucket
-        target_column: Column name to group by (should be a quantized/discretized column)
+    If we're going to later do a groupby, we need to preserve the groupby_column values independently for accurate counting.
 
     Returns:
-        Bucketed DataFrame with one row per unique target_column value
+        Bucketed DataFrame with one row per unique target_column value (and per groupby_column value if provided)
     """
     logger.debug(f"bucket_by_target_column called with target_column='{target_column}'")
     logger.debug(f"Original data columns: {list(original_data.columns)}")
@@ -221,47 +219,24 @@ def bucket_by_target_column(
     if target_column not in original_data.columns:
         raise ValueError(f"Target column '{target_column}' not found in DataFrame")
 
-    # Group by target column and take first value for each column, plus count
-    # Exclude the target column from aggregation since it becomes the index
-    agg_dict = {}
-    for col in original_data.columns:
-        if col != target_column:
-            agg_dict[col] = "first"
+    df = original_data.copy()
 
-    # Get the grouped data, including nulls in groupby
-    logger.debug(f"Aggregation dictionary: {agg_dict}")
-    grouped = original_data.groupby(target_column, dropna=False).agg(agg_dict)
-    logger.debug(f"Grouped DataFrame columns: {list(grouped.columns)}")
-    logger.debug(
-        f"Target column '{target_column}' in grouped DataFrame (index): {target_column in grouped.index.names}"
-    )
+    # We can't bucket on NaN values.
+    df = df.dropna(subset=[target_column])
 
-    # Add count column
-    counts = original_data.groupby(target_column, dropna=False).size()
+    groupby_columns = [target_column]
+    if groupby_column:
+        assert (
+            groupby_column in original_data.columns
+        ), f"Groupby column '{groupby_column}' not found in DataFrame"
+        df[groupby_column] = df[groupby_column].fillna("Unknown").astype(str)
+        groupby_columns.append(groupby_column)
 
-    # Combine the grouped data with counts
-    bucketed = grouped.copy()
-    bucketed[SchemaColumns.COUNT] = counts
-
-    # Reset index to make target_column a regular column
-    bucketed = bucketed.reset_index()
-    logger.debug(f"Final bucketed DataFrame columns: {list(bucketed.columns)}")
-    logger.debug(
-        f"Target column '{target_column}' in final bucketed DataFrame: {target_column in bucketed.columns}"
-    )
-
-    # Set standard integer index for DF_ID
-    bucketed.index.name = SchemaColumns.DF_ID
-
-    logger.debug(
-        f"Bucketed {len(original_data)} rows into {len(bucketed)} buckets by column '{target_column}'"
-    )
-    logger.debug(f"Bucketed DataFrame columns: {list(bucketed.columns)}")
-    logger.debug(
-        f"Target column '{target_column}' in bucketed DataFrame: {target_column in bucketed.columns}"
-    )
-
-    return bucketed
+    df[SchemaColumns.COUNT] = df.groupby(groupby_columns).transform("size")
+    df = df.drop_duplicates(subset=groupby_columns)
+    df = df.reset_index(drop=True)
+    df.index.name = SchemaColumns.DF_ID
+    return df
 
 
 def get_optimal_h3_level(df: pd.DataFrame, max_rows: int) -> Optional[int]:
@@ -344,6 +319,8 @@ def filter_df_to_selected_buckets(
         bucketed_df: The bucketed DataFrame (output from bucket_by_target_column)
         target_column: Column name that was used for bucketing (present in both DataFrames)
         bucket_indices_to_keep: List of integer indices from bucketed_df to keep
+
+    TODO(THAD): This needs to account for the groupby_column, too.
 
     Returns:
         Filtered DataFrame containing only rows from selected buckets

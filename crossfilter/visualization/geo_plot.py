@@ -11,6 +11,7 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 
+from crossfilter.core.geo_projection_state import GeoProjectionState
 from crossfilter.core.schema import SchemaColumns as C
 
 
@@ -158,9 +159,8 @@ def _calculate_map_view(
 
 def create_geo_plot(
     df: pd.DataFrame,
+    geo_projection_state: GeoProjectionState,
     title: Optional[str] = None,
-    groupby: Optional[str] = str(C.DATA_TYPE),
-    max_marker_size: int = 10,
 ) -> go.Figure:
     """Create a Plotly geographic scatter plot with tile maps."""
     df = df.dropna(subset=[C.GPS_LATITUDE, C.GPS_LONGITUDE]).copy()
@@ -203,10 +203,13 @@ def create_geo_plot(
         df[C.COUNT] = 1
 
     # Handle groupby
+    groupby = geo_projection_state.projection_state.groupby_column
     if not groupby:
         groupby = "Data"
         df[groupby] = "All"
+    assert groupby in df.columns, f"Groupby column {groupby} not found in DataFrame"
     df[groupby] = df[groupby].astype(str).fillna("Unknown")
+
     df["groupby_count_sum"] = df.groupby(groupby)[C.COUNT].transform("sum")
     df["Group (Count)"] = df[groupby] + " (" + df["groupby_count_sum"].astype(str) + ")"
     df = df.sort_values(by=["groupby_count_sum", groupby], ascending=[False, True])
@@ -220,7 +223,7 @@ def create_geo_plot(
         # For largest COUNT, we want radius = max_marker_size
         # So: max_marker_size = sqrt(max_count * scale_factor)
         # Therefore: scale_factor = (max_marker_size^2) / max_count
-        scale_factor = (max_marker_size**2) / max_count
+        scale_factor = (geo_projection_state.max_marker_size**2) / max_count
         df["marker_size"] = df[C.COUNT].apply(
             lambda x: max(min_marker_size, math.sqrt(x * scale_factor))
         )
@@ -243,7 +246,7 @@ def create_geo_plot(
         hover_data=hover_data_columns,
         title=title,
         map_style="open-street-map",
-        size_max=max_marker_size,
+        size_max=geo_projection_state.max_marker_size,
     )
 
     # Calculate proper geographic bounds and center

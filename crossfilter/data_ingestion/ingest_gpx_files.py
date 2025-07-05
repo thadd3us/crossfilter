@@ -177,8 +177,8 @@ def upsert_dataframe_to_sqlite(
     # Create engine
     engine = create_engine(f"sqlite:///{destination_sqlite_db}")
 
-    # Create or update table structure
-    create_or_update_table(engine, destination_table, df)
+    # Create or update table structure and check if unique constraint exists
+    has_unique_constraint = create_or_update_table(engine, destination_table, df)
 
     # Perform upsert using SQLAlchemy
     metadata = MetaData()
@@ -195,28 +195,37 @@ def upsert_dataframe_to_sqlite(
             # Clean None values for SQLite
             cleaned_record = {k: v for k, v in record.items() if v is not None}
 
-            # Use INSERT OR REPLACE for SQLite upsert
-            stmt = insert(table).values(cleaned_record)
+            if has_unique_constraint:
+                # Use ON CONFLICT DO UPDATE when unique constraint exists
+                stmt = insert(table).values(cleaned_record)
+                primary_key_col = SchemaColumns.UUID_STRING
 
-            # For SQLite, we'll use ON CONFLICT DO UPDATE
-            # First, let's check if UUID_STRING is the primary key
-            primary_key_col = SchemaColumns.UUID_STRING
+                # Create the ON CONFLICT DO UPDATE statement
+                update_dict = {
+                    col.name: stmt.excluded[col.name]
+                    for col in table.columns
+                    if col.name != primary_key_col
+                }
 
-            # Create the ON CONFLICT DO UPDATE statement
-            update_dict = {
-                col.name: stmt.excluded[col.name]
-                for col in table.columns
-                if col.name != primary_key_col
-            }
+                if update_dict:
+                    stmt = stmt.on_conflict_do_update(
+                        index_elements=[primary_key_col], set_=update_dict
+                    )
+                else:
+                    stmt = stmt.on_conflict_do_nothing(index_elements=[primary_key_col])
 
-            if update_dict:
-                stmt = stmt.on_conflict_do_update(
-                    index_elements=[primary_key_col], set_=update_dict
-                )
+                conn.execute(stmt)
             else:
-                stmt = stmt.on_conflict_do_nothing(index_elements=[primary_key_col])
-
-            conn.execute(stmt)
+                # Fallback strategy: delete existing record with same UUID and insert new one
+                uuid_value = cleaned_record.get(SchemaColumns.UUID_STRING)
+                if uuid_value:
+                    # Delete existing record with same UUID
+                    delete_stmt = text(f"DELETE FROM {destination_table} WHERE {SchemaColumns.UUID_STRING} = :uuid_value")
+                    conn.execute(delete_stmt, {"uuid_value": uuid_value})
+                
+                # Insert the new record
+                stmt = insert(table).values(cleaned_record)
+                conn.execute(stmt)
 
         conn.commit()
 

@@ -45,6 +45,24 @@ def generate_uuid_from_components(
     return str(uuid.UUID(bytes=hash_digest[:16]))
 
 
+def generate_uuid_for_row(
+    row: pd.Series,
+    first_point_timestamp: datetime,
+    first_point_lat: float,
+    first_point_lon: float,
+) -> str:
+    """Generate a UUID for a single DataFrame row."""
+    return generate_uuid_from_components(
+        first_point_timestamp,
+        first_point_lat,
+        first_point_lon,
+        row[SchemaColumns.TIMESTAMP_UTC].to_pydatetime().replace(tzinfo=timezone.utc),
+        row[SchemaColumns.GPS_LATITUDE],
+        row[SchemaColumns.GPS_LONGITUDE],
+        DataType(row[SchemaColumns.DATA_TYPE]),
+    )
+
+
 def load_gpx_file_to_df(gpx_file_path: Path) -> pd.DataFrame:
     """
     Parse a GPX file and convert it to a DataFrame conforming to the schema.
@@ -68,57 +86,11 @@ def load_gpx_file_to_df(gpx_file_path: Path) -> pd.DataFrame:
     except Exception as e:
         raise ValueError(f"Failed to parse GPX file {gpx_file_path}: {e}")
     
-    records: List[dict] = []
-    
-    # Find the first point (trackpoint or waypoint) for UUID generation
-    first_point: Optional[GPXTrackPoint] = None
-    first_point_timestamp: Optional[datetime] = None
-    first_point_lat: Optional[float] = None
-    first_point_lon: Optional[float] = None
-    
-    # First, look for trackpoints
-    for track in gpx.tracks:
-        for segment in track.segments:
-            for point in segment.points:
-                if point.time and point.latitude and point.longitude:
-                    first_point = point
-                    first_point_timestamp = point.time
-                    first_point_lat = point.latitude
-                    first_point_lon = point.longitude
-                    break
-            if first_point:
-                break
-        if first_point:
-            break
-    
-    # If no trackpoints, look for waypoints
-    if not first_point:
-        for waypoint in gpx.waypoints:
-            if waypoint.time and waypoint.latitude and waypoint.longitude:
-                first_point_timestamp = waypoint.time
-                first_point_lat = waypoint.latitude
-                first_point_lon = waypoint.longitude
-                break
-    
-    if not first_point_timestamp:
-        logger.warning(f"No points with timestamp and coordinates found in {gpx_file_path}")
-        # Return empty DataFrame with correct schema
-        return pd.DataFrame(columns=[
-            SchemaColumns.UUID_STRING,
-            SchemaColumns.DATA_TYPE,
-            SchemaColumns.NAME,
-            SchemaColumns.CAPTION,
-            SchemaColumns.SOURCE_FILE,
-            SchemaColumns.TIMESTAMP_MAYBE_TIMEZONE_AWARE,
-            SchemaColumns.TIMESTAMP_UTC,
-            SchemaColumns.GPS_LATITUDE,
-            SchemaColumns.GPS_LONGITUDE,
-            SchemaColumns.RATING_0_TO_5,
-            SchemaColumns.SIZE_IN_BYTES,
-        ])
-    
     # Get file size
     file_size = gpx_file_path.stat().st_size
+    
+    # Collect all points first (without UUIDs)
+    records: List[dict] = []
     
     # Process all trackpoints
     for track in gpx.tracks:
@@ -126,18 +98,7 @@ def load_gpx_file_to_df(gpx_file_path: Path) -> pd.DataFrame:
         for segment in track.segments:
             for point in segment.points:
                 if point.time and point.latitude and point.longitude:
-                    uuid_str = generate_uuid_from_components(
-                        first_point_timestamp,
-                        first_point_lat,
-                        first_point_lon,
-                        point.time,
-                        point.latitude,
-                        point.longitude,
-                        DataType.GPX_TRACKPOINT,
-                    )
-                    
                     records.append({
-                        SchemaColumns.UUID_STRING: uuid_str,
                         SchemaColumns.DATA_TYPE: DataType.GPX_TRACKPOINT,
                         SchemaColumns.NAME: track_name,
                         SchemaColumns.CAPTION: None,
@@ -153,18 +114,7 @@ def load_gpx_file_to_df(gpx_file_path: Path) -> pd.DataFrame:
     # Process all waypoints
     for waypoint in gpx.waypoints:
         if waypoint.time and waypoint.latitude and waypoint.longitude:
-            uuid_str = generate_uuid_from_components(
-                first_point_timestamp,
-                first_point_lat,
-                first_point_lon,
-                waypoint.time,
-                waypoint.latitude,
-                waypoint.longitude,
-                DataType.GPX_WAYPOINT,
-            )
-            
             records.append({
-                SchemaColumns.UUID_STRING: uuid_str,
                 SchemaColumns.DATA_TYPE: DataType.GPX_WAYPOINT,
                 SchemaColumns.NAME: waypoint.name,
                 SchemaColumns.CAPTION: waypoint.comment or waypoint.description,
@@ -199,6 +149,18 @@ def load_gpx_file_to_df(gpx_file_path: Path) -> pd.DataFrame:
     
     # Convert TIMESTAMP_UTC to proper datetime with UTC timezone
     df[SchemaColumns.TIMESTAMP_UTC] = pd.to_datetime(df[SchemaColumns.TIMESTAMP_UTC], utc=True)
+    
+    # Find the first point for UUID generation (first chronologically)
+    first_row = df.loc[df[SchemaColumns.TIMESTAMP_UTC].idxmin()]
+    first_point_timestamp = first_row[SchemaColumns.TIMESTAMP_UTC].to_pydatetime().replace(tzinfo=timezone.utc)
+    first_point_lat = first_row[SchemaColumns.GPS_LATITUDE]
+    first_point_lon = first_row[SchemaColumns.GPS_LONGITUDE]
+    
+    # Generate UUIDs for all rows using vectorized operation
+    df[SchemaColumns.UUID_STRING] = df.apply(
+        lambda row: generate_uuid_for_row(row, first_point_timestamp, first_point_lat, first_point_lon),
+        axis=1
+    )
     
     # Set index name
     df.index.name = SchemaColumns.DF_ID

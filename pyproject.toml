@@ -28,7 +28,6 @@ dependencies = [
     "requests>=2.31.0",
     "pandera>=0.17.0",
     "nbformat",
-    "geopandas>=1.1.0",
 ]
 
 [project.optional-dependencies]

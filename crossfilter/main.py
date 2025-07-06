@@ -5,6 +5,8 @@ import logging
 import signal
 import sys
 import traceback
+from dataclasses import dataclass
+from io import BytesIO
 from pathlib import Path
 from typing import Any, Optional
 
@@ -13,7 +15,7 @@ import pandas as pd
 import typer
 import uvicorn
 from fastapi import Depends, FastAPI, HTTPException, Query, Request
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
@@ -33,8 +35,15 @@ from crossfilter.core.session_state import SessionState
 from crossfilter.visualization.temporal_cdf_plot import create_temporal_cdf
 from crossfilter.visualization.geo_plot import create_geo_plot
 
-# Create a single session state instance for dependency injection
-_session_state_instance = SessionState()
+@dataclass
+class App:
+    """Application state container to avoid global variables."""
+    session_state: SessionState
+    uuid_preview_images_base_dir: Optional[Path] = None
+
+
+# Create a single app instance for dependency injection
+_app_instance = App(session_state=SessionState())
 
 # Configure logging for better error visibility with IDE-clickable file paths
 logging.basicConfig(
@@ -45,9 +54,14 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+def get_app() -> App:
+    """Dependency function to get the app instance."""
+    return _app_instance
+
+
 def get_session_state() -> SessionState:
     """Dependency function to get the session state instance."""
-    return _session_state_instance
+    return _app_instance.session_state
 
 
 app = FastAPI(
@@ -337,6 +351,44 @@ async def filter_change_stream(
     )
 
 
+@app.get("/api/image_preview/uuid/{uuid}")
+async def get_uuid_preview_image(uuid: str, app_instance: App = Depends(get_app)) -> Response:
+    """Get a preview image for a UUID."""
+    if not app_instance.uuid_preview_images_base_dir:
+        return _create_no_preview_available_image()
+    
+    # Extract first two characters for subdirectory
+    if len(uuid) < 2:
+        return _create_no_preview_available_image()
+    
+    subdir = uuid[:2]
+    image_path = app_instance.uuid_preview_images_base_dir / subdir / f"{uuid}.jpg"
+    
+    if not image_path.exists():
+        return _create_no_preview_available_image()
+    
+    try:
+        with open(image_path, "rb") as f:
+            image_data = f.read()
+        return Response(content=image_data, media_type="image/jpeg")
+    except Exception as e:
+        logger.error(f"Error reading image file {image_path}: {e}")
+        return _create_no_preview_available_image()
+
+
+def _create_no_preview_available_image() -> Response:
+    """Create a dummy image with 'No preview available' text."""
+    # Create a simple SVG image
+    svg_content = """<svg width="200" height="150" xmlns="http://www.w3.org/2000/svg">
+        <rect width="200" height="150" fill="#f0f0f0" stroke="#ccc" stroke-width="2"/>
+        <text x="100" y="75" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" fill="#666">
+            No preview available
+        </text>
+    </svg>"""
+    
+    return Response(content=svg_content, media_type="image/svg+xml")
+
+
 # https://github.com/fastapi/typer/issues/341
 typer.main.get_command_name = lambda name: name
 
@@ -375,8 +427,18 @@ def serve(
     preload_sqlite_table: str = typer.Option(
         "data", help="Table name in SQLite database to preload (default: 'data')"
     ),
+    uuid_preview_images_base_dir: Optional[Path] = typer.Option(
+        None,
+        help="Directory containing UUID preview images organized in subdirectories",
+        exists=True,
+        dir_okay=True,
+        file_okay=False,
+    ),
 ) -> None:
     """Start the Crossfilter web application."""
+
+    # Set UUID preview images base directory on app instance
+    _app_instance.uuid_preview_images_base_dir = uuid_preview_images_base_dir
 
     # Handle preload data if provided
     dataframes = []
@@ -405,7 +467,7 @@ def serve(
     logger.info(f"Concatenated {len(dataframes)=} dataframes into {final_df.shape=}")
     final_df = final_df.reset_index(drop=True)
     final_df.index.name = C.DF_ID
-    _session_state_instance.load_dataframe(final_df)
+    _app_instance.session_state.load_dataframe(final_df)
 
     def signal_handler(signum: int, frame: Any) -> None:
         """Handle shutdown signals gracefully."""

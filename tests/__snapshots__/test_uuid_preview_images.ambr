@@ -1,0 +1,17 @@
+# serializer version: 1
+# name: test_uuid_preview_image_endpoint_response_format
+  dict({
+    'content_length': 3108075,
+    'content_type': 'image/jpeg',
+    'has_jpeg_magic': True,
+    'status_code': 200,
+  })
+# ---
+# name: test_uuid_preview_image_endpoint_response_format.1
+  dict({
+    'content_contains_no_preview': True,
+    'content_contains_svg': True,
+    'content_type': 'image/svg+xml',
+    'status_code': 200,
+  })
+# ---

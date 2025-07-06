@@ -210,7 +210,7 @@ async def get_temporal_plot_data(
         return ProjectionPlotResponse(
             plotly_plot=plotly_plot,
             total_row_count=total_row_count,
-            is_bucketed=aggregation_level is not None is not None,
+            is_bucketed=aggregation_level is not None,
             bucketing_level=str(aggregation_level) if aggregation_level else None,
             bucket_count=len(temporal_data),
         )
@@ -252,7 +252,7 @@ async def get_geo_plot_data(
         return ProjectionPlotResponse(
             plotly_plot=plotly_plot,
             total_row_count=total_row_count,
-            is_bucketed=aggregation_level is not None is not None,
+            is_bucketed=aggregation_level is not None,
             bucketing_level=str(aggregation_level) if aggregation_level else None,
             bucket_count=len(geo_data),
         )

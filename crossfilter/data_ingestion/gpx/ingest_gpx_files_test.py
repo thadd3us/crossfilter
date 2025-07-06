@@ -7,17 +7,36 @@ from typing import List
 import pandas as pd
 import pytest
 from sqlalchemy import create_engine, inspect, text
+from syrupy.assertion import SnapshotAssertion
 
 from crossfilter.core.schema import DataType, SchemaColumns
 from crossfilter.data_ingestion.gpx.ingest_gpx_files import (
     find_gpx_files,
     process_single_gpx_file,
 )
+from crossfilter.data_ingestion.gpx.ingest_gpx_files import main
+from crossfilter.data_ingestion.sqlite_utils import query_sqlite_to_dataframe
 
 
-def create_test_gpx_file(path: Path, content: str) -> None:
+gpx_content = """<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="test">
+    <trk>
+        <name>Test Track</name>
+        <trkseg>
+            <trkpt lat="37.7749" lon="-122.4194">
+                <time>2023-01-01T12:00:00Z</time>
+            </trkpt>
+        </trkseg>
+    </trk>
+</gpx>"""
+
+
+@pytest.fixture
+def gpx_file(tmp_path: Path) -> Path:
     """Create a test GPX file with given content."""
-    path.write_text(content)
+    gpx_file = tmp_path / "test.gpx"
+    gpx_file.write_text(gpx_content)
+    return gpx_file
 
 
 def test_find_gpx_files_nonexistent_directory() -> None:
@@ -63,23 +82,8 @@ def test_find_gpx_files_with_files(tmp_path: Path) -> None:
     assert subdir / "file3.gpx" in gpx_files
 
 
-def test_process_single_gpx_file_valid(tmp_path: Path) -> None:
+def test_process_single_gpx_file_valid(tmp_path: Path, gpx_file: Path) -> None:
     """Test processing a valid GPX file."""
-    gpx_content = """<?xml version="1.0" encoding="UTF-8"?>
-<gpx version="1.1" creator="test">
-    <trk>
-        <name>Test Track</name>
-        <trkseg>
-            <trkpt lat="37.7749" lon="-122.4194">
-                <time>2023-01-01T12:00:00Z</time>
-            </trkpt>
-        </trkseg>
-    </trk>
-</gpx>"""
-
-    gpx_file = tmp_path / "test.gpx"
-    create_test_gpx_file(gpx_file, gpx_content)
-
     df = process_single_gpx_file(gpx_file)
 
     assert len(df) == 1
@@ -99,3 +103,17 @@ def test_process_single_gpx_file_invalid(tmp_path: Path) -> None:
     assert len(df) == 0
     assert SchemaColumns.UUID_STRING in df.columns
     assert SchemaColumns.DATA_TYPE in df.columns
+
+
+def test_thad_ingest_dev_data(
+    gpx_file: Path, tmp_path: Path, snapshot: SnapshotAssertion
+) -> None:
+    main(
+        base_dir=gpx_file.parent,
+        destination_sqlite_db=tmp_path / "data.sqlite",
+        destination_table="data",
+        max_workers=1,
+    )
+
+    df = query_sqlite_to_dataframe(tmp_path / "data.sqlite", "SELECT * FROM data")
+    assert df.to_dict(orient="records") == snapshot

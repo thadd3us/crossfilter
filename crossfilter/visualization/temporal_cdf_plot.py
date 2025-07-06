@@ -9,6 +9,7 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 
+from crossfilter.core.bucketing import groupby_fillna
 from crossfilter.core.schema import SchemaColumns as C
 from crossfilter.core.temporal_projection_state import TemporalProjectionState
 from crossfilter.visualization.plot_common import CUSTOM_DATA_COLUMNS
@@ -47,7 +48,7 @@ def create_temporal_cdf(
         groupby = "Data"
         df[groupby] = "All"
     assert groupby in df.columns, f"Groupby column {groupby} not found in DataFrame"
-    df[groupby] = df[groupby].astype(str).fillna("Unknown")
+    df[groupby] = groupby_fillna(df[groupby])
 
     df["groupby_count_sum"] = df.groupby(groupby)[C.COUNT].transform("sum")
     df["Group (Count)"] = df[groupby] + " (" + df["groupby_count_sum"].astype(str) + ")"

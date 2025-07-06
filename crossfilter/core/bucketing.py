@@ -45,24 +45,13 @@ from crossfilter.core.schema import (
 logger = logging.getLogger(__name__)
 
 
-@dataclass(frozen=True)
-class BucketKey:
-    """
-    Represents a specific bucketing configuration for data aggregation.
+# It's important that
+GROUPBY_NA_FILL_VALUE = "Unknown"
 
-    When the frontend sends df_ids from bucketed data, this key identifies
-    which bucketing operation was used to ensure we apply the correct
-    filtering logic.
-    """
 
-    target_column: str
-    identifier: str = ""
-
-    def __post_init__(self) -> None:
-        """Generate a unique identifier if not provided."""
-        if not self.identifier:
-            # Generate a short UUID for this bucketing instance
-            object.__setattr__(self, "identifier", str(uuid.uuid4())[:8])
+def groupby_fillna(series: pd.Series) -> pd.Series:
+    """Fill NaN values in the groupby column with a placeholder value."""
+    return series.fillna(GROUPBY_NA_FILL_VALUE).astype(str)
 
 
 # H3 resolution levels to pre-compute (0-15, where higher = more granular).  Important that these are ordered from coarsest to finest resolution.
@@ -195,50 +184,6 @@ def _add_temporal_columns(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def bucket_by_target_column(
-    original_data: pd.DataFrame, target_column: str, groupby_column: Optional[str]
-) -> pd.DataFrame:
-    """
-    Create a bucketed DataFrame by grouping on the target column.
-
-    Each row in the result represents one bucket (unique value in target_column).
-    All original columns are preserved with values from the first row in each bucket.
-    A COUNT column is added showing the number of original rows in each bucket.
-
-    If we're going to later do a groupby, we need to preserve the groupby_column values independently for accurate counting.
-
-    Returns:
-        Bucketed DataFrame with one row per unique target_column value (and per groupby_column value if provided)
-    """
-    logger.debug(f"bucket_by_target_column called with target_column='{target_column}'")
-    logger.debug(f"Original data columns: {list(original_data.columns)}")
-    logger.debug(
-        f"Target column '{target_column}' in original data: {target_column in original_data.columns}"
-    )
-
-    if target_column not in original_data.columns:
-        raise ValueError(f"Target column '{target_column}' not found in DataFrame")
-
-    df = original_data.copy()
-
-    # We can't bucket on NaN values.
-    df = df.dropna(subset=[target_column])
-
-    groupby_columns = [target_column]
-    if groupby_column:
-        assert (
-            groupby_column in original_data.columns
-        ), f"Groupby column '{groupby_column}' not found in DataFrame"
-        df[groupby_column] = df[groupby_column].fillna("Unknown").astype(str)
-        groupby_columns.append(groupby_column)
-
-    df[SchemaColumns.COUNT] = df.groupby(groupby_columns).transform("size")
-    df = df.drop_duplicates(subset=groupby_columns)
-    df = df.reset_index(drop=True)
-    df.index.name = SchemaColumns.DF_ID
-    return df
-
-
 def get_optimal_h3_level(df: pd.DataFrame, max_rows: int) -> Optional[int]:
     """
     Returns:
@@ -256,7 +201,7 @@ def get_optimal_h3_level(df: pd.DataFrame, max_rows: int) -> Optional[int]:
         )
         return None
 
-    # Iterate from finest to coarsest resolution to find the finest level 
+    # Iterate from finest to coarsest resolution to find the finest level
     # that still produces fewer than max_rows unique buckets
     for level in reversed(H3_LEVELS):
         col_name = get_h3_column_name(level)
@@ -303,65 +248,6 @@ def get_optimal_temporal_level(
     return TemporalLevel.YEAR
 
 
-def filter_df_to_selected_buckets(
-    original_data: pd.DataFrame,
-    bucketed_df: pd.DataFrame,
-    target_column: str,
-    bucket_indices_to_keep: list[int],
-) -> pd.DataFrame:
-    """
-    Filter original data to only contain rows from selected buckets.
-
-    This function implements the filtering workflow where the frontend sends
-    integer row indices of selected buckets, and we filter the original data
-    to only include rows that belong to those selected buckets.
-
-    Args:
-        original_data: The original, unbucketed DataFrame
-        bucketed_df: The bucketed DataFrame (output from bucket_by_target_column)
-        target_column: Column name that was used for bucketing (present in both DataFrames)
-        bucket_indices_to_keep: List of integer indices from bucketed_df to keep
-
-    TODO(THAD): This needs to account for the groupby_column, too.
-
-    Returns:
-        Filtered DataFrame containing only rows from selected buckets
-    """
-    if target_column not in original_data.columns:
-        raise ValueError(
-            f"Target column '{target_column}' not found in original DataFrame"
-        )
-
-    if target_column not in bucketed_df.columns:
-        raise ValueError(
-            f"Target column '{target_column}' not found in bucketed DataFrame"
-        )
-
-    # Validate bucket indices
-    invalid_indices = [
-        idx for idx in bucket_indices_to_keep if idx < 0 or idx >= len(bucketed_df)
-    ]
-    if invalid_indices:
-        raise ValueError(
-            f"Invalid bucket indices: {invalid_indices}. Valid range is 0-{len(bucketed_df)-1}"
-        )
-
-    # Get the target column values for selected buckets as Series
-    selected_bucket_values = bucketed_df.iloc[bucket_indices_to_keep][target_column]
-
-    # Check that none of the selected bucket values is NaN
-    if selected_bucket_values.isna().any():
-        raise ValueError(
-            "Selected bucket values cannot contain NaN. This indicates invalid bucketing."
-        )
-
-    # Filter original data using isin
-    mask = original_data[target_column].isin(selected_bucket_values)
-    filtered_data = original_data[mask].copy()
-
-    return filtered_data
-
-
 def add_bucketed_columns(df: pd.DataFrame) -> pd.DataFrame:
     """
     Add all quantized columns to the DataFrame for bucketing operations.
@@ -392,21 +278,95 @@ def add_bucketed_columns(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def bucket_dataframe(bucket_key: BucketKey, df: pd.DataFrame) -> pd.DataFrame:
+def bucket_by_target_column(
+    original_data: pd.DataFrame, target_column: str, groupby_column: Optional[str]
+) -> pd.DataFrame:
     """
-    Create a bucketed DataFrame using the specified bucketing configuration.
+    Create a bucketed DataFrame by grouping on the target column.
 
-    This function takes a BucketKey that specifies the bucketing type, target column,
-    and identifier, and returns a bucketed DataFrame that can be sent to the frontend.
+    Each row in the result represents one bucket (unique value in target_column).
+    All original columns are preserved with values from the first row in each bucket.
+    A COUNT column is added showing the number of original rows in each bucket.
 
-    Args:
-        bucket_key: Configuration specifying how to bucket the data
-        df: DataFrame to bucket (should have quantized columns pre-computed)
+    If we're going to later do a groupby, we need to preserve the groupby_column values independently for accurate counting.
 
     Returns:
-        Bucketed DataFrame with one row per unique bucket value
-
-    Raises:
-        ValueError: If the target column is not found in the DataFrame
+        Bucketed DataFrame with one row per unique target_column value (and per groupby_column value if provided)
     """
-    return bucket_by_target_column(df, bucket_key.target_column)
+    logger.debug(f"bucket_by_target_column called with target_column='{target_column}'")
+    logger.debug(f"Original data columns: {list(original_data.columns)}")
+    logger.debug(
+        f"Target column '{target_column}' in original data: {target_column in original_data.columns}"
+    )
+
+    if target_column not in original_data.columns:
+        raise ValueError(f"Target column '{target_column}' not found in DataFrame")
+
+    df = original_data.copy()
+
+    # We can't bucket on NaN values.
+    df = df.dropna(subset=[target_column])
+
+    groupby_columns = [target_column]
+    if groupby_column:
+        assert (
+            groupby_column in original_data.columns
+        ), f"Groupby column '{groupby_column}' not found in DataFrame"
+        df[groupby_column] = df[groupby_column].fillna("Unknown").astype(str)
+        groupby_columns.append(groupby_column)
+
+    df[SchemaColumns.COUNT] = df.groupby(groupby_columns).transform("size")
+    df = df.drop_duplicates(subset=groupby_columns)
+    df = df.reset_index(drop=True)
+    df.index.name = SchemaColumns.DF_ID
+    return df
+
+
+def filter_df_to_selected_buckets(
+    original_data: pd.DataFrame,
+    bucketed_df: pd.DataFrame,
+    target_column: str,
+    bucket_indices_to_keep: list[int],
+    groupby_column: Optional[str] = None,
+) -> pd.DataFrame:
+    """
+    Filter original data to only contain rows from selected buckets.
+
+    This function implements the filtering workflow where the frontend sends
+    integer row indices of selected buckets, and we filter the original data
+    to only include rows that belong to those selected buckets.
+
+    This is how we translate backwards from the df_ids in the bucketed data to the rows/df_ids in the original data.
+
+    TODO(THAD): This needs to account for the groupby_column, too, if there was any groupby.  Basically it needs to
+
+    Returns:
+        Filtered DataFrame containing only rows from selected buckets
+    """
+    df = original_data.copy()
+    df["original_index"] = df.index
+    if target_column not in original_data.columns:
+        raise ValueError(
+            f"Target column '{target_column}' not found in original DataFrame"
+        )
+
+    merge_on_columns = [target_column]
+
+    if groupby_column:
+        merge_on_columns.append(groupby_column)
+        df[groupby_column] = groupby_fillna(df[groupby_column])
+
+    assert bucketed_df[merge_on_columns].notna().all().all()
+    assert df[merge_on_columns].notna().all().all()
+
+    buckets_we_picked = bucketed_df.loc[bucket_indices_to_keep, merge_on_columns]
+
+    merged = pd.merge(
+        df[merge_on_columns + ["original_index"]],
+        buckets_we_picked,
+        on=merge_on_columns,
+        how="inner",
+    )
+
+    result = original_data.loc[merged["original_index"].values, :]
+    return result

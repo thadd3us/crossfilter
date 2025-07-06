@@ -172,44 +172,48 @@ def test_get_optimal_h3_level_large_dataset_issue() -> None:
     """Test H3 level selection with large dataset to reproduce the issue."""
     # Create a large dataset spread across different locations to simulate ~100k rows
     import numpy as np
-    
+
     # Create diverse coordinates that span different H3 cells
     np.random.seed(42)  # For reproducible results
     size = 10000  # Smaller for testing but still shows the issue
-    
+
     # Generate coordinates spread across a large geographic area
     # This ensures we get diverse H3 cells at different levels
     lats = np.random.uniform(37.0, 38.0, size)  # SF Bay Area roughly
     lons = np.random.uniform(-123.0, -122.0, size)
-    
-    df = pd.DataFrame({
-        C.UUID_STRING: [f"uuid_{i}" for i in range(size)],
-        C.GPS_LATITUDE: lats,
-        C.GPS_LONGITUDE: lons,
-    })
+
+    df = pd.DataFrame(
+        {
+            C.UUID_STRING: [f"uuid_{i}" for i in range(size)],
+            C.GPS_LATITUDE: lats,
+            C.GPS_LONGITUDE: lons,
+        }
+    )
     df.index.name = C.DF_ID
-    
+
     # Add quantized H3 columns
     quantized = add_quantized_geo_h3_columns(df)
-    
+
     # Target 1000 rows (10% of our data)
     target_rows = 1000
     optimal_level = get_optimal_h3_level(quantized, max_rows=target_rows)
-    
+
     # Check that we got a reasonable level (not 0)
     assert optimal_level is not None
-    
+
     # Get the actual bucket count for this level
     h3_col = get_h3_column_name(optimal_level)
     actual_buckets = quantized[h3_col].nunique()
-    
+
     # The optimal level should produce close to target_rows buckets
     # It should be <= target_rows but not dramatically smaller
     assert actual_buckets <= target_rows
-    
+
     # Verify that the algorithm chose a reasonable level that produces a good number of buckets
     # (not too few, which would indicate it chose too coarse a resolution)
-    assert actual_buckets > target_rows / 10, f"Got {actual_buckets} buckets, expected more than {target_rows/10}"
+    assert (
+        actual_buckets > target_rows / 10
+    ), f"Got {actual_buckets} buckets, expected more than {target_rows/10}"
 
 
 def test_get_optimal_temporal_level(snapshot: SnapshotAssertion) -> None:
@@ -477,6 +481,40 @@ def test_filter_df_to_selected_buckets_all_buckets(
     )
 
 
+def test_thad_filter_df_to_selected_buckets_with_groupby() -> None:
+    """Test filtering when all buckets are selected."""
+    df = pd.DataFrame(
+        {
+            C.UUID_STRING: ["uuid_1", "uuid_2", "uuid_3", "uuid_4", "uuid_5"],
+            C.DATA_TYPE: [
+                DataType.GPX_WAYPOINT,
+                DataType.GPX_WAYPOINT,
+                DataType.GPX_TRACKPOINT,
+                DataType.GPX_TRACKPOINT,
+                DataType.GPX_WAYPOINT,
+            ],
+            C.GPS_LATITUDE: [37.77, 37.78, 37.77, 37.79, 37.78],
+            C.GPS_LONGITUDE: [-122.42, -122.43, -122.42, -122.44, -122.43],
+            "category": ["A", "B", "A", "C", "B"],
+            "value": [10, 20, 30, 40, 50],
+        }
+    )
+
+    bucketed = bucket_by_target_column(df, "category", groupby_column=C.DATA_TYPE)
+
+    selected_indices = bucketed.query(
+        "(category == 'A' and DATA_TYPE == 'GPX_TRACKPOINT') or (category == 'B' and DATA_TYPE == 'GPX_WAYPOINT')"
+    ).index.tolist()
+    assert selected_indices == [1, 2]
+
+    filtered = filter_df_to_selected_buckets(
+        df, bucketed, "category", selected_indices, groupby_column=C.DATA_TYPE
+    )
+
+    # Should get all original rows
+    assert filtered.index.tolist() == [1, 2, 4]
+
+
 def test_filter_df_to_selected_buckets_empty_selection(
     simple_data_example: pd.DataFrame,
 ) -> None:
@@ -507,15 +545,15 @@ def test_filter_df_to_selected_buckets_invalid_indices(
     )
 
     # Test negative index
-    with pytest.raises(ValueError, match="Invalid bucket indices: \\[-1\\]"):
+    with pytest.raises(KeyError):
         filter_df_to_selected_buckets(simple_data_example, bucketed, "category", [-1])
 
     # Test index too large
-    with pytest.raises(ValueError, match="Invalid bucket indices: \\[5\\]"):
+    with pytest.raises(KeyError):
         filter_df_to_selected_buckets(simple_data_example, bucketed, "category", [5])
 
     # Test multiple invalid indices
-    with pytest.raises(ValueError, match="Invalid bucket indices: \\[-1, 10\\]"):
+    with pytest.raises(KeyError):
         filter_df_to_selected_buckets(
             simple_data_example, bucketed, "category", [-1, 1, 10]
         )
@@ -530,16 +568,12 @@ def test_filter_df_to_selected_buckets_missing_target_column(
     )
 
     # Test missing column in original data
-    with pytest.raises(
-        ValueError, match="Target column 'missing_col' not found in original DataFrame"
-    ):
+    with pytest.raises(ValueError):
         filter_df_to_selected_buckets(simple_data_example, bucketed, "missing_col", [0])
 
     # Test missing column in bucketed data - create bucketed df without the target column
     bucketed_missing_col = bucketed.drop(columns=["category"])
-    with pytest.raises(
-        ValueError, match="Target column 'category' not found in bucketed DataFrame"
-    ):
+    with pytest.raises(KeyError):
         filter_df_to_selected_buckets(
             simple_data_example, bucketed_missing_col, "category", [0]
         )

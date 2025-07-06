@@ -14,6 +14,7 @@ import plotly.graph_objects as go
 from crossfilter.core.geo_projection_state import GeoProjectionState
 from crossfilter.core.schema import SchemaColumns as C
 from crossfilter.visualization.plot_common import CUSTOM_DATA_COLUMNS
+from crossfilter.core.bucketing import groupby_fillna
 
 
 def _haversine_distance_vectorized(
@@ -209,7 +210,7 @@ def create_geo_plot(
         groupby = "Data"
         df[groupby] = "All"
     assert groupby in df.columns, f"Groupby column {groupby} not found in DataFrame"
-    df[groupby] = df[groupby].astype(str).fillna("Unknown")
+    df[groupby] = groupby_fillna(df[groupby])
 
     df["groupby_count_sum"] = df.groupby(groupby)[C.COUNT].transform("sum")
     df["Group (Count)"] = df[groupby] + " (" + df["groupby_count_sum"].astype(str) + ")"

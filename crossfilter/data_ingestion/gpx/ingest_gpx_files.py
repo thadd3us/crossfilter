@@ -10,7 +10,7 @@ from tqdm.contrib.concurrent import process_map
 from crossfilter.core.schema import SchemaColumns as C
 
 from crossfilter.core.schema import SchemaColumns
-from crossfilter.data_ingestion.gpx_parser import load_gpx_file_to_df
+from crossfilter.data_ingestion.gpx.gpx_parser import load_gpx_file_to_df
 from crossfilter.data_ingestion.sqlite_utils import upsert_dataframe_to_sqlite
 
 logger = logging.getLogger(__name__)
@@ -52,7 +52,6 @@ def process_single_gpx_file(gpx_file: Path) -> pd.DataFrame:
                 SchemaColumns.SIZE_IN_BYTES,
             ]
         )
-
 
 
 def main(

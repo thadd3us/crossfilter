@@ -8,7 +8,7 @@ from syrupy.assertion import SnapshotAssertion
 import pytest
 
 from crossfilter.core.schema import DataType, SchemaColumns
-from crossfilter.data_ingestion.gpx_parser import (
+from crossfilter.data_ingestion.gpx.gpx_parser import (
     generate_uuid_from_components,
     load_gpx_file_to_df,
 )

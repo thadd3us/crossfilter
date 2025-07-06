@@ -142,22 +142,9 @@ def test_parse_lightroom_catalog_nonexistent() -> None:
 def test_load_lightroom_catalog_to_df_nonexistent() -> None:
     """Test loading non-existent catalog file with error handling."""
     nonexistent_path = Path("/nonexistent/catalog.lrcat")
-
     # Should return empty DataFrame with correct schema instead of raising
-    df = load_lightroom_catalog_to_df(nonexistent_path)
-
-    assert df.empty
-    assert SchemaColumns.UUID_STRING in df.columns
-    assert SchemaColumns.DATA_TYPE in df.columns
-    assert SchemaColumns.NAME in df.columns
-    assert SchemaColumns.CAPTION in df.columns
-    assert SchemaColumns.SOURCE_FILE in df.columns
-    assert SchemaColumns.TIMESTAMP_MAYBE_TIMEZONE_AWARE in df.columns
-    assert SchemaColumns.TIMESTAMP_UTC in df.columns
-    assert SchemaColumns.GPS_LATITUDE in df.columns
-    assert SchemaColumns.GPS_LONGITUDE in df.columns
-    assert SchemaColumns.RATING_0_TO_5 in df.columns
-    assert SchemaColumns.SIZE_IN_BYTES in df.columns
+    with pytest.raises(FileNotFoundError):
+        load_lightroom_catalog_to_df(nonexistent_path)
 
 
 def test_parse_lightroom_catalog_real_data(test_catalogs_dir: Path) -> None:
@@ -367,14 +354,3 @@ def test_parse_multiple_catalogs(test_catalogs_dir: Path) -> None:
 
     # This is informational - we might expect some duplicates between test catalogs
     assert len(all_dataframes) > 0, "Should have parsed at least one catalog"
-
-
-def test_load_lightroom_catalog_to_df_error_handling() -> None:
-    """Test error handling in load_lightroom_catalog_to_df."""
-    # Test with a directory instead of a file
-    tmp_dir = Path("/tmp")
-    df = load_lightroom_catalog_to_df(tmp_dir)
-
-    # Should return empty DataFrame with correct schema
-    assert df.empty
-    assert len(df.columns) >= 11  # At least the required schema columns

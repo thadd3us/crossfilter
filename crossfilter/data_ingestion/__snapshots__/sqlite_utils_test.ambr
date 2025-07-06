@@ -67,6 +67,20 @@
     }),
   ])
 # ---
+# name: test_thad_upsert_datetime_utc_is_preserved
+  dict({
+    'TIMESTAMP_UTC': datetime64[ns, UTC],
+    'UUID_STRING': dtype('O'),
+  })
+# ---
+# name: test_thad_upsert_datetime_utc_is_preserved.1
+  list([
+    dict({
+      'TIMESTAMP_UTC': Timestamp('2021-01-01 12:00:00+0000', tz='UTC'),
+      'UUID_STRING': 'uuid-1',
+    }),
+  ])
+# ---
 # name: test_upsert_dataframe_to_sqlite_new_table
   list([
     dict({

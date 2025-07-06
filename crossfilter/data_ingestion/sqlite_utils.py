@@ -187,6 +187,12 @@ def query_sqlite_to_dataframe(
     with engine.connect() as conn:
         df = pd.read_sql_query(query, conn, params=params)
 
+    # Workaround: https://github.com/pandas-dev/pandas/issues/55554
+    if SchemaColumns.TIMESTAMP_UTC in df.columns:
+        df[SchemaColumns.TIMESTAMP_UTC] = pd.to_datetime(
+            df[SchemaColumns.TIMESTAMP_UTC], utc=True, format="ISO8601"
+        )
+
     return df
 
 

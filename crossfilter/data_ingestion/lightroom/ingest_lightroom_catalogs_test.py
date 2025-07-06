@@ -111,9 +111,8 @@ def test_load_lightroom_catalog_error_handling(tmp_path: Path) -> None:
     config = LightroomParserConfig()
 
     # Should return empty DataFrame with proper schema on error
-    df = load_lightroom_catalog_to_df(invalid_catalog, config)
-    assert df.empty
-    assert SchemaColumns.UUID_STRING in df.columns
+    with pytest.raises(Exception):
+        df = load_lightroom_catalog_to_df(invalid_catalog, config)
 
 
 def test_load_lightroom_catalog_real_data(test_catalogs_dir: Path) -> None:
@@ -214,49 +213,6 @@ def test_duplicate_handling(test_catalogs_dir: Path) -> None:
     assert len(dataframes) == 2
     assert initial_count > 0
     assert final_count > 0
-
-
-def test_empty_catalog_handling(tmp_path: Path) -> None:
-    """Test handling of empty or minimal catalogs."""
-    # Create a minimal SQLite file that looks like a catalog but has incomplete schema
-    empty_catalog = tmp_path / "empty.lrcat"
-
-    # Create empty SQLite database
-    conn = sqlite3.connect(empty_catalog)
-    cursor = conn.cursor()
-
-    # Create minimal tables that don't match expected Lightroom schema
-    cursor.execute(
-        """
-        CREATE TABLE Adobe_images (
-            id_local INTEGER PRIMARY KEY,
-            id_global TEXT,
-            rootFile INTEGER,
-            captureTime TEXT,
-            rating INTEGER
-        )
-    """
-    )
-
-    cursor.execute(
-        """
-        CREATE TABLE AgLibraryFile (
-            id_local INTEGER PRIMARY KEY,
-            idx_filename TEXT,
-            folder INTEGER
-        )
-    """
-    )
-
-    conn.commit()
-    conn.close()
-
-    config = LightroomParserConfig()
-
-    # Should return empty DataFrame due to missing tables/columns (error handled gracefully)
-    df = load_lightroom_catalog_to_df(empty_catalog, config)
-    assert df.empty
-    assert SchemaColumns.UUID_STRING in df.columns
 
 
 def test_large_ignore_collections_set() -> None:

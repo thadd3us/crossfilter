@@ -122,7 +122,7 @@ def build_file_path(
 
 
 def parse_lightroom_catalog(
-    catalog_path: Path, config: LightroomParserConfig = None
+    catalog_path: Path, config: Optional[LightroomParserConfig] = None
 ) -> pd.DataFrame:
     """Parse a Lightroom catalog file and return a DataFrame with the target schema."""
     if config is None:
@@ -232,7 +232,9 @@ def parse_lightroom_catalog(
         result_df[SchemaColumns.TIMESTAMP_MAYBE_TIMEZONE_AWARE] = df[
             "captureTime"
         ]  # THAD: Can we actually get tz-aware timestamps?
-        result_df[SchemaColumns.TIMESTAMP_UTC] = df["captureTime"]
+        result_df[SchemaColumns.TIMESTAMP_UTC] = pd.to_datetime(
+            df["captureTime"], utc=True, format="ISO8601"
+        )
         if result_df[SchemaColumns.TIMESTAMP_UTC].isna().any():
             logger.warning(
                 f"Found {result_df[SchemaColumns.TIMESTAMP_UTC].isna().sum()} missing timestamps"
@@ -413,29 +415,6 @@ def _get_collections_for_images(
 
 
 def load_lightroom_catalog_to_df(
-    catalog_path: Path, config: LightroomParserConfig = None
+    catalog_path: Path, config: Optional[LightroomParserConfig] = None
 ) -> pd.DataFrame:
-    """Load a Lightroom catalog and return a DataFrame with the target schema.
-
-    This is the main entry point for loading Lightroom catalogs.
-    """
-    try:
-        return parse_lightroom_catalog(catalog_path, config)
-    except Exception as e:
-        logger.error(f"Failed to load Lightroom catalog {catalog_path}: {e}")
-        # Return empty DataFrame with correct schema on error
-        return pd.DataFrame(
-            columns=[
-                SchemaColumns.UUID_STRING,
-                SchemaColumns.DATA_TYPE,
-                SchemaColumns.NAME,
-                SchemaColumns.CAPTION,
-                SchemaColumns.SOURCE_FILE,
-                SchemaColumns.TIMESTAMP_MAYBE_TIMEZONE_AWARE,
-                SchemaColumns.TIMESTAMP_UTC,
-                SchemaColumns.GPS_LATITUDE,
-                SchemaColumns.GPS_LONGITUDE,
-                SchemaColumns.RATING_0_TO_5,
-                SchemaColumns.SIZE_IN_BYTES,
-            ]
-        )
+    return parse_lightroom_catalog(catalog_path, config)

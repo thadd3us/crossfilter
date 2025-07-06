@@ -397,3 +397,24 @@ def test_upsert_large_dataframe(tmp_path: Path) -> None:
 
     assert sorted(actual.columns.tolist()) == sorted(df.columns.tolist())
     assert actual[df.columns].values.tolist() == df.values.tolist()
+
+
+def test_thad_upsert_datetime_utc_is_preserved(
+    tmp_path: Path, snapshot: SnapshotAssertion
+) -> None:
+    """Test that upserting a dataframe with a datetime column preserves the UTC timezone."""
+    db_path = tmp_path / "test.db"
+
+    df = pd.DataFrame(
+        {
+            SchemaColumns.UUID_STRING: ["uuid-1"],
+            SchemaColumns.TIMESTAMP_UTC: [
+                pd.Timestamp("2021-01-01 12:00:00", tz="UTC")
+            ],
+        }
+    )
+    upsert_dataframe_to_sqlite(df, db_path, "test_table")
+    actual = query_sqlite_to_dataframe(db_path, "SELECT * FROM test_table")
+    assert actual[SchemaColumns.TIMESTAMP_UTC].dtype == pd.DatetimeTZDtype(tz="UTC")
+    assert actual.dtypes.to_dict() == snapshot
+    assert actual.to_dict(orient="records") == snapshot

@@ -189,9 +189,7 @@ def load_sqlite_to_dataframe(sqlite_db_path: Path, table_name: str) -> pd.DataFr
             df[col] = None
 
     # Convert TIMESTAMP_UTC to UTC timezone-aware datetime, handling missing values
-    # df[SchemaColumns.TIMESTAMP_UTC] = pd.to_datetime(
-    #     df[SchemaColumns.TIMESTAMP_UTC], utc=True, errors="coerce"
-    # )
+    # df[SchemaColumns.TIMESTAMP_UTC] = pd.to_datetime(df[SchemaColumns.TIMESTAMP_UTC], utc=True, errors="coerce")
 
     # Validate and coerce only the schema columns
     schema_df = df[required_columns].copy()

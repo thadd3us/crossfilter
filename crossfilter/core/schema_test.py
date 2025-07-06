@@ -2,6 +2,7 @@
 
 import json
 from pathlib import Path
+import sys
 
 import pandas as pd
 import pytest
@@ -12,6 +13,7 @@ from crossfilter.core.schema import (
     get_h3_column_name,
     get_temporal_column_name,
     load_jsonl_to_dataframe,
+    load_sqlite_to_dataframe,
 )
 from crossfilter.core.schema import (
     SchemaColumns as C,
@@ -260,3 +262,13 @@ def test_df_id_stability(tmp_path: Path) -> None:
     filtered = df.loc[[0, 2]]
     assert len(filtered) == 2
     assert list(filtered.index) == [0, 2]
+
+
+@pytest.mark.skipif(sys.platform != "darwin", reason="Data is only on Thad's laptop")
+def test_thad_load_real_data() -> None:
+    df = load_sqlite_to_dataframe(Path("~/data.sqlite").expanduser(), "data")
+    assert df[C.UUID_STRING].isna().sum() == 0
+    assert df[C.UUID_STRING].notna
+    assert df[C.DATA_TYPE].isna().sum() == 0
+    assert df[C.TIMESTAMP_UTC].isna().sum() == 0
+    assert df[C.TIMESTAMP_UTC].dtype == pd.DatetimeTZDtype(tz="UTC")

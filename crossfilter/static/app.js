@@ -133,16 +133,16 @@ class AppState {
         return `${this.sessionStatus.filtered_count} (${percentRemaining}%) of ${this.sessionStatus.row_count} rows loaded (${this.sessionStatus.columns.length} cols, ${this.sessionStatus.memory_usage_mb} MB)`;
     }
 
-    showMessage(message, type = 'info') {
+    showMessage(message, type = 'info', customId = null) {
         const messageObj = {
-            id: Date.now(),
+            id: customId || Date.now(),
             text: message,
             type: type
         };
         this.messages.push(messageObj);
         
-        // Auto-remove info messages after 3 seconds
-        if (type === 'info') {
+        // Auto-remove info messages after 3 seconds (but not loading messages)
+        if (type === 'info' && !customId) {
             setTimeout(() => {
                 this.removeMessage(messageObj.id);
             }, 3000);
@@ -209,7 +209,6 @@ const ProjectionComponent = {
             
             <div 
                 class="projection-content"
-                :class="{ collapsed: projection.isCollapsed }"
                 v-show="!projection.isCollapsed"
             >
                 <div class="projection-toolbar">
@@ -231,7 +230,8 @@ const ProjectionComponent = {
                     </button>
                 </div>
                 
-                <div class="plot-container" :ref="'plot-' + projection.projectionType">
+                <div class="plot-container" :ref="'plot-' + projection.projectionType"
+                     :style="{ height: projection.projectionType === 'temporal' ? '400px' : '800px' }">
                     <div class="plot-placeholder" v-if="!projection.plotData">
                         No data loaded. Click "Load Sample Data" to begin.
                     </div>
@@ -391,7 +391,8 @@ const CrossfilterApp = {
 
             try {
                 console.log('CrossfilterApp: Fetching plot data...');
-                appState.showInfo('Loading temporal and geographic plots...');
+                const loadingMessageId = Date.now();
+                appState.showMessage('Loading temporal and geographic plots...', 'info', loadingMessageId);
                 
                 // Load both plots simultaneously
                 const [temporalResponse, geoResponse] = await Promise.all([
@@ -421,7 +422,7 @@ const CrossfilterApp = {
                 renderPlot(appState.projections[ProjectionType.TEMPORAL], temporalResult);
                 renderPlot(appState.projections[ProjectionType.GEO], geoResult);
 
-                appState.clearMessages();
+                appState.removeMessage(loadingMessageId);
                 console.log('CrossfilterApp: Plot rendering complete');
             } catch (error) {
                 appState.showError('Failed to load plot data: ' + error.message);

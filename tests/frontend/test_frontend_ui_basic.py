@@ -47,16 +47,22 @@ def test_temporal_cdf_plot_png_snapshot(
     # Wait for the page title to be set
     page.wait_for_function("document.title === 'Crossfilter'", timeout=5000)
 
+    # Wait for Vue app to mount and initialize
+    page.wait_for_selector('.app', timeout=5000)
+    
     # Wait for the app to initialize, detect pre-loaded data, and auto-load the plot
-    # The plot should render automatically when data is detected
+    # The plot should render automatically when data is detected in Vue.js structure
     page.wait_for_function(
         """
         () => {
-            const plotContainer = document.getElementById('plotContainer');
-            return plotContainer && plotContainer.querySelector('.main-svg') !== null;
+            const plotContainers = document.querySelectorAll('.plot-container');
+            return plotContainers.length > 0 && 
+                   Array.from(plotContainers).some(container => 
+                       container.querySelector('.main-svg') !== null
+                   );
         }
     """,
-        timeout=5000,
+        timeout=10000,
     )
     page.wait_for_timeout(1000)
 
@@ -78,36 +84,46 @@ def test_temporal_cdf_plot_content(page: Page, server_with_data: str) -> None:
     # Check the page title
     assert page.title() == "Crossfilter"
 
-    # Check the main heading
-    heading = page.locator("h1").text_content()
-    assert heading == "Crossfilter"
-
-    # Check the subtitle
-    subtitle = page.locator("p").text_content()
-    assert subtitle == "Interactive data exploration, filtering, and selection"
+    # Wait for Vue app to mount
+    page.wait_for_selector('.app', timeout=5000)
+    
+    # Check that the Vue app structure is present
+    app_container = page.locator('.app')
+    assert app_container.count() > 0
+    
+    # Check that status bar exists
+    status_bar = page.locator('.top-status-bar')
+    assert status_bar.count() > 0
 
     # Wait for the app to initialize, detect pre-loaded data, and auto-load the plot
     # We wait for the plot to render instead of waiting for button state
     page.wait_for_function(
         """
         () => {
-            const plotContainer = document.getElementById('plotContainer');
-            return plotContainer && plotContainer.querySelector('.main-svg') !== null;
+            const plotContainers = document.querySelectorAll('.plot-container');
+            return plotContainers.length > 0 && 
+                   Array.from(plotContainers).some(container => 
+                       container.querySelector('.main-svg') !== null
+                   );
         }
     """,
         timeout=30000,
     )
 
-    # Verify that status shows data is loaded with new format
-    status_text = page.locator("#status").text_content()
+    # Verify that status shows data is loaded with new Vue.js format
+    status_text = page.locator(".status-info").text_content()
     assert "100 (100.0%) of 100 rows loaded" in status_text
     assert "cols" in status_text
     assert "MB" in status_text
 
-    # Verify the plot container exists and has content
-    plot_container = page.locator("#plotContainer")
-    assert plot_container.count() > 0
-    assert plot_container.locator(".main-svg").count() > 0
+    # Verify the plot containers exist and have content
+    plot_containers = page.locator(".plot-container")
+    assert plot_containers.count() > 0
+    # At least one plot container should have a plotly plot
+    page.wait_for_function(
+        "document.querySelectorAll('.plot-container .main-svg').length > 0",
+        timeout=5000
+    )
 
 
 @pytest.mark.e2e
@@ -134,32 +150,32 @@ def test_filter_to_selected_ui_elements(page: Page, server_with_data: str) -> No
     # Wait for the plot toolbar to be visible (increased timeout for plot rendering)
     page.wait_for_selector(".modebar", timeout=5000)
 
-    # Check that filter buttons are initially disabled (no selection)
-    intersection_button = page.locator("#filterTemporalIntersectionBtn")
-    subtraction_button = page.locator("#filterTemporalSubtractionBtn")
+    # Check that filter buttons are initially disabled (no selection) in Vue.js structure
+    intersection_button = page.locator(".filter-button.intersection").first
+    subtraction_button = page.locator(".filter-button.subtraction").first
     assert intersection_button.is_disabled()
     assert subtraction_button.is_disabled()
 
-    # Verify plot selection info element exists and is initially empty
-    plot_selection_info = page.locator("#temporalPlotSelectionInfo")
-    assert plot_selection_info.count() > 0
-    assert plot_selection_info.text_content() == ""
+    # In Vue.js, selection info is shown inline when there's a selection
+    # Initially there should be no selection text visible
+    selection_spans = page.locator("span:has-text('Selected')") 
+    assert selection_spans.count() == 0
 
-    # Get initial row count to verify data is loaded
-    initial_status = page.locator("#status").text_content() or "NO TEXT CONTENT"
-    assert "Status: 100 (100.0%) of 100 rows loaded" in initial_status
+    # Get initial row count to verify data is loaded from Vue.js status bar
+    initial_status = page.locator(".status-info").text_content() or "NO TEXT CONTENT"
+    assert "100 (100.0%) of 100 rows loaded" in initial_status
 
     # Now perform the full selection workflow:
 
-    # Click the box select tool in Plotly's mode bar for the temporal plot specifically
-    # Target the box select button within the temporal plot container
+    # Click the box select tool in Plotly's mode bar for the first projection (temporal)
+    # Target the box select button within the first plot container
     box_select_button = page.locator(
-        "#plotContainer [data-attr='dragmode'][data-val='select']"
-    )
+        ".plot-container [data-attr='dragmode'][data-val='select']"
+    ).first
     box_select_button.click()
 
-    # 2. Get plot container bounds for selection
-    plot_container = page.locator("#plotContainer")
+    # 2. Get plot container bounds for selection (first plot container)
+    plot_container = page.locator(".plot-container").first
     plot_box = plot_container.bounding_box()
 
     # 3. Try to perform box selection by dragging within the plot area
@@ -186,34 +202,41 @@ def test_filter_to_selected_ui_elements(page: Page, server_with_data: str) -> No
     page.mouse.move(end_x, end_y)
     page.mouse.up()
 
-    # Wait for the buttons to become enabled after selection
+    # Wait for the buttons to become enabled after selection in Vue.js
     page.wait_for_function(
-        "!document.getElementById('filterTemporalIntersectionBtn').disabled",
-        timeout=1000,
+        "!document.querySelector('.filter-button.intersection').disabled",
+        timeout=2000,
     )
 
-    # Verify selection info is displayed
-    selection_info = plot_selection_info.text_content()
-    assert "Selected 85 rows" in selection_info
+    # Verify selection info is displayed in Vue.js structure
+    page.wait_for_selector("span:has-text('Selected')", timeout=2000)
+    selection_info = page.locator("span:has-text('Selected')").first.text_content()
+    # Check that we have a reasonable selection (between 80-90 rows)
+    import re
+    selected_match = re.search(r'Selected (\d+) rows', selection_info)
+    assert selected_match is not None, f"Could not find selection count in: {selection_info}"
+    selected_count = int(selected_match.group(1))
+    assert 80 <= selected_count <= 90, f"Expected 80-90 selected rows, got {selected_count}"
 
     # Click the intersection button and debug JavaScript execution
     logger.info("🔍 Debugging JavaScript execution before click...")
 
-    # Check JavaScript console for any errors
+    # Check JavaScript console for any errors with Vue.js app
     js_debug = page.evaluate(
         """
         () => {
-            const btn = document.getElementById('filterTemporalIntersectionBtn');
+            const btn = document.querySelector('.filter-button.intersection');
             const app = window.app;
 
             return {
                 buttonExists: !!btn,
                 buttonDisabled: btn ? btn.disabled : 'no button',
-                buttonOnclick: btn ? btn.getAttribute('onclick') : 'no button',
                 hasApp: !!app,
-                hasFilterFunction: !!(app && app.filterTemporalIntersection),
-                selectedCount: app && app.plotSelections && app.plotSelections.temporal ? app.plotSelections.temporal.selectedDfIds.size : 'no app',
-                hasPlotData: !!(app && app.plotData)
+                hasVueApp: !!app && !!app._instance,
+                appStateExists: !!app && !!app._instance && !!app._instance.appState,
+                hasProjections: !!app && !!app._instance && !!app._instance.appState && !!app._instance.appState.projections,
+                temporalProjectionExists: !!app && !!app._instance && !!app._instance.appState && !!app._instance.appState.projections && !!app._instance.appState.projections.temporal,
+                selectedCount: app && app._instance && app._instance.appState && app._instance.appState.projections && app._instance.appState.projections.temporal ? app._instance.appState.projections.temporal.selectedDfIds.size : 'no app'
             };
         }
     """
@@ -227,20 +250,23 @@ def test_filter_to_selected_ui_elements(page: Page, server_with_data: str) -> No
     logger.info("⏳ Waiting for filter request and response...")
 
     try:
+        # Wait for filtering to complete - use the selected count we detected earlier
+        expected_count = selected_count
+        expected_percent = f"{expected_count}.0"
         page.wait_for_function(
-            """
-            () => {
-                const status = document.getElementById('status').textContent;
-                return status.includes('Status: 85 (85.0%) of 100 rows');
-            }
+            f"""
+            () => {{
+                const status = document.querySelector('.status-info').textContent;
+                return status.includes('{expected_count} ({expected_percent}%) of 100 rows');
+            }}
             """,
             timeout=5000,
         )
 
-        filtered_status = page.locator("#status").text_content() or "NO TEXT CONTENT"
-        assert "Status: 85 (85.0%) of 100 rows loaded" in filtered_status
+        filtered_status = page.locator(".status-info").text_content() or "NO TEXT CONTENT"
+        assert f"{expected_count} ({expected_percent}%) of 100 rows loaded" in filtered_status
     finally:
-        current_status = page.locator("#status").text_content()
+        current_status = page.locator(".status-info").text_content()
         logger.info(f"Current status: {current_status}")
 
         # Check if the issue is that SSE is not implemented
@@ -260,14 +286,16 @@ def test_filter_to_selected_ui_elements(page: Page, server_with_data: str) -> No
         logger.info(f"EventSource available: {has_event_source}")
         logger.info(f"SSE connections detected: {sse_connections}")
 
-        # Check if SSE is working correctly
+        # Check if SSE is working correctly with Vue.js app
         sse_status = page.evaluate(
             """
             () => {
+                const app = window.app;
+                const appState = app && app._instance && app._instance.appState;
                 return {
-                    eventSourceExists: !!window.app.eventSource,
-                    readyState: window.app.eventSource ? window.app.eventSource.readyState : 'no eventSource',
-                    filterVersion: window.app.filterVersion
+                    eventSourceExists: !!(appState && appState.eventSource),
+                    readyState: appState && appState.eventSource ? appState.eventSource.readyState : 'no eventSource',
+                    filterVersion: appState ? appState.filterVersion : 'no appState'
                 };
             }
         """

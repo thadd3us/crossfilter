@@ -150,7 +150,9 @@ def test_upsert_dataframe_to_sqlite_new_table(
     assert actual.to_dict() == snapshot
 
 
-def test_upsert_dataframe_to_sqlite_update_existing(tmp_path: Path) -> None:
+def test_upsert_dataframe_to_sqlite_update_existing(
+    tmp_path: Path, snapshot: SnapshotAssertion
+) -> None:
     """Test upserting to existing table with updates."""
     db_path = tmp_path / "test.db"
 
@@ -159,12 +161,13 @@ def test_upsert_dataframe_to_sqlite_update_existing(tmp_path: Path) -> None:
         {
             SchemaColumns.UUID_STRING: ["test-uuid-1", "test-uuid-2"],
             SchemaColumns.DATA_TYPE: [DataType.GPX_TRACKPOINT, DataType.GPX_WAYPOINT],
-            SchemaColumns.GPS_LATITUDE: [37.7749, 37.7750],
-            SchemaColumns.GPS_LONGITUDE: [-122.4194, -122.4195],
+            SchemaColumns.GPS_LATITUDE: [1.1, 2.2],
+            SchemaColumns.GPS_LONGITUDE: [-10.1, -20.2],
         }
     )
-
     upsert_dataframe_to_sqlite(initial_df, db_path, "test_table")
+    actual = query_sqlite_to_dataframe(db_path, "SELECT * FROM test_table")
+    assert actual.to_dict(orient="records") == snapshot
 
     # Update with new data (one existing UUID, one new)
     update_df = pd.DataFrame(
@@ -174,40 +177,13 @@ def test_upsert_dataframe_to_sqlite_update_existing(tmp_path: Path) -> None:
                 "test-uuid-3",
             ],  # uuid-1 exists, uuid-3 is new
             SchemaColumns.DATA_TYPE: [DataType.GPX_TRACKPOINT, DataType.GPX_TRACKPOINT],
-            SchemaColumns.GPS_LATITUDE: [
-                37.7751,
-                37.7752,
-            ],  # Updated latitude for uuid-1
-            SchemaColumns.GPS_LONGITUDE: [-122.4194, -122.4196],
+            SchemaColumns.GPS_LATITUDE: [1.2, 3.3],  # Updated latitude for uuid-1
+            SchemaColumns.GPS_LONGITUDE: [-10.2, -30.3],
         }
     )
-
     upsert_dataframe_to_sqlite(update_df, db_path, "test_table")
-
-    # Check results
-    conn = sqlite3.connect(db_path)
-    cursor = conn.cursor()
-
-    # Should have 3 total records (2 original + 1 new)
-    cursor.execute("SELECT COUNT(*) FROM test_table")
-    count = cursor.fetchone()[0]
-    assert count == 3
-
-    # Check that uuid-1 was updated
-    cursor.execute(
-        "SELECT GPS_LATITUDE FROM test_table WHERE UUID_STRING = 'test-uuid-1'"
-    )
-    updated_lat = cursor.fetchone()[0]
-    assert updated_lat == 37.7751
-
-    # Check that uuid-2 still exists unchanged
-    cursor.execute(
-        "SELECT GPS_LATITUDE FROM test_table WHERE UUID_STRING = 'test-uuid-2'"
-    )
-    original_lat = cursor.fetchone()[0]
-    assert original_lat == 37.7750
-
-    conn.close()
+    actual = query_sqlite_to_dataframe(db_path, "SELECT * FROM test_table")
+    assert actual.to_dict(orient="records") == snapshot
 
 
 def test_upsert_dataframe_to_sqlite_with_none_values(tmp_path: Path) -> None:

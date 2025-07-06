@@ -85,3 +85,41 @@
     }),
   })
 # ---
+# name: test_upsert_dataframe_to_sqlite_update_existing
+  list([
+    dict({
+      'DATA_TYPE': 'GPX_TRACKPOINT',
+      'GPS_LATITUDE': 1.1,
+      'GPS_LONGITUDE': -10.1,
+      'UUID_STRING': 'test-uuid-1',
+    }),
+    dict({
+      'DATA_TYPE': 'GPX_WAYPOINT',
+      'GPS_LATITUDE': 2.2,
+      'GPS_LONGITUDE': -20.2,
+      'UUID_STRING': 'test-uuid-2',
+    }),
+  ])
+# ---
+# name: test_upsert_dataframe_to_sqlite_update_existing.1
+  list([
+    dict({
+      'DATA_TYPE': 'GPX_WAYPOINT',
+      'GPS_LATITUDE': 2.2,
+      'GPS_LONGITUDE': -20.2,
+      'UUID_STRING': 'test-uuid-2',
+    }),
+    dict({
+      'DATA_TYPE': 'GPX_TRACKPOINT',
+      'GPS_LATITUDE': 1.2,
+      'GPS_LONGITUDE': -10.2,
+      'UUID_STRING': 'test-uuid-1',
+    }),
+    dict({
+      'DATA_TYPE': 'GPX_TRACKPOINT',
+      'GPS_LATITUDE': 3.3,
+      'GPS_LONGITUDE': -30.3,
+      'UUID_STRING': 'test-uuid-3',
+    }),
+  ])
+# ---

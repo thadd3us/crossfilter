@@ -109,10 +109,8 @@ def upsert_dataframe_to_sqlite(
     df: pd.DataFrame, destination_sqlite_db: Path, destination_table: str
 ) -> None:
     """Upsert DataFrame to SQLite database using bulk operations."""
-    # THAD: Don't do this, just let the empty data flow through.
-    # if df.empty:
-    #     logger.info("No data to upsert")
-    #     return
+    if df.columns.empty:
+        raise ValueError("DataFrame has no columns, we don't know what schema to use.")
 
     # Validate table name
     if not is_valid_sql_identifier(destination_table):

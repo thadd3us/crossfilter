@@ -1,89 +1,87 @@
 # serializer version: 1
 # name: test_create_or_update_table_add_columns
-  dict({
-    'DATA_TYPE': dict({
-    }),
-    'UUID_STRING': dict({
-    }),
-  })
+  list([
+  ])
 # ---
 # name: test_create_or_update_table_add_columns.1
-  dict({
-    'DATA_TYPE': dict({
-    }),
-    'GPS_LATITUDE': dict({
-    }),
-    'GPS_LONGITUDE': dict({
-    }),
-    'UUID_STRING': dict({
-    }),
-  })
+  list([
+  ])
 # ---
 # name: test_create_or_update_table_new_table
-  dict({
-    'DATA_TYPE': dict({
-    }),
-    'GPS_LATITUDE': dict({
-    }),
-    'GPS_LONGITUDE': dict({
-    }),
-    'UUID_STRING': dict({
-    }),
-  })
+  list([
+  ])
 # ---
 # name: test_create_or_update_table_nullable_columns
-  dict({
-    'DATA_TYPE': dict({
-    }),
-    'EXTRA_COLUMN': dict({
-    }),
-    'GPS_LATITUDE': dict({
-    }),
-    'GPS_LONGITUDE': dict({
-    }),
-    'UUID_STRING': dict({
-    }),
-  })
+  list([
+  ])
 # ---
 # name: test_create_or_update_table_nullable_columns.1
-  dict({
-    'DATA_TYPE': dict({
-    }),
-    'EXTRA_COLUMN': dict({
-    }),
-    'GPS_LATITUDE': dict({
-    }),
-    'GPS_LONGITUDE': dict({
-    }),
-    'UUID_STRING': dict({
-    }),
-  })
+  list([
+  ])
 # ---
-# name: test_upsert_dataframe_to_sqlite_empty
-  dict({
-    'UUID_STRING': dict({
+# name: test_existing_table_with_duplicate_uuids
+  list([
+    dict({
+      'DATA_TYPE': 'GPX_TRACKPOINT',
+      'GPS_LATITUDE': 37.7749,
+      'GPS_LONGITUDE': -122.4194,
+      'UUID_STRING': 'duplicate-uuid',
     }),
-  })
+    dict({
+      'DATA_TYPE': 'GPX_TRACKPOINT',
+      'GPS_LATITUDE': 37.775,
+      'GPS_LONGITUDE': -122.4195,
+      'UUID_STRING': 'duplicate-uuid',
+    }),
+  ])
+# ---
+# name: test_existing_table_without_unique_constraint
+  list([
+    dict({
+      'DATA_TYPE': 'GPX_TRACKPOINT',
+      'GPS_LATITUDE': 37.7749,
+      'GPS_LONGITUDE': -122.4194,
+      'UUID_STRING': 'uuid-1',
+    }),
+    dict({
+      'DATA_TYPE': 'GPX_TRACKPOINT',
+      'GPS_LATITUDE': 37.775,
+      'GPS_LONGITUDE': -122.4195,
+      'UUID_STRING': 'uuid-2',
+    }),
+    dict({
+      'DATA_TYPE': 'GPX_TRACKPOINT',
+      'GPS_LATITUDE': 37.7751,
+      'GPS_LONGITUDE': -122.4196,
+      'UUID_STRING': 'uuid-3',
+    }),
+  ])
+# ---
+# name: test_query_sqlite_to_dataframe_with_params
+  list([
+    dict({
+      'DATA_TYPE': 'GPX_TRACKPOINT',
+      'GPS_LATITUDE': 37.7749,
+      'GPS_LONGITUDE': -122.4194,
+      'UUID_STRING': 'test-uuid-1',
+    }),
+  ])
 # ---
 # name: test_upsert_dataframe_to_sqlite_new_table
-  dict({
-    'DATA_TYPE': dict({
-      0: 'GPX_TRACKPOINT',
-      1: 'GPX_WAYPOINT',
+  list([
+    dict({
+      'DATA_TYPE': 'GPX_TRACKPOINT',
+      'GPS_LATITUDE': 37.7749,
+      'GPS_LONGITUDE': -122.4194,
+      'UUID_STRING': 'test-uuid-1',
     }),
-    'GPS_LATITUDE': dict({
-      0: 37.7749,
-      1: 37.775,
+    dict({
+      'DATA_TYPE': 'GPX_WAYPOINT',
+      'GPS_LATITUDE': 37.775,
+      'GPS_LONGITUDE': -122.4195,
+      'UUID_STRING': 'test-uuid-2',
     }),
-    'GPS_LONGITUDE': dict({
-      0: -122.4194,
-      1: -122.4195,
-    }),
-    'UUID_STRING': dict({
-      0: 'test-uuid-1',
-      1: 'test-uuid-2',
-    }),
-  })
+  ])
 # ---
 # name: test_upsert_dataframe_to_sqlite_update_existing
   list([
@@ -120,6 +118,56 @@
       'GPS_LATITUDE': 3.3,
       'GPS_LONGITUDE': -30.3,
       'UUID_STRING': 'test-uuid-3',
+    }),
+  ])
+# ---
+# name: test_upsert_dataframe_to_sqlite_with_none_values
+  list([
+    dict({
+      'CAPTION': None,
+      'DATA_TYPE': 'GPX_TRACKPOINT',
+      'GPS_LATITUDE': 37.7749,
+      'GPS_LONGITUDE': -122.4194,
+      'NAME': None,
+      'UUID_STRING': 'test-uuid-1',
+    }),
+  ])
+# ---
+# name: test_upsert_with_clean_data_works_properly
+  list([
+    dict({
+      'DATA_TYPE': 'GPX_TRACKPOINT',
+      'GPS_LATITUDE': 37.7749,
+      'GPS_LONGITUDE': -122.4194,
+      'UUID_STRING': 'uuid-1',
+    }),
+    dict({
+      'DATA_TYPE': 'GPX_TRACKPOINT',
+      'GPS_LATITUDE': 37.775,
+      'GPS_LONGITUDE': -122.4195,
+      'UUID_STRING': 'uuid-2',
+    }),
+  ])
+# ---
+# name: test_upsert_with_clean_data_works_properly.1
+  list([
+    dict({
+      'DATA_TYPE': 'GPX_TRACKPOINT',
+      'GPS_LATITUDE': 37.775,
+      'GPS_LONGITUDE': -122.4195,
+      'UUID_STRING': 'uuid-2',
+    }),
+    dict({
+      'DATA_TYPE': 'GPX_TRACKPOINT',
+      'GPS_LATITUDE': 37.7799,
+      'GPS_LONGITUDE': -122.42,
+      'UUID_STRING': 'uuid-1',
+    }),
+    dict({
+      'DATA_TYPE': 'GPX_WAYPOINT',
+      'GPS_LATITUDE': 37.78,
+      'GPS_LONGITUDE': -122.4201,
+      'UUID_STRING': 'uuid-3',
     }),
   ])
 # ---

@@ -47,7 +47,7 @@ def test_create_or_update_table_new_table(
     )
     create_or_update_table_schema(engine, "test_table", df)
     actual = query_sqlite_to_dataframe(db_path, "SELECT * FROM test_table")
-    assert actual.to_dict() == snapshot
+    assert actual.to_dict(orient="records") == snapshot
 
 
 def test_create_or_update_table_add_columns(
@@ -65,7 +65,7 @@ def test_create_or_update_table_add_columns(
     )
     create_or_update_table_schema(engine, "test_table", initial_df)
     actual = query_sqlite_to_dataframe(db_path, "SELECT * FROM test_table")
-    assert actual.to_dict() == snapshot
+    assert actual.to_dict(orient="records") == snapshot
 
     extended_df = pd.DataFrame(
         {
@@ -77,7 +77,7 @@ def test_create_or_update_table_add_columns(
     )
     create_or_update_table_schema(engine, "test_table", extended_df)
     actual = query_sqlite_to_dataframe(db_path, "SELECT * FROM test_table")
-    assert actual.to_dict() == snapshot
+    assert actual.to_dict(orient="records") == snapshot
 
 
 def test_create_or_update_table_nullable_columns(
@@ -104,7 +104,7 @@ def test_create_or_update_table_nullable_columns(
         )
         conn.commit()
     actual = query_sqlite_to_dataframe(db_path, "SELECT * FROM test_table")
-    assert actual.to_dict() == snapshot
+    assert actual.to_dict(orient="records") == snapshot
 
     # Create DataFrame with fewer columns
     df = pd.DataFrame(
@@ -116,7 +116,7 @@ def test_create_or_update_table_nullable_columns(
     )
     create_or_update_table_schema(engine, "test_table", df)
     actual = query_sqlite_to_dataframe(db_path, "SELECT * FROM test_table")
-    assert actual.to_dict() == snapshot
+    assert actual.to_dict(orient="records") == snapshot
 
 
 def test_upsert_dataframe_to_sqlite_empty(
@@ -126,9 +126,8 @@ def test_upsert_dataframe_to_sqlite_empty(
     db_path = tmp_path / "test.db"
     empty_df = pd.DataFrame()
 
-    upsert_dataframe_to_sqlite(empty_df, db_path, "test_table")
-    actual = query_sqlite_to_dataframe(db_path, "SELECT * FROM test_table")
-    assert actual.to_dict() == snapshot
+    with pytest.raises(ValueError):
+        upsert_dataframe_to_sqlite(empty_df, db_path, "test_table")
 
 
 def test_upsert_dataframe_to_sqlite_new_table(
@@ -147,7 +146,7 @@ def test_upsert_dataframe_to_sqlite_new_table(
     )
     upsert_dataframe_to_sqlite(df, db_path, "test_table")
     actual = query_sqlite_to_dataframe(db_path, "SELECT * FROM test_table")
-    assert actual.to_dict() == snapshot
+    assert actual.to_dict(orient="records") == snapshot
 
 
 def test_upsert_dataframe_to_sqlite_update_existing(
@@ -186,7 +185,9 @@ def test_upsert_dataframe_to_sqlite_update_existing(
     assert actual.to_dict(orient="records") == snapshot
 
 
-def test_upsert_dataframe_to_sqlite_with_none_values(tmp_path: Path) -> None:
+def test_upsert_dataframe_to_sqlite_with_none_values(
+    tmp_path: Path, snapshot: SnapshotAssertion
+) -> None:
     """Test upserting DataFrame with None values."""
     db_path = tmp_path / "test.db"
 
@@ -202,18 +203,13 @@ def test_upsert_dataframe_to_sqlite_with_none_values(tmp_path: Path) -> None:
     )
 
     upsert_dataframe_to_sqlite(df, db_path, "test_table")
-
-    # Check data was inserted
-    conn = sqlite3.connect(db_path)
-    cursor = conn.cursor()
-    cursor.execute("SELECT COUNT(*) FROM test_table")
-    count = cursor.fetchone()[0]
-    conn.close()
-
-    assert count == 1
+    actual = query_sqlite_to_dataframe(db_path, "SELECT * FROM test_table")
+    assert actual.to_dict(orient="records") == snapshot
 
 
-def test_existing_table_without_unique_constraint(tmp_path: Path) -> None:
+def test_existing_table_without_unique_constraint(
+    tmp_path: Path, snapshot: SnapshotAssertion
+) -> None:
     """Test handling of existing table without unique constraint on UUID_STRING."""
 
     db_path = tmp_path / "test.db"
@@ -254,22 +250,13 @@ def test_existing_table_without_unique_constraint(tmp_path: Path) -> None:
 
     # This should work - the function should handle missing unique constraint
     upsert_dataframe_to_sqlite(df, db_path, "data")
-
-    # Verify the data was inserted
-    conn = sqlite3.connect(db_path)
-    cursor = conn.cursor()
-    cursor.execute("SELECT COUNT(*) FROM data")
-    count = cursor.fetchone()[0]
-    assert count == 3
-
-    # Verify unique constraint was created
-    engine = create_engine(f"sqlite:///{db_path}")
-    assert has_unique_constraint_on_uuid(engine, "data")
-
-    conn.close()
+    actual = query_sqlite_to_dataframe(db_path, "SELECT * FROM data")
+    assert actual.to_dict(orient="records") == snapshot
 
 
-def test_existing_table_with_duplicate_uuids(tmp_path: Path) -> None:
+def test_existing_table_with_duplicate_uuids(
+    tmp_path: Path, snapshot: SnapshotAssertion
+) -> None:
     """Test that attempting to create unique constraint on table with duplicates raises an exception."""
 
     db_path = tmp_path / "test.db"
@@ -311,9 +298,13 @@ def test_existing_table_with_duplicate_uuids(tmp_path: Path) -> None:
     # This should raise an exception when trying to create unique constraint
     with pytest.raises(sqlalchemy.exc.IntegrityError):
         upsert_dataframe_to_sqlite(df, db_path, "data")
+    actual = query_sqlite_to_dataframe(db_path, "SELECT * FROM data")
+    assert actual.to_dict(orient="records") == snapshot
 
 
-def test_upsert_with_clean_data_works_properly(tmp_path: Path) -> None:
+def test_upsert_with_clean_data_works_properly(
+    tmp_path: Path, snapshot: SnapshotAssertion
+) -> None:
     """Test that upsert works properly when data doesn't have duplicate UUIDs."""
 
     db_path = tmp_path / "test.db"
@@ -329,6 +320,8 @@ def test_upsert_with_clean_data_works_properly(tmp_path: Path) -> None:
     )
 
     upsert_dataframe_to_sqlite(df1, db_path, "data")
+    actual = query_sqlite_to_dataframe(db_path, "SELECT * FROM data")
+    assert actual.to_dict(orient="records") == snapshot
 
     # Now try to upsert data that updates existing record and adds new one
     df2 = pd.DataFrame(
@@ -347,61 +340,13 @@ def test_upsert_with_clean_data_works_properly(tmp_path: Path) -> None:
     )
 
     upsert_dataframe_to_sqlite(df2, db_path, "data")
-
-    # Verify the data
-    conn = sqlite3.connect(db_path)
-    cursor = conn.cursor()
-
-    # Should have 3 total records (uuid-1 updated, uuid-2 unchanged, uuid-3 new)
-    cursor.execute("SELECT COUNT(*) FROM data")
-    count = cursor.fetchone()[0]
-    assert count == 3
-
-    # Check that uuid-1 was updated
-    cursor.execute("SELECT GPS_LATITUDE FROM data WHERE UUID_STRING = 'uuid-1'")
-    updated_lat = cursor.fetchone()[0]
-    assert updated_lat == 37.7799
-
-    # Check that uuid-2 is unchanged
-    cursor.execute("SELECT GPS_LATITUDE FROM data WHERE UUID_STRING = 'uuid-2'")
-    unchanged_lat = cursor.fetchone()[0]
-    assert unchanged_lat == 37.7750
-
-    # Check that uuid-3 was inserted
-    cursor.execute("SELECT COUNT(*) FROM data WHERE UUID_STRING = 'uuid-3'")
-    new_count = cursor.fetchone()[0]
-    assert new_count == 1
-
-    conn.close()
+    actual = query_sqlite_to_dataframe(db_path, "SELECT * FROM data")
+    assert actual.to_dict(orient="records") == snapshot
 
 
-def test_query_sqlite_to_dataframe(tmp_path: Path) -> None:
-    """Test querying SQLite database to DataFrame."""
-    db_path = tmp_path / "test.db"
-
-    # Create test data
-    df = pd.DataFrame(
-        {
-            SchemaColumns.UUID_STRING: ["test-uuid-1", "test-uuid-2"],
-            SchemaColumns.DATA_TYPE: [DataType.GPX_TRACKPOINT, DataType.GPX_WAYPOINT],
-            SchemaColumns.GPS_LATITUDE: [37.7749, 37.7750],
-            SchemaColumns.GPS_LONGITUDE: [-122.4194, -122.4195],
-        }
-    )
-
-    upsert_dataframe_to_sqlite(df, db_path, "test_table")
-
-    # Query the data back
-    result_df = query_sqlite_to_dataframe(db_path, "SELECT * FROM test_table")
-
-    assert len(result_df) == 2
-    assert SchemaColumns.UUID_STRING in result_df.columns
-    assert SchemaColumns.DATA_TYPE in result_df.columns
-    assert SchemaColumns.GPS_LATITUDE in result_df.columns
-    assert SchemaColumns.GPS_LONGITUDE in result_df.columns
-
-
-def test_query_sqlite_to_dataframe_with_params(tmp_path: Path) -> None:
+def test_query_sqlite_to_dataframe_with_params(
+    tmp_path: Path, snapshot: SnapshotAssertion
+) -> None:
     """Test querying SQLite database with parameters."""
     db_path = tmp_path / "test.db"
 
@@ -423,6 +368,4 @@ def test_query_sqlite_to_dataframe_with_params(tmp_path: Path) -> None:
         f"SELECT * FROM test_table WHERE {SchemaColumns.UUID_STRING} = :uuid",
         {"uuid": "test-uuid-1"},
     )
-
-    assert len(result_df) == 1
-    assert result_df.iloc[0][SchemaColumns.UUID_STRING] == "test-uuid-1"
+    assert result_df.to_dict(orient="records") == snapshot

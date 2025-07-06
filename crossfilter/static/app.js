@@ -14,6 +14,28 @@ const FilterOperatorType = {
     SUBTRACTION: 'subtraction'
 };
 
+// DetailView class for managing clicked point details
+class DetailView {
+    constructor() {
+        this.selectedPointUuid = null;
+        this.isVisible = false;
+    }
+
+    setSelectedPoint(uuid) {
+        this.selectedPointUuid = uuid;
+        this.isVisible = !!uuid;
+    }
+
+    clearSelection() {
+        this.selectedPointUuid = null;
+        this.isVisible = false;
+    }
+
+    hasSelection() {
+        return this.isVisible && this.selectedPointUuid;
+    }
+}
+
 // Base class for projection state management
 class ProjectionState {
     constructor(projectionType, title) {
@@ -101,6 +123,7 @@ class AppState {
             [ProjectionType.TEMPORAL]: new TemporalProjectionState(),
             [ProjectionType.GEO]: new GeoProjectionState()
         };
+        this.detailView = new DetailView();
         this.leftMenuOpen = false;
         this.eventSource = null;
         this.filterVersion = 0;
@@ -178,6 +201,35 @@ class AppState {
 }
 
 // Vue components
+const DetailViewComponent = {
+    props: {
+        detailView: {
+            type: Object,
+            required: true
+        }
+    },
+    template: `
+        <div class="detail-view">
+            <h3>Point Details</h3>
+            <div v-if="detailView.hasSelection()" class="detail-content">
+                <div class="detail-item">
+                    <strong>Selected Point UUID:</strong>
+                    <span class="uuid-display">{{ detailView.selectedPointUuid }}</span>
+                </div>
+                <button @click="clearSelection" class="clear-button">Clear Selection</button>
+            </div>
+            <div v-else class="detail-placeholder">
+                <p>Click on a point in any projection to view details</p>
+            </div>
+        </div>
+    `,
+    methods: {
+        clearSelection() {
+            this.detailView.clearSelection();
+        }
+    }
+};
+
 const ProjectionComponent = {
     props: {
         projection: {
@@ -258,14 +310,16 @@ const ProjectionComponent = {
 
 const CrossfilterApp = {
     components: {
-        ProjectionComponent
+        ProjectionComponent,
+        DetailViewComponent
     },
     setup() {
         const appState = reactive(new AppState());
         
-        // Make sure projections are reactive too
+        // Make sure projections and detailView are reactive too
         appState.projections[ProjectionType.TEMPORAL] = reactive(appState.projections[ProjectionType.TEMPORAL]);
         appState.projections[ProjectionType.GEO] = reactive(appState.projections[ProjectionType.GEO]);
+        appState.detailView = reactive(appState.detailView);
         
         // API methods
         const checkSessionStatus = async () => {
@@ -482,6 +536,12 @@ const CrossfilterApp = {
                     clearSelection(projection);
                 });
 
+                // Handle plot click events for point details
+                projection.plotContainer.on('plotly_click', (eventData) => {
+                    console.log(`CrossfilterApp: plotly_click event fired for ${projection.projectionType}`, eventData);
+                    handlePlotClick(eventData, projection);
+                });
+
             } catch (error) {
                 appState.showError(`Failed to render ${projection.projectionType} plot: ` + error.message);
                 console.error('Plot rendering error:', error);
@@ -508,6 +568,24 @@ const CrossfilterApp = {
 
             console.log(`CrossfilterApp: handlePlotSelection(${projection.projectionType}) selectedCount:`, selectedCount);
             projection.updateSelection(selectedIndices, selectedCount);
+        };
+
+        const handlePlotClick = (eventData, projection) => {
+            if (!eventData || !eventData.points || eventData.points.length === 0) {
+                return;
+            }
+
+            // Get the first clicked point
+            const point = eventData.points[0];
+            
+            // Extract UUID from customdata[2]
+            // customdata format: [df_id, count, uuid_string]
+            const uuid = point.customdata[2];
+            
+            console.log(`CrossfilterApp: handlePlotClick(${projection.projectionType}) UUID:`, uuid);
+            
+            // Update the detail view with the clicked point's UUID
+            appState.detailView.setSelectedPoint(uuid);
         };
 
         const clearSelection = (projection) => {
@@ -663,8 +741,7 @@ const CrossfilterApp = {
 
                 <!-- Right Panel - Content Preview -->
                 <div class="right-panel">
-                    <h3>Content Preview</h3>
-                    <p>Preview area for selected content</p>
+                    <DetailViewComponent :detail-view="appState.detailView" />
                 </div>
             </div>
 

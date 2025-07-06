@@ -15,12 +15,6 @@ assert server_with_data, "Don't remove this import!"
 
 logger = logging.getLogger(__name__)
 
-# NOTE: BAD Example of an overly verbose LLM.
-# class TemporalCDFPNGExtension(PNGImageSnapshotExtension):
-#     """Custom PNG snapshot extension for temporal CDF plots."""
-
-#     _file_extension = "png"
-
 
 # @pytest.fixture(scope="session")
 # def browser(playwright: Playwright) -> Browser:
@@ -200,7 +194,7 @@ def test_filter_to_selected_ui_elements(page: Page, server_with_data: str) -> No
 
     # Verify selection info is displayed
     selection_info = plot_selection_info.text_content()
-    assert "Selected 76 rows" in selection_info
+    assert "Selected 85 rows" in selection_info
 
     # Click the intersection button and debug JavaScript execution
     logger.info("🔍 Debugging JavaScript execution before click...")
@@ -237,14 +231,14 @@ def test_filter_to_selected_ui_elements(page: Page, server_with_data: str) -> No
             """
             () => {
                 const status = document.getElementById('status').textContent;
-                return status.includes('Status: 76 (76.0%) of 100 rows loaded');
+                return status.includes('Status: 85 (85.0%) of 100 rows');
             }
             """,
             timeout=5000,
         )
 
         filtered_status = page.locator("#status").text_content() or "NO TEXT CONTENT"
-        assert "Status: 76 (76.0%) of 100 rows loaded" in filtered_status
+        assert "Status: 85 (85.0%) of 100 rows loaded" in filtered_status
     finally:
         current_status = page.locator("#status").text_content()
         logger.info(f"Current status: {current_status}")

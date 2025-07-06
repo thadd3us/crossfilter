@@ -41,8 +41,8 @@ class ProjectionState {
 
     updatePlotData(plotData) {
         this.plotData = plotData;
-        this.aggregationLevel = plotData.aggregation_level || 'None';
-        this.distinctPointCount = plotData.distinct_point_count || 0;
+        this.aggregationLevel = plotData.bucketing_level || 'None';
+        this.distinctPointCount = plotData.bucket_count || plotData.total_row_count || 0;
     }
 
     getStatusText() {
@@ -54,7 +54,7 @@ class ProjectionState {
         
         if (this.selectedCount > 0) {
             const percent = rowCount > 0 ? ((this.selectedCount / rowCount) * 100).toFixed(1) : '0.0';
-            parts.push(`${this.selectedCount} (${percent}%) selected`);
+            parts.push(`Selected ${this.selectedCount} rows`);
         }
         
         if (this.aggregationLevel && this.aggregationLevel !== 'None') {
@@ -199,7 +199,7 @@ const ProjectionComponent = {
                 <div style="display: flex; align-items: center; gap: 15px;">
                     <div class="projection-title">{{ projection.title }}</div>
                     <div class="projection-status">
-                        Status: {{ projection.getStatusText() }}
+                        <span>Status: {{ projection.getStatusText() }}</span>
                     </div>
                 </div>
                 <div class="collapse-icon" :class="{ collapsed: projection.isCollapsed }">
@@ -262,6 +262,10 @@ const CrossfilterApp = {
     },
     setup() {
         const appState = reactive(new AppState());
+        
+        // Make sure projections are reactive too
+        appState.projections[ProjectionType.TEMPORAL] = reactive(appState.projections[ProjectionType.TEMPORAL]);
+        appState.projections[ProjectionType.GEO] = reactive(appState.projections[ProjectionType.GEO]);
         
         // API methods
         const checkSessionStatus = async () => {
@@ -396,7 +400,7 @@ const CrossfilterApp = {
                 
                 // Load both plots simultaneously
                 const [temporalResponse, geoResponse] = await Promise.all([
-                    fetch('/api/plots/temporal?max_groups=10000'),
+                    fetch('/api/plots/temporal'),
                     fetch('/api/plots/geo')
                 ]);
                 
@@ -469,10 +473,12 @@ const CrossfilterApp = {
 
                 // Handle plot selection events
                 projection.plotContainer.on('plotly_selected', (eventData) => {
+                    console.log(`CrossfilterApp: plotly_selected event fired for ${projection.projectionType}`, eventData);
                     handlePlotSelection(eventData, projection);
                 });
 
                 projection.plotContainer.on('plotly_deselect', () => {
+                    console.log(`CrossfilterApp: plotly_deselect event fired for ${projection.projectionType}`);
                     clearSelection(projection);
                 });
 
@@ -491,8 +497,16 @@ const CrossfilterApp = {
             const selectedIndices = new Set();
             let selectedCount = 0;
             eventData.points.forEach((point, index) => {
-                selectedIndices.add(point.customdata[0]);
-                selectedCount += point.customdata[1];
+                // customdata format:
+                // - Temporal: [df_id, count]
+                // - Geo: [df_id]
+                const dfId = point.customdata[0];
+                selectedIndices.add(dfId);
+                
+                // For temporal plots, customdata[1] is the count
+                // For geo plots, each point represents 1 row
+                const pointCount = point.customdata.length > 1 ? point.customdata[1] : 1;
+                selectedCount += pointCount;
             });
 
             console.log(`CrossfilterApp: handlePlotSelection(${projection.projectionType}) selectedCount:`, selectedCount);

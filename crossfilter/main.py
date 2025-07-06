@@ -461,13 +461,15 @@ def serve(
         dataframes.append(df_sqlite)
         typer.echo(f"Successfully loaded {len(df_sqlite)} records from SQLite")
 
-    assert dataframes, "No data loaded."
-
-    final_df = pd.concat(dataframes, axis="index", ignore_index=True)
-    logger.info(f"Concatenated {len(dataframes)=} dataframes into {final_df.shape=}")
-    final_df = final_df.reset_index(drop=True)
-    final_df.index.name = C.DF_ID
-    _app_instance.session_state.load_dataframe(final_df)
+    # Allow starting without data for UI testing
+    if dataframes:
+        final_df = pd.concat(dataframes, axis="index", ignore_index=True)
+        logger.info(f"Concatenated {len(dataframes)=} dataframes into {final_df.shape=}")
+        final_df = final_df.reset_index(drop=True)
+        final_df.index.name = C.DF_ID
+        _app_instance.session_state.load_dataframe(final_df)
+    else:
+        logger.info("Starting server without preloaded data")
 
     def signal_handler(signum: int, frame: Any) -> None:
         """Handle shutdown signals gracefully."""

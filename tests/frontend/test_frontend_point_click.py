@@ -41,8 +41,8 @@ def wait_for_app_ready(page: Page) -> None:
 
 
 @pytest.mark.e2e
-def test_geo_point_click_uuid_display(page: Page, server_with_data: str) -> None:
-    """Test that clicking on a point in the geo view displays its UUID in the detail view."""
+def test_geo_point_click_uuid_display_with_preview(page: Page, server_with_data: str) -> None:
+    """Test that clicking on a point in the geo view displays its UUID, preview image, and metadata in the detail view."""
     server_url = server_with_data
 
     # Navigate to the main application page
@@ -123,6 +123,7 @@ def test_geo_point_click_uuid_display(page: Page, server_with_data: str) -> None
     assert "uuid" in point_info, "UUID should be present in point info"
     assert point_info["uuid"] is not None, "UUID should not be None"
     
+    expected_uuid = point_info["uuid"]
     page_coords = point_info["pageCoords"]
     logger.info(f"Page coordinates: {page_coords}")
 
@@ -175,23 +176,52 @@ def test_geo_point_click_uuid_display(page: Page, server_with_data: str) -> None
     
     logger.info(f"Simulated click result: {simulated_click_result}")
     
-    # Wait for the detail view to update with any UUID
+    # Wait for the detail view to update with preview image
+    page.wait_for_selector(".preview-image", timeout=5000)
+    
+    # Verify a preview image is displayed
+    preview_image = page.locator(".preview-image")
+    assert preview_image.count() > 0, "Preview image should be visible after clicking"
+    
+    # Verify the image src contains the expected UUID
+    image_src = preview_image.get_attribute("src") or ""
+    assert expected_uuid in image_src, f"Image src should contain UUID {expected_uuid}, got {image_src}"
+    
+    # Wait for the caption to load
+    page.wait_for_selector(".caption-display", timeout=5000)
+    
+    # Verify a caption is displayed
+    caption_display = page.locator(".caption-display")
+    assert caption_display.count() > 0, "Caption display should be visible after clicking"
+    
+    # Wait for the metadata table to load
     page.wait_for_function(
         """
         () => {
-            const uuidDisplay = document.querySelector('.uuid-display');
-            return uuidDisplay && uuidDisplay.textContent.trim().length > 0;
+            const metadataTable = document.querySelector('.metadata-table');
+            return metadataTable && metadataTable.querySelectorAll('tr').length > 0;
         }
         """,
         timeout=5000,
     )
-
-    # Verify a UUID is displayed in the detail view
-    uuid_display = page.locator(".uuid-display")
-    assert uuid_display.count() > 0, "UUID display should be visible after clicking"
     
-    displayed_uuid = uuid_display.text_content() or ""
-    assert len(displayed_uuid.strip()) > 0, f"A UUID should be displayed, got '{displayed_uuid}'"
+    # Verify metadata table is displayed
+    metadata_table = page.locator(".metadata-table")
+    assert metadata_table.count() > 0, "Metadata table should be visible after clicking"
+    
+    # Verify the metadata table contains the UUID
+    metadata_rows = page.locator(".metadata-table tr")
+    assert metadata_rows.count() > 0, "Metadata table should have at least one row"
+    
+    # Check that the UUID is present in the metadata table
+    uuid_found = False
+    for i in range(metadata_rows.count()):
+        row = metadata_rows.nth(i)
+        if expected_uuid in (row.text_content() or ""):
+            uuid_found = True
+            break
+    
+    assert uuid_found, f"UUID {expected_uuid} should be found in metadata table"
     
     # Verify the placeholder is no longer visible
     placeholder_after = page.locator(".detail-placeholder")
@@ -225,18 +255,19 @@ def test_temporal_point_click_uuid_display(page: Page, server_with_data: str) ->
             const temporalProjection = document.querySelectorAll('.projection')[0];
             const plotContainer = temporalProjection.querySelector('.plot-container');
             
-            // Get the plotly plot element
-            const plotElement = plotContainer.querySelector('.main-svg').parentElement;
+            // Access the plotly data directly from the container
+            if (!plotContainer || !plotContainer.data) {
+                return { error: 'No plot data found in temporal projection' };
+            }
             
-            // Access the plotly data
-            const plotData = plotElement.data;
+            const plotData = plotContainer.data;
             if (!plotData || plotData.length === 0) {
-                return { error: 'No plot data found' };
+                return { error: 'Plot data array is empty' };
             }
             
             // Get the first trace (should be the scatter plot)
             const trace = plotData[0];
-            if (!trace.x || !trace.y || !trace.customdata) {
+            if (!trace || !trace.x || !trace.y || !trace.customdata || trace.x.length === 0) {
                 return { error: 'No coordinate data found' };
             }
             
@@ -247,10 +278,29 @@ def test_temporal_point_click_uuid_display(page: Page, server_with_data: str) ->
             const customdata = trace.customdata[dataIndex];
             const uuid = customdata[2]; // UUID is at index 2
             
-            // Convert data coordinates to pixel coordinates
-            const gd = plotElement;
+            // Get the plotly plot element for coordinate conversion
+            const plotElement = plotContainer.querySelector('.main-svg');
+            if (!plotElement || !plotElement.parentElement._fullLayout) {
+                // If we can't get coordinate conversion, just use center of plot
+                const plotBounds = plotContainer.getBoundingClientRect();
+                const centerX = plotBounds.left + plotBounds.width / 2;
+                const centerY = plotBounds.top + plotBounds.height / 2;
+                
+                return {
+                    dataCoords: { x, y },
+                    pageCoords: { x: centerX, y: centerY },
+                    uuid: uuid,
+                    plotBounds: {
+                        left: plotBounds.left,
+                        top: plotBounds.top,
+                        width: plotBounds.width,
+                        height: plotBounds.height
+                    }
+                };
+            }
             
             // Calculate pixel coordinates using plotly's coordinate system
+            const gd = plotElement.parentElement;
             const xaxis = gd._fullLayout.xaxis;
             const yaxis = gd._fullLayout.yaxis;
             
@@ -334,29 +384,50 @@ def test_clear_point_selection(page: Page, server_with_data: str) -> None:
             // Get the geo plot container (second projection)
             const geoProjection = document.querySelectorAll('.projection')[1];
             const plotContainer = geoProjection.querySelector('.plot-container');
-            const plotElement = plotContainer.querySelector('.main-svg').parentElement;
             
-            const plotData = plotElement.data;
+            if (!plotContainer || !plotContainer.data) {
+                return { error: 'No plot data found' };
+            }
+            
+            const plotData = plotContainer.data;
             const trace = plotData[0];
+            if (!trace || !trace.x || !trace.y || !trace.customdata || trace.x.length === 0) {
+                return { error: 'No coordinate data found' };
+            }
             const dataIndex = 0;
             const lon = trace.x[dataIndex];
             const lat = trace.y[dataIndex];
             const uuid = trace.customdata[dataIndex][2];
             
-            const xaxis = plotElement._fullLayout.xaxis;
-            const yaxis = plotElement._fullLayout.yaxis;
-            const pixelX = xaxis.l2p(lon);
-            const pixelY = yaxis.l2p(lat);
-            const plotBounds = plotContainer.getBoundingClientRect();
-            
-            return {
-                pageCoords: { x: plotBounds.left + pixelX, y: plotBounds.top + pixelY },
-                uuid: uuid
-            };
+            // Try to get coordinates using plotly layout, fallback to center if not available
+            const plotElement = plotContainer.querySelector('.main-svg');
+            if (plotElement && plotElement.parentElement._fullLayout) {
+                const gd = plotElement.parentElement;
+                const xaxis = gd._fullLayout.xaxis;
+                const yaxis = gd._fullLayout.yaxis;
+                const pixelX = xaxis.l2p(lon);
+                const pixelY = yaxis.l2p(lat);
+                const plotBounds = plotContainer.getBoundingClientRect();
+                
+                return {
+                    pageCoords: { x: plotBounds.left + pixelX, y: plotBounds.top + pixelY },
+                    uuid: uuid
+                };
+            } else {
+                // Fallback to center of plot
+                const plotBounds = plotContainer.getBoundingClientRect();
+                return {
+                    pageCoords: { x: plotBounds.left + plotBounds.width / 2, y: plotBounds.top + plotBounds.height / 2 },
+                    uuid: uuid
+                };
+            }
         }
         """
     )
 
+    # Check for errors and click on the point
+    assert "error" not in point_info, f"Error getting point info: {point_info.get('error')}"
+    
     # Click on the point
     page.mouse.click(point_info["pageCoords"]["x"], point_info["pageCoords"]["y"])
     
@@ -410,10 +481,16 @@ def test_multiple_point_clicks_update_uuid(page: Page, server_with_data: str) ->
             // Get the geo plot container (second projection)
             const geoProjection = document.querySelectorAll('.projection')[1];
             const plotContainer = geoProjection.querySelector('.plot-container');
-            const plotElement = plotContainer.querySelector('.main-svg').parentElement;
             
-            const plotData = plotElement.data;
+            if (!plotContainer || !plotContainer.data) {
+                return { error: 'No plot data found' };
+            }
+            
+            const plotData = plotContainer.data;
             const trace = plotData[0];
+            if (!trace || !trace.x || !trace.y || !trace.customdata || trace.x.length === 0) {
+                return { error: 'No coordinate data found' };
+            }
             
             // Get two different points
             const points = [];
@@ -422,16 +499,33 @@ def test_multiple_point_clicks_update_uuid(page: Page, server_with_data: str) ->
                 const lat = trace.y[i];
                 const uuid = trace.customdata[i][2];
                 
-                const xaxis = plotElement._fullLayout.xaxis;
-                const yaxis = plotElement._fullLayout.yaxis;
-                const pixelX = xaxis.l2p(lon);
-                const pixelY = yaxis.l2p(lat);
-                const plotBounds = plotContainer.getBoundingClientRect();
-                
-                points.push({
-                    pageCoords: { x: plotBounds.left + pixelX, y: plotBounds.top + pixelY },
-                    uuid: uuid
-                });
+                // Try to get coordinates using plotly layout, fallback to offset centers if not available
+                const plotElement = plotContainer.querySelector('.main-svg');
+                if (plotElement && plotElement.parentElement._fullLayout) {
+                    const gd = plotElement.parentElement;
+                    const xaxis = gd._fullLayout.xaxis;
+                    const yaxis = gd._fullLayout.yaxis;
+                    const pixelX = xaxis.l2p(lon);
+                    const pixelY = yaxis.l2p(lat);
+                    const plotBounds = plotContainer.getBoundingClientRect();
+                    
+                    points.push({
+                        pageCoords: { x: plotBounds.left + pixelX, y: plotBounds.top + pixelY },
+                        uuid: uuid
+                    });
+                } else {
+                    // Fallback to offset centers of plot
+                    const plotBounds = plotContainer.getBoundingClientRect();
+                    const offsetX = i * 50; // Small offset for different points
+                    const offsetY = i * 50;
+                    points.push({
+                        pageCoords: { 
+                            x: plotBounds.left + plotBounds.width / 2 + offsetX, 
+                            y: plotBounds.top + plotBounds.height / 2 + offsetY 
+                        },
+                        uuid: uuid
+                    });
+                }
             }
             
             return points;
@@ -439,6 +533,7 @@ def test_multiple_point_clicks_update_uuid(page: Page, server_with_data: str) ->
         """
     )
 
+    assert not isinstance(points_info, dict) or "error" not in points_info, f"Error getting points: {points_info.get('error') if isinstance(points_info, dict) else 'Unknown error'}"
     assert len(points_info) >= 2, "Should have at least 2 points to test with"
     
     # Click on the first point
@@ -480,3 +575,64 @@ def test_multiple_point_clicks_update_uuid(page: Page, server_with_data: str) ->
     second_displayed_uuid = uuid_display.text_content() or ""
     assert second_point["uuid"] in second_displayed_uuid, f"Second UUID should be displayed"
     assert first_point["uuid"] not in second_displayed_uuid, f"First UUID should no longer be displayed"
+
+
+@pytest.mark.e2e
+def test_uuid_endpoints_directly(page: Page, server_with_data: str) -> None:
+    """Test that the UUID preview image and metadata endpoints work correctly."""
+    import requests
+    
+    server_url = server_with_data
+    
+    # Navigate to the main application page to get a valid UUID
+    page.goto(f"{server_url}/")
+    
+    # Wait for the app to be ready
+    wait_for_app_ready(page)
+    
+    # Get a UUID from the plot data
+    uuid_info = page.evaluate(
+        """
+        () => {
+            const projections = document.querySelectorAll('.projection');
+            const plotDiv = projections[1].querySelector('.plot-container');
+            const plotData = plotDiv.data;
+            const trace = plotData[0];
+            
+            if (!trace.customdata || trace.customdata.length === 0) {
+                return { error: 'No customdata found' };
+            }
+            
+            const uuid = trace.customdata[0][2]; // UUID is at index 2
+            return { uuid: uuid };
+        }
+        """
+    )
+    
+    assert "error" not in uuid_info, f"Error getting UUID: {uuid_info.get('error')}"
+    uuid = uuid_info["uuid"]
+    
+    # Test the preview image endpoint
+    image_response = requests.get(f"{server_url}/api/image_preview/uuid/{uuid}")
+    assert image_response.status_code == 200, f"Image endpoint should return 200, got {image_response.status_code}"
+    
+    # Should return either a JPEG or SVG (fallback)
+    content_type = image_response.headers.get("content-type", "")
+    assert content_type in ["image/jpeg", "image/svg+xml"], f"Expected image content type, got {content_type}"
+    
+    # Test the metadata endpoint
+    metadata_response = requests.get(f"{server_url}/api/uuid_metadata/{uuid}")
+    assert metadata_response.status_code == 200, f"Metadata endpoint should return 200, got {metadata_response.status_code}"
+    
+    # Should return JSON
+    assert metadata_response.headers.get("content-type") == "application/json", "Metadata endpoint should return JSON"
+    
+    metadata = metadata_response.json()
+    assert isinstance(metadata, dict), "Metadata should be a dictionary"
+    assert "UUID_STRING" in metadata, "Metadata should contain UUID_STRING field"
+    assert metadata["UUID_STRING"] == uuid, f"UUID in metadata should match requested UUID"
+    
+    # Test with non-existent UUID
+    fake_uuid = "00000000-0000-0000-0000-000000000000"
+    fake_metadata_response = requests.get(f"{server_url}/api/uuid_metadata/{fake_uuid}")
+    assert fake_metadata_response.status_code == 404, f"Non-existent UUID should return 404, got {fake_metadata_response.status_code}"

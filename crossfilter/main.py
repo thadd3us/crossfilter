@@ -359,6 +359,59 @@ async def get_uuid_preview_image(
         return _create_no_preview_available_image()
 
 
+@app.get("/api/uuid_metadata/{uuid}")
+async def get_uuid_metadata(
+    uuid: str, session_state: SessionState = Depends(get_session_state)
+) -> JSONResponse:
+    """Get metadata for a UUID as a JSON dictionary."""
+    if len(session_state.all_rows) == 0:
+        raise HTTPException(status_code=404, detail="No data loaded")
+
+    try:
+        # Find the row with matching UUID
+        matching_rows = session_state.all_rows[session_state.all_rows[C.UUID_STRING] == uuid]
+        
+        if len(matching_rows) == 0:
+            raise HTTPException(status_code=404, detail=f"UUID {uuid} not found")
+        
+        # Get the first (and should be only) matching row
+        row = matching_rows.iloc[0]
+        
+        # Convert to dictionary, handling pandas types
+        metadata = {}
+        for column_name, value in row.items():
+            # Convert pandas types to Python types for JSON serialization
+            if pd.isna(value):
+                metadata[column_name] = None
+            elif isinstance(value, pd.Timestamp):
+                metadata[column_name] = value.isoformat()
+            elif hasattr(value, 'item'):  # pandas scalar types
+                metadata[column_name] = value.item() if pd.notna(value) else None
+            elif isinstance(value, (int, float)) and hasattr(value, 'dtype'):  # numpy types
+                metadata[column_name] = value.item() if pd.notna(value) else None
+            else:
+                # Handle other types by converting to standard Python types
+                try:
+                    # Try to convert to basic Python types
+                    if isinstance(value, (int, float, str, bool, type(None))):
+                        metadata[column_name] = value
+                    else:
+                        metadata[column_name] = str(value)
+                except Exception:
+                    metadata[column_name] = str(value)
+        
+        return JSONResponse(content=metadata)
+    except HTTPException:
+        # Re-raise HTTP exceptions as-is
+        raise
+    except Exception as e:
+        # Log the full exception with stack trace
+        logger.error(f"Error getting metadata for UUID {uuid}: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500, detail=f"Error getting metadata for UUID {uuid}: {str(e)}"
+        )
+
+
 def _create_no_preview_available_image() -> Response:
     """Create a dummy image with 'No preview available' text."""
     # Create a simple SVG image

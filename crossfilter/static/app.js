@@ -208,13 +208,57 @@ const DetailViewComponent = {
             required: true
         }
     },
+    data() {
+        return {
+            metadata: null,
+            metadataLoading: false,
+            metadataError: null
+        };
+    },
+    watch: {
+        'detailView.selectedPointUuid': {
+            handler(newUuid) {
+                if (newUuid) {
+                    this.fetchMetadata(newUuid);
+                } else {
+                    this.metadata = null;
+                    this.metadataError = null;
+                }
+            },
+            immediate: true
+        }
+    },
     template: `
         <div class="detail-view">
             <h3>Point Details</h3>
             <div v-if="detailView.hasSelection()" class="detail-content">
                 <div class="detail-item">
+                    <strong>Preview Image:</strong>
+                    <img :src="'/api/image_preview/uuid/' + detailView.selectedPointUuid" 
+                         :alt="'Preview for ' + detailView.selectedPointUuid"
+                         class="preview-image"
+                         @error="onImageError">
+                </div>
+                <div class="detail-item">
+                    <strong>Caption:</strong>
+                    <div class="caption-display">{{ getCaption() }}</div>
+                </div>
+                <div class="detail-item">
                     <strong>Selected Point UUID:</strong>
                     <span class="uuid-display">{{ detailView.selectedPointUuid }}</span>
+                </div>
+                <div class="detail-item">
+                    <strong>Metadata:</strong>
+                    <div v-if="metadataLoading" class="metadata-loading">Loading...</div>
+                    <div v-else-if="metadataError" class="metadata-error">{{ metadataError }}</div>
+                    <div v-else-if="metadata" class="metadata-table">
+                        <table>
+                            <tr v-for="(value, key) in metadata" :key="key">
+                                <td class="metadata-key">{{ key }}</td>
+                                <td class="metadata-value">{{ formatValue(value) }}</td>
+                            </tr>
+                        </table>
+                    </div>
                 </div>
                 <button @click="clearSelection" class="clear-button">Clear Selection</button>
             </div>
@@ -226,6 +270,46 @@ const DetailViewComponent = {
     methods: {
         clearSelection() {
             this.detailView.clearSelection();
+        },
+        async fetchMetadata(uuid) {
+            this.metadataLoading = true;
+            this.metadataError = null;
+            try {
+                const response = await fetch(`/api/uuid_metadata/${uuid}`);
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                this.metadata = await response.json();
+            } catch (error) {
+                console.error('Error fetching metadata:', error);
+                this.metadataError = `Error loading metadata: ${error.message}`;
+            } finally {
+                this.metadataLoading = false;
+            }
+        },
+        getCaption() {
+            if (this.metadata && this.metadata.CAPTION) {
+                return this.metadata.CAPTION;
+            }
+            return 'No caption available';
+        },
+        formatValue(value) {
+            if (value === null || value === undefined) {
+                return 'N/A';
+            }
+            if (typeof value === 'string' && value.includes('T') && value.includes('Z')) {
+                // Likely an ISO timestamp, format it nicely
+                try {
+                    return new Date(value).toLocaleString();
+                } catch (e) {
+                    return value;
+                }
+            }
+            return value;
+        },
+        onImageError(event) {
+            // If the image fails to load, it will show the default "No preview available" SVG
+            console.log('Image failed to load, using fallback');
         }
     }
 };

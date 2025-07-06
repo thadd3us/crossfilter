@@ -47,10 +47,13 @@ class ProjectionState {
 
     getStatusText() {
         const parts = [];
-        parts.push(`${this.distinctPointCount} rows`);
+        
+        // Use distinctPointCount from plot data if available, otherwise use totalCount
+        const rowCount = this.distinctPointCount || this.totalCount || 0;
+        parts.push(`${rowCount} rows`);
         
         if (this.selectedCount > 0) {
-            const percent = this.totalCount > 0 ? ((this.selectedCount / this.totalCount) * 100).toFixed(1) : '0.0';
+            const percent = rowCount > 0 ? ((this.selectedCount / rowCount) * 100).toFixed(1) : '0.0';
             parts.push(`${this.selectedCount} (${percent}%) selected`);
         }
         
@@ -111,6 +114,10 @@ class AppState {
         // Update total count for projections
         Object.values(this.projections).forEach(projection => {
             projection.totalCount = status.row_count;
+            // If we don't have plot data loaded yet, use the current filtered count
+            if (!projection.distinctPointCount) {
+                projection.distinctPointCount = status.filtered_count;
+            }
         });
     }
 
@@ -189,7 +196,7 @@ const ProjectionComponent = {
                 :class="{ collapsed: projection.isCollapsed }"
                 @click="toggleCollapse"
             >
-                <div>
+                <div style="display: flex; align-items: center; gap: 15px;">
                     <div class="projection-title">{{ projection.title }}</div>
                     <div class="projection-status">
                         Status: {{ projection.getStatusText() }}
@@ -222,9 +229,6 @@ const ProjectionComponent = {
                     >
                         −
                     </button>
-                    <span v-if="projection.hasSelection()">
-                        Selected {{ projection.selectedCount }} rows
-                    </span>
                 </div>
                 
                 <div class="plot-container" :ref="'plot-' + projection.projectionType">

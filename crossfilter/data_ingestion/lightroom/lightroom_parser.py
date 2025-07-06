@@ -229,10 +229,14 @@ def parse_lightroom_catalog(
         )
 
         # Handle timestamps
-        result_df[SchemaColumns.TIMESTAMP_MAYBE_TIMEZONE_AWARE] = df["captureTime"]
-        result_df[SchemaColumns.TIMESTAMP_UTC] = pd.to_datetime(
-            df["captureTime"], errors="coerce", utc=True
-        )
+        result_df[SchemaColumns.TIMESTAMP_MAYBE_TIMEZONE_AWARE] = df[
+            "captureTime"
+        ]  # THAD: Can we actually get tz-aware timestamps?
+        result_df[SchemaColumns.TIMESTAMP_UTC] = df["captureTime"]
+        if result_df[SchemaColumns.TIMESTAMP_UTC].isna().any():
+            logger.warning(
+                f"Found {result_df[SchemaColumns.TIMESTAMP_UTC].isna().sum()} missing timestamps"
+            )
 
         # GPS coordinates
         result_df[SchemaColumns.GPS_LATITUDE] = pd.to_numeric(

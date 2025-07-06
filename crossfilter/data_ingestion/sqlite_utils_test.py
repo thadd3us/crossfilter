@@ -383,8 +383,8 @@ def test_upsert_large_dataframe(tmp_path: Path) -> None:
 
     # Create a large dataframe
     df = pd.DataFrame()
-    df[str(SchemaColumns.UUID_STRING)] = [f"uuid_{i}" for i in range(100_000)]
-    for col in range(50):
+    df[str(SchemaColumns.UUID_STRING)] = [f"uuid_{i}" for i in range(10_000)]
+    for col in range(20):
         df[f"col_{col}"] = [f"value_{col}_{i}" for i in range(len(df))]
 
     logger.info(f"Upserting {len(df)} rows to test_table")

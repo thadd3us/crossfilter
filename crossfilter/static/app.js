@@ -325,7 +325,8 @@ class CrossfilterApp {
                 displayModeBar: true,
                 modeBarButtonsToAdd: ['select2d', 'lasso2d'],
                 modeBarButtonsToRemove: ['autoScale2d'],
-                displaylogo: false
+                displaylogo: false,
+                responsive: true
             };
 
             Plotly.newPlot(plotContainer, figure.data, layout, config);
@@ -383,7 +384,8 @@ class CrossfilterApp {
                 displayModeBar: true,
                 modeBarButtonsToAdd: ['select2d', 'lasso2d'],
                 modeBarButtonsToRemove: ['autoScale2d'],
-                displaylogo: false
+                displaylogo: false,
+                responsive: true
             };
 
             Plotly.newPlot(plotContainer, figure.data, figure.layout, config);

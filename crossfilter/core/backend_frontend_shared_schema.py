@@ -22,6 +22,17 @@ class FilterOperatorType(StrEnum):
     SUBTRACTION = "subtraction"  # Remove current selection
 
 
+class TemporalLevel(StrEnum):
+    """Temporal quantization levels."""
+
+    SECOND = "SECOND"
+    MINUTE = "MINUTE"
+    HOUR = "HOUR"
+    DAY = "DAY"
+    MONTH = "MONTH"
+    YEAR = "YEAR"
+
+
 @dataclass(frozen=True)
 class FilterEvent:
     """Represents a filter event from a specific projection."""
@@ -88,18 +99,17 @@ class TemporalPlotResponse(BaseModel):
     """Response model for temporal plot data."""
 
     plotly_plot: dict[str, Any]
-    data_type: str
-    point_count: int
-    distinct_point_count: int
-    aggregation_level: Optional[str]
+    bucket_count: int
+    total_row_count: int
+    aggregation_level: Optional[TemporalLevel]
 
 
 class GeoPlotResponse(BaseModel):
     """Response model for geo plot data."""
 
     plotly_plot: dict[str, Any]
-    marker_count: int
-    distinct_point_count: int
+    bucket_count: int
+    total_row_count: int
     aggregation_level: Optional[str]
 
 

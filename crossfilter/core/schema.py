@@ -12,7 +12,11 @@ import pandera.pandas as pa
 from pandera.typing import Series
 
 # Import shared types from backend_frontend_shared_schema
-from crossfilter.core.backend_frontend_shared_schema import FilterEvent, ProjectionType
+from crossfilter.core.backend_frontend_shared_schema import (
+    FilterEvent,
+    ProjectionType,
+    TemporalLevel,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -42,17 +46,6 @@ class DataType(StrEnum):
     VIDEO = "VIDEO"
     GPX_TRACKPOINT = "GPX_TRACKPOINT"
     GPX_WAYPOINT = "GPX_WAYPOINT"
-
-
-class TemporalLevel(StrEnum):
-    """Temporal quantization levels."""
-
-    SECOND = "SECOND"
-    MINUTE = "MINUTE"
-    HOUR = "HOUR"
-    DAY = "DAY"
-    MONTH = "MONTH"
-    YEAR = "YEAR"
 
 
 class DataSchema(pa.DataFrameModel):

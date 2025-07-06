@@ -35,9 +35,11 @@ from crossfilter.core.session_state import SessionState
 from crossfilter.visualization.temporal_cdf_plot import create_temporal_cdf
 from crossfilter.visualization.geo_plot import create_geo_plot
 
+
 @dataclass
 class App:
     """Application state container to avoid global variables."""
+
     session_state: SessionState
     uuid_preview_images_base_dir: Optional[Path] = None
 
@@ -202,30 +204,17 @@ async def get_temporal_plot_data(
         # Calculate status information
         from crossfilter.core.schema import SchemaColumns as C
 
-        distinct_point_count = (
+        total_row_count = (
             temporal_data[C.COUNT].sum()
             if C.COUNT in temporal_data.columns
             else len(temporal_data)
         )
 
-        # Get aggregation level from temporal projection state
-        temporal_summary = session_state.temporal_projection.get_summary()
-        target_column = temporal_summary.get("target_column")
-        if target_column and "temporal_" in target_column:
-            # Extract granularity from column name like "temporal_minute", "temporal_hour", etc.
-            granularity = target_column.replace("temporal_", "").capitalize()
-            aggregation_level = f"{granularity} buckets"
-        else:
-            aggregation_level = None
-
         return TemporalPlotResponse(
             plotly_plot=plotly_plot,
-            data_type=(
-                "aggregated" if C.COUNT in temporal_data.columns else "individual"
-            ),
-            point_count=len(temporal_data),
-            distinct_point_count=distinct_point_count,
-            aggregation_level=aggregation_level,
+            bucket_count=len(temporal_data),
+            total_row_count=total_row_count,
+            aggregation_level=session_state.temporal_projection.current_aggregation_level,
         )
     except HTTPException:
         # Re-raise HTTP exceptions as-is
@@ -260,7 +249,7 @@ async def get_geo_plot_data(
         marker_count = len(geo_data)
         from crossfilter.core.schema import SchemaColumns as C
 
-        distinct_point_count = (
+        total_row_count = (
             geo_data[C.COUNT].sum() if C.COUNT in geo_data.columns else len(geo_data)
         )
 
@@ -271,8 +260,8 @@ async def get_geo_plot_data(
 
         return GeoPlotResponse(
             plotly_plot=plotly_plot,
-            marker_count=marker_count,
-            distinct_point_count=distinct_point_count,
+            bucket_count=len(geo_data),
+            total_row_count=total_row_count,
             aggregation_level=aggregation_level,
         )
     except HTTPException:
@@ -352,21 +341,23 @@ async def filter_change_stream(
 
 
 @app.get("/api/image_preview/uuid/{uuid}")
-async def get_uuid_preview_image(uuid: str, app_instance: App = Depends(get_app)) -> Response:
+async def get_uuid_preview_image(
+    uuid: str, app_instance: App = Depends(get_app)
+) -> Response:
     """Get a preview image for a UUID."""
     if not app_instance.uuid_preview_images_base_dir:
         return _create_no_preview_available_image()
-    
+
     # Extract first two characters for subdirectory
     if len(uuid) < 2:
         return _create_no_preview_available_image()
-    
+
     subdir = uuid[:2]
     image_path = app_instance.uuid_preview_images_base_dir / subdir / f"{uuid}.jpg"
-    
+
     if not image_path.exists():
         return _create_no_preview_available_image()
-    
+
     try:
         with open(image_path, "rb") as f:
             image_data = f.read()
@@ -385,7 +376,7 @@ def _create_no_preview_available_image() -> Response:
             No preview available
         </text>
     </svg>"""
-    
+
     return Response(content=svg_content, media_type="image/svg+xml")
 
 
@@ -464,7 +455,9 @@ def serve(
     # Allow starting without data for UI testing
     if dataframes:
         final_df = pd.concat(dataframes, axis="index", ignore_index=True)
-        logger.info(f"Concatenated {len(dataframes)=} dataframes into {final_df.shape=}")
+        logger.info(
+            f"Concatenated {len(dataframes)=} dataframes into {final_df.shape=}"
+        )
         final_df = final_df.reset_index(drop=True)
         final_df.index.name = C.DF_ID
         _app_instance.session_state.load_dataframe(final_df)

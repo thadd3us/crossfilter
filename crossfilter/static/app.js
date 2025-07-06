@@ -498,14 +498,11 @@ const CrossfilterApp = {
             let selectedCount = 0;
             eventData.points.forEach((point, index) => {
                 // customdata format:
-                // - Temporal: [df_id, count]
-                // - Geo: [df_id]
+                // [df_id, count, uuid_string]
                 const dfId = point.customdata[0];
                 selectedIndices.add(dfId);
                 
-                // For temporal plots, customdata[1] is the count
-                // For geo plots, each point represents 1 row
-                const pointCount = point.customdata.length > 1 ? point.customdata[1] : 1;
+                const pointCount = point.customdata[1]
                 selectedCount += pointCount;
             });
 

@@ -13,6 +13,7 @@ import plotly.graph_objects as go
 
 from crossfilter.core.geo_projection_state import GeoProjectionState
 from crossfilter.core.schema import SchemaColumns as C
+from crossfilter.visualization.plot_common import CUSTOM_DATA_COLUMNS
 
 
 def _haversine_distance_vectorized(
@@ -242,7 +243,7 @@ def create_geo_plot(
         lon=C.GPS_LONGITUDE,
         size="marker_size",
         color="Group (Count)",
-        custom_data=[C.DF_ID],
+        custom_data=CUSTOM_DATA_COLUMNS,
         hover_data=hover_data_columns,
         title=title,
         map_style="open-street-map",

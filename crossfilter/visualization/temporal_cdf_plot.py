@@ -11,6 +11,7 @@ import plotly.graph_objects as go
 
 from crossfilter.core.schema import SchemaColumns as C
 from crossfilter.core.temporal_projection_state import TemporalProjectionState
+from crossfilter.visualization.plot_common import CUSTOM_DATA_COLUMNS
 
 
 def create_temporal_cdf(
@@ -70,7 +71,7 @@ def create_temporal_cdf(
         x=time_column,
         y="CDF",
         color="Group (Count)",
-        custom_data=[C.DF_ID, C.COUNT],
+        custom_data=CUSTOM_DATA_COLUMNS,
         hover_data=hover_data_columns,
         markers=True,
         # hover_data={"label": True},

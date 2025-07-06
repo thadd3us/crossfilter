@@ -19,15 +19,15 @@ from fastapi.responses import HTMLResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
+from crossfilter.core.schema import SchemaColumns as C
 
 from crossfilter.core.backend_frontend_shared_schema import (
     DfIdsFilterRequest,
     FilterResponse,
-    GeoPlotResponse,
     LoadDataRequest,
     LoadDataResponse,
+    ProjectionPlotResponse,
     SessionStateResponse,
-    TemporalPlotResponse,
 )
 from crossfilter.core.backend_frontend_shared_schema import FilterEvent, ProjectionType
 from crossfilter.core.schema import load_jsonl_to_dataframe, load_sqlite_to_dataframe
@@ -184,9 +184,8 @@ async def get_session_status(
 
 @app.get("/api/plots/temporal")
 async def get_temporal_plot_data(
-    max_groups: int = Query(100000, ge=1, le=1000000),
     session_state: SessionState = Depends(get_session_state),
-) -> TemporalPlotResponse:
+) -> ProjectionPlotResponse:
     """Get data for the temporal CDF plot."""
     if len(session_state.all_rows) == 0:
         raise HTTPException(status_code=404, detail="No data loaded")
@@ -201,20 +200,19 @@ async def get_temporal_plot_data(
             raise ValueError("Failed to serialize temporal plot to JSON")
         plotly_plot = json.loads(fig_json)
 
-        # Calculate status information
-        from crossfilter.core.schema import SchemaColumns as C
-
         total_row_count = (
             temporal_data[C.COUNT].sum()
             if C.COUNT in temporal_data.columns
             else len(temporal_data)
         )
 
-        return TemporalPlotResponse(
+        aggregation_level = session_state.temporal_projection.current_aggregation_level
+        return ProjectionPlotResponse(
             plotly_plot=plotly_plot,
-            bucket_count=len(temporal_data),
             total_row_count=total_row_count,
-            aggregation_level=session_state.temporal_projection.current_aggregation_level,
+            is_bucketed=aggregation_level is not None is not None,
+            bucketing_level=str(aggregation_level) if aggregation_level else None,
+            bucket_count=len(temporal_data),
         )
     except HTTPException:
         # Re-raise HTTP exceptions as-is
@@ -230,7 +228,7 @@ async def get_temporal_plot_data(
 @app.get("/api/plots/geo")
 async def get_geo_plot_data(
     session_state: SessionState = Depends(get_session_state),
-) -> GeoPlotResponse:
+) -> ProjectionPlotResponse:
     """Get data for the geographic plot."""
     if len(session_state.all_rows) == 0:
         raise HTTPException(status_code=404, detail="No data loaded")
@@ -245,24 +243,18 @@ async def get_geo_plot_data(
             raise ValueError("Failed to serialize geo plot to JSON")
         plotly_plot = json.loads(fig_json)
 
-        # Calculate status information
-        marker_count = len(geo_data)
-        from crossfilter.core.schema import SchemaColumns as C
-
         total_row_count = (
             geo_data[C.COUNT].sum() if C.COUNT in geo_data.columns else len(geo_data)
         )
 
         # Get aggregation level from geo projection state
-        geo_summary = session_state.geo_projection.get_summary()
-        h3_level = geo_summary.get("h3_level")
-        aggregation_level = f"H3 level {h3_level}" if h3_level is not None else None
-
-        return GeoPlotResponse(
+        aggregation_level = session_state.geo_projection.current_h3_level
+        return ProjectionPlotResponse(
             plotly_plot=plotly_plot,
-            bucket_count=len(geo_data),
             total_row_count=total_row_count,
-            aggregation_level=aggregation_level,
+            is_bucketed=aggregation_level is not None is not None,
+            bucketing_level=str(aggregation_level) if aggregation_level else None,
+            bucket_count=len(geo_data),
         )
     except HTTPException:
         # Re-raise HTTP exceptions as-is

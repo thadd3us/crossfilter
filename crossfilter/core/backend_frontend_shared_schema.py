@@ -95,22 +95,14 @@ class FilterResponse(BaseModel):
     filter_state: SessionStateResponse
 
 
-class TemporalPlotResponse(BaseModel):
-    """Response model for temporal plot data."""
+class ProjectionPlotResponse(BaseModel):
+    """Response model for projection plot data."""
 
     plotly_plot: dict[str, Any]
-    bucket_count: int
     total_row_count: int
-    aggregation_level: Optional[TemporalLevel]
-
-
-class GeoPlotResponse(BaseModel):
-    """Response model for geo plot data."""
-
-    plotly_plot: dict[str, Any]
+    is_bucketed: bool
+    bucketing_level: Optional[str]
     bucket_count: int
-    total_row_count: int
-    aggregation_level: Optional[str]
 
 
 # Server-Sent Events Models

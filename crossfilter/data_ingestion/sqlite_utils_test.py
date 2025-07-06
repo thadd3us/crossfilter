@@ -10,6 +10,9 @@ import sqlalchemy.exc
 from sqlalchemy import create_engine, inspect, text
 from syrupy.assertion import SnapshotAssertion
 
+import logging
+
+
 from crossfilter.core.schema import DataType, SchemaColumns
 from crossfilter.data_ingestion.sqlite_utils import (
     create_or_update_table_schema,
@@ -18,6 +21,9 @@ from crossfilter.data_ingestion.sqlite_utils import (
     upsert_dataframe_to_sqlite,
     query_sqlite_to_dataframe,
 )
+
+
+logger = logging.getLogger(__name__)
 
 
 def test_get_pandas_to_sqlalchemy_dtype() -> None:
@@ -369,3 +375,25 @@ def test_query_sqlite_to_dataframe_with_params(
         {"uuid": "test-uuid-1"},
     )
     assert result_df.to_dict(orient="records") == snapshot
+
+
+def test_upsert_large_dataframe(tmp_path: Path) -> None:
+    """Test upserting a large dataframe."""
+    db_path = tmp_path / "test.db"
+
+    # Create a large dataframe
+    df = pd.DataFrame()
+    df[str(SchemaColumns.UUID_STRING)] = [f"uuid_{i}" for i in range(100_000)]
+    for col in range(50):
+        df[f"col_{col}"] = [f"value_{col}_{i}" for i in range(len(df))]
+
+    logger.info(f"Upserting {len(df)} rows to test_table")
+    upsert_dataframe_to_sqlite(df, db_path, "test_table")
+    logger.info(f"Upserted {len(df)} rows to test_table")
+
+    logger.info(f"Querying {len(df)} rows from test_table")
+    actual = query_sqlite_to_dataframe(db_path, "SELECT * FROM test_table")
+    logger.info(f"Queried {len(actual)} rows from test_table")
+
+    assert sorted(actual.columns.tolist()) == sorted(df.columns.tolist())
+    assert actual[df.columns].values.tolist() == df.values.tolist()

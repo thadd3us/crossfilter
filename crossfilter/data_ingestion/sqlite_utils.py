@@ -5,6 +5,7 @@ import re
 from pathlib import Path
 from typing import List, Dict, Any, Union
 import uuid
+import tqdm
 
 import pandas as pd
 from sqlalchemy import (
@@ -103,6 +104,7 @@ def create_or_update_table_schema(
                 f"Created unique index on {SchemaColumns.UUID_STRING} for table {table_name}"
             )
         conn.commit()
+    logger.info(f"Committed table {table_name} with schema {df.columns.tolist()}")
 
 
 def upsert_dataframe_to_sqlite(
@@ -136,8 +138,15 @@ def upsert_dataframe_to_sqlite(
         #     )
         # )
 
-        # Insert new data into temporary table
-        df.to_sql(temp_table, engine, if_exists="append", index=False, method="multi")
+        max_rows_per_insert = 500
+        logger.info(
+            f"Inserting {len(df)} rows to {temp_table} in batches of {max_rows_per_insert}"
+        )
+        for i in tqdm.tqdm(range(0, len(df), max_rows_per_insert)):
+            df.iloc[i : i + max_rows_per_insert].to_sql(
+                temp_table, engine, if_exists="append", index=False, method="multi"
+            )
+        logger.info(f"Upserted {len(df)} rows to {temp_table}")
 
         # Perform bulk upsert using a single INSERT OR REPLACE statement
         # This is much more efficient than individual row processing

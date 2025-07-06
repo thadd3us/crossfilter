@@ -78,20 +78,21 @@ The application is built around a **projection-based architecture** where multip
     - Use `tmp_path` fixture instead of `tempfile.NamedTemporaryFile`
     - Use `syrupy` plugin for testing data content in a diff-friendly way
     - Always specify return type annotations for test functions
-16. **Proper Exception Handling**: Follow linter suggestions for proper exception re-raising patterns.
-17. **Avoid YAGNI and Weakly Typed Fields**: Don't add fields like `metadata: Dict[str, Any]` unless there's a specific, immediate need. Prefer strongly typed, specific fields.
-18. **Minimize Branching**: Avoid unnecessary `if/else` branches whenever possible. Use functions that handle edge cases (like empty collections) gracefully rather than checking for them explicitly.
-19. **Enhanced Logging**: Use f-string syntax with `=` for logging (e.g., `f"{variable=}"`) to provide better context and show empty strings clearly.
-20. **Start with the Simplest Solution**: Always begin with the most straightforward approach that meets the requirements. Don't copy complex patterns when simple ones will suffice.
-21. **Question Infrastructure Needs**: Before adding servers, databases, or complex frameworks, ask "Is this actually needed?" For example, testing a static HTML file doesn't require a web server - use `file://` URLs instead.
-22. **Prefer Synchronous over Asynchronous**: Use async/await only when truly needed for concurrency. Simple, synchronous code is easier to understand and debug.
-23. **Don't Cargo-Cult Code**: Just because existing code is complex doesn't mean new code needs to be. Evaluate each situation independently and choose the appropriate level of complexity.
-24. **Focus on Actual Requirements**: Implement exactly what's needed, not what might be needed. A "hello world" test should be simple, not a copy of a full application test suite.
-25. **No Silent Fallbacks**: Never silently fall back or ignore user requests when data/columns are missing. If a user requests a specific column or parameter that doesn't exist, raise a clear error instead of falling back to a default. This makes bugs visible immediately rather than causing silent incorrect behavior.
-26. **Don't enumerate arguments in docstrings**: Just use good names and type hints to make it clear what things are.
-27. **Never Use @property Decorators**: Avoid using `@property` decorators for getters and setters. Use direct naked attribute access instead. Properties add unnecessary verbosity and complexity without meaningful benefit. Just access and modify attributes directly (e.g., `obj.max_rows = 100` instead of property-based access).
-28. **Read the docs in //docs/*.md**: And keep them up to date!
-21. **Use pytype hints**: Put them on member variables, function arguments, and return types.  If it improves readability, put them on local variables, too.
+16. **Avoid Sleep in Tests**: Never use `time.sleep()` in tests. Instead use exponential backoff when waiting for servers to start or become ready. Start with 1ms, then 2ms, 4ms, 8ms, etc., capped at a reasonable maximum (e.g., 1 second). This makes tests faster and more reliable than arbitrary fixed delays.
+17. **Proper Exception Handling**: Follow linter suggestions for proper exception re-raising patterns.
+18. **Avoid YAGNI and Weakly Typed Fields**: Don't add fields like `metadata: Dict[str, Any]` unless there's a specific, immediate need. Prefer strongly typed, specific fields.
+19. **Minimize Branching**: Avoid unnecessary `if/else` branches whenever possible. Use functions that handle edge cases (like empty collections) gracefully rather than checking for them explicitly.
+20. **Enhanced Logging**: Use f-string syntax with `=` for logging (e.g., `f"{variable=}"`) to provide better context and show empty strings clearly.
+21. **Start with the Simplest Solution**: Always begin with the most straightforward approach that meets the requirements. Don't copy complex patterns when simple ones will suffice.
+22. **Question Infrastructure Needs**: Before adding servers, databases, or complex frameworks, ask "Is this actually needed?" For example, testing a static HTML file doesn't require a web server - use `file://` URLs instead.
+23. **Prefer Synchronous over Asynchronous**: Use async/await only when truly needed for concurrency. Simple, synchronous code is easier to understand and debug.
+24. **Don't Cargo-Cult Code**: Just because existing code is complex doesn't mean new code needs to be. Evaluate each situation independently and choose the appropriate level of complexity.
+25. **Focus on Actual Requirements**: Implement exactly what's needed, not what might be needed. A "hello world" test should be simple, not a copy of a full application test suite.
+26. **No Silent Fallbacks**: Never silently fall back or ignore user requests when data/columns are missing. If a user requests a specific column or parameter that doesn't exist, raise a clear error instead of falling back to a default. This makes bugs visible immediately rather than causing silent incorrect behavior.
+27. **Don't enumerate arguments in docstrings**: Just use good names and type hints to make it clear what things are.
+28. **Never Use @property Decorators**: Avoid using `@property` decorators for getters and setters. Use direct naked attribute access instead. Properties add unnecessary verbosity and complexity without meaningful benefit. Just access and modify attributes directly (e.g., `obj.max_rows = 100` instead of property-based access).
+29. **Read the docs in //docs/*.md**: And keep them up to date!
+30. **Use pytype hints**: Put them on member variables, function arguments, and return types.  If it improves readability, put them on local variables, too.
 
 ### Project Structure
 ```

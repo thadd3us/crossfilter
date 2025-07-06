@@ -14,39 +14,45 @@ import requests
 logger = logging.getLogger(__name__)
 
 
-def wait_for_server(url: str, max_attempts: int = 30, delay: float = 1.0) -> bool:
-    """Wait for the server to be ready."""
-    for _ in range(max_attempts):
+def wait_for_server(url: str, max_attempts: int = 15) -> bool:
+    """Wait for the server to be ready using exponential backoff."""
+    delay_ms = 1
+    for attempt in range(max_attempts):
         try:
             response = requests.get(url, timeout=5)
             if response.status_code == 200:
                 return True
         except requests.exceptions.RequestException:
             pass
-        time.sleep(delay)
+        time.sleep(delay_ms / 1000)  # Convert ms to seconds
+        delay_ms = min(delay_ms * 2, 1000)  # Cap at 1 second: 1ms, 2ms, 4ms, ..., 1000ms
     return False
 
 
 @pytest.fixture(scope="function")
-def server_with_data() -> Generator[str, None, None]:
+def server_with_data(source_tree_root: Path) -> Generator[str, None, None]:
     """Start the backend server with pre-loaded sample data.
 
     This fixture provides comprehensive monitoring with real-time backend log output,
     making it easier to debug issues during testing.
     """
     # Path to the sample data
-    sample_data_path = Path(__file__).parent.parent / "test_data" / "sample_100.jsonl"
+    sample_data_path = source_tree_root / "test_data" / "sample_100.jsonl"
+    
+    # Path to the UUID preview images directory
+    uuid_preview_images_path = source_tree_root / "test_data" / "uuid_preview_images"
 
     # Start the server on a test port
     test_port = 8001
     server_url = f"http://localhost:{test_port}"
 
-    # Command to start the server with pre-loaded data
+    # Command to start the server with pre-loaded data and UUID preview images
     cmd = (
         sys.executable,
         *("-m", "crossfilter.main", "serve"),
         *("--port", str(test_port)),
         *("--preload_jsonl", str(sample_data_path)),
+        *("--uuid_preview_images_base_dir", str(uuid_preview_images_path)),
     )
 
     # Start the server process

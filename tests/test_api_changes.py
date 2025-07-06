@@ -1,33 +1,18 @@
 """Test API changes for row index support."""
 
+import pytest
+import requests
 from pathlib import Path
 
-import pandas as pd
-import pytest
-from fastapi.testclient import TestClient
+from tests.fixtures_server import server_with_data
 
-from crossfilter.core.schema import load_jsonl_to_dataframe
-from crossfilter.main import app, get_session_state
+assert server_with_data, "Don't remove this import!"
 
 
-@pytest.fixture
-def sample_data() -> pd.DataFrame:
-    """Load sample data for testing."""
-    sample_path = Path(__file__).parent.parent / "test_data" / "sample_100.jsonl"
-    return load_jsonl_to_dataframe(sample_path)
-
-
-@pytest.fixture
-def client_with_data(sample_data: pd.DataFrame) -> TestClient:
-    """Create test client with sample data loaded."""
-    session_state = get_session_state()
-    session_state.load_dataframe(sample_data)
-    return TestClient(app)
-
-
-def test_session_status_with_data(client_with_data: TestClient) -> None:
+def test_session_status_with_data(server_with_data: str) -> None:
     """Test that session status includes the new fields."""
-    response = client_with_data.get("/api/session")
+    server_url = server_with_data
+    response = requests.get(f"{server_url}/api/session")
     assert response.status_code == 200
 
     data = response.json()
@@ -37,13 +22,13 @@ def test_session_status_with_data(client_with_data: TestClient) -> None:
     assert "columns" in data
 
 
-def test_load_data_endpoint(sample_data: pd.DataFrame) -> None:
+def test_load_data_endpoint(server_with_data: str) -> None:
     """Test the load data endpoint with new request format."""
-    client = TestClient(app)
+    server_url = server_with_data
 
     # Test loading data
     sample_path = str(Path(__file__).parent.parent / "test_data" / "sample_100.jsonl")
-    response = client.post("/api/data/load", json={"file_path": sample_path})
+    response = requests.post(f"{server_url}/api/data/load", json={"file_path": sample_path})
 
     assert response.status_code == 200
     data = response.json()
@@ -52,9 +37,10 @@ def test_load_data_endpoint(sample_data: pd.DataFrame) -> None:
 
 
 @pytest.mark.skip(reason="Not implemented")
-def test_temporal_plot_endpoint(client_with_data: TestClient) -> None:
+def test_temporal_plot_endpoint(server_with_data: str) -> None:
     """Test temporal plot endpoint returns data with row indices."""
-    response = client_with_data.get("/api/plots/temporal?max_groups=1000")
+    server_url = server_with_data
+    response = requests.get(f"{server_url}/api/plots/temporal?max_groups=1000")
     assert response.status_code == 200
 
     data = response.json()
@@ -74,8 +60,9 @@ def test_temporal_plot_endpoint(client_with_data: TestClient) -> None:
 
 
 @pytest.mark.skip(reason="Not implemented")
-def test_apply_temporal_filter(client_with_data: TestClient) -> None:
+def test_apply_temporal_filter(server_with_data: str) -> None:
     """Test applying temporal filter with row indices."""
+    server_url = server_with_data
     # Apply a filter with some row indices
     filter_request = {
         "row_indices": [0, 1, 2, 3, 4],  # Select first 5 rows
@@ -83,7 +70,7 @@ def test_apply_temporal_filter(client_with_data: TestClient) -> None:
         "description": "Test temporal filter",
     }
 
-    response = client_with_data.post("/api/filters/apply", json=filter_request)
+    response = requests.post(f"{server_url}/api/filters/apply", json=filter_request)
     assert response.status_code == 200
 
     data = response.json()
@@ -96,25 +83,26 @@ def test_apply_temporal_filter(client_with_data: TestClient) -> None:
     assert filter_state["total_count"] == 100
 
 
-def test_reset_filters(client_with_data: TestClient) -> None:
+def test_reset_filters(server_with_data: str) -> None:
     """Test resetting filters."""
+    server_url = server_with_data
     # First apply a filter
     filter_request = {
         "row_indices": [0, 1, 2],
         "operation_type": "temporal",
         "description": "Test filter to reset",
     }
-    client_with_data.post("/api/filters/apply", json=filter_request)
+    requests.post(f"{server_url}/api/filters/apply", json=filter_request)
 
     # Now reset
-    response = client_with_data.post("/api/filters/reset")
+    response = requests.post(f"{server_url}/api/filters/reset")
     assert response.status_code == 200
 
     data = response.json()
     assert data["success"] is True
 
     # Check session status shows all data visible
-    status_response = client_with_data.get("/api/session")
+    status_response = requests.get(f"{server_url}/api/session")
     status_data = status_response.json()
     assert status_data["filtered_count"] == 100
 

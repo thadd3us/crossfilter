@@ -1,22 +1,18 @@
 """Shared SQLite utility functions for data ingestion."""
 
 import logging
+import re
 from pathlib import Path
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Union
+import uuid
 
 import pandas as pd
 from sqlalchemy import (
-    Column,
     Engine,
-    MetaData,
-    String,
-    Table,
     create_engine,
     inspect,
     text,
 )
-from sqlalchemy.dialects.sqlite import insert
-from sqlalchemy.orm import sessionmaker
 
 from crossfilter.core.schema import SchemaColumns
 
@@ -37,7 +33,7 @@ def get_pandas_to_sqlalchemy_dtype(pandas_dtype: str) -> str:
         return "TEXT"
 
 
-def has_unique_constraint_on_uuid(engine, table_name: str) -> bool:
+def has_unique_constraint_on_uuid(engine: Engine, table_name: str) -> bool:
     """Check if table has a unique constraint or index on UUID_STRING column."""
     inspector = inspect(engine)
 
@@ -64,8 +60,14 @@ def has_unique_constraint_on_uuid(engine, table_name: str) -> bool:
     return False
 
 
-def create_or_update_table(engine: Engine, table_name: str, df: pd.DataFrame) -> None:
+def create_or_update_table_schema(
+    engine: Engine, table_name: str, df: pd.DataFrame
+) -> None:
     """Create table or add missing columns if table exists."""
+    # Validate table name
+    if not is_valid_sql_identifier(table_name):
+        raise ValueError(f"Invalid table name: {table_name}")
+
     inspector = inspect(engine)
     with engine.connect() as conn:
         if not inspector.has_table(table_name):
@@ -83,6 +85,8 @@ def create_or_update_table(engine: Engine, table_name: str, df: pd.DataFrame) ->
         if missing_columns:
             logger.info(f"Adding missing columns to {table_name}: {missing_columns}")
             for col in missing_columns:
+                if not is_valid_sql_identifier(col):
+                    raise ValueError(f"Invalid column name: {col}")
                 dtype = get_pandas_to_sqlalchemy_dtype(str(df[col].dtype))
                 conn.execute(text(f"ALTER TABLE {table_name} ADD COLUMN {col} {dtype}"))
 
@@ -104,11 +108,15 @@ def create_or_update_table(engine: Engine, table_name: str, df: pd.DataFrame) ->
 def upsert_dataframe_to_sqlite(
     df: pd.DataFrame, destination_sqlite_db: Path, destination_table: str
 ) -> None:
-    """Upsert DataFrame to SQLite database using ON CONFLICT DO UPDATE."""
+    """Upsert DataFrame to SQLite database using bulk operations."""
     # THAD: Don't do this, just let the empty data flow through.
     # if df.empty:
     #     logger.info("No data to upsert")
     #     return
+
+    # Validate table name
+    if not is_valid_sql_identifier(destination_table):
+        raise ValueError(f"Invalid table name: {destination_table}")
 
     # Create database directory if it doesn't exist
     destination_sqlite_db.parent.mkdir(parents=True, exist_ok=True)
@@ -117,47 +125,54 @@ def upsert_dataframe_to_sqlite(
     engine = create_engine(f"sqlite:///{destination_sqlite_db}")
 
     # Create or update table structure - will ensure unique constraint exists
-    create_or_update_table(engine, destination_table, df)
+    create_or_update_table_schema(engine, destination_table, df)
 
-    # Perform upsert using SQLAlchemy
-    metadata = MetaData()
+    # For bulk upsert, we'll use a temporary table approach
+    temp_table = f"{destination_table}_temp_{uuid.uuid4().hex}"
 
-    # Reflect the table structure
-    table = Table(destination_table, metadata, autoload_with=engine)
-
-    # Convert DataFrame to list of dictionaries
-    records = df.to_dict("records")
-
-    # Perform upsert
     with engine.connect() as conn:
-        for record in records:
-            # Clean None values for SQLite
-            cleaned_record = {k: v for k, v in record.items() if v is not None}
+        # Create temporary table with same structure
+        # conn.execute(
+        #     text(
+        #         f"CREATE TABLE {escape_sql_identifier(temp_table)} AS SELECT * FROM {escape_sql_identifier(destination_table)} WHERE 1=0"
+        #     )
+        # )
 
-            # Use ON CONFLICT DO UPDATE
-            stmt = insert(table).values(cleaned_record)
-            primary_key_col = SchemaColumns.UUID_STRING
+        # Insert new data into temporary table
+        df.to_sql(temp_table, engine, if_exists="append", index=False, method="multi")
 
-            # Create the ON CONFLICT DO UPDATE statement
-            update_dict = {
-                col.name: stmt.excluded[col.name]
-                for col in table.columns
-                if col.name != primary_key_col
-            }
-            stmt = stmt.on_conflict_do_update(
-                index_elements=[primary_key_col], set_=update_dict
-            )
-            conn.execute(stmt)
+        # Perform bulk upsert using a single INSERT OR REPLACE statement
+        # This is much more efficient than individual row processing
+        columns = list(df.columns)
+
+        # Validate all column names
+        for col in columns:
+            if not is_valid_sql_identifier(col):
+                raise ValueError(f"Invalid column name: {col}")
+
+        columns_str = ", ".join(escape_sql_identifier(col) for col in columns)
+
+        # Single bulk upsert operation
+        upsert_stmt = text(
+            f"""
+            INSERT OR REPLACE INTO {escape_sql_identifier(destination_table)} ({columns_str})
+            SELECT {columns_str} FROM {escape_sql_identifier(temp_table)}
+        """
+        )
+        conn.execute(upsert_stmt)
+
+        # Clean up temporary table
+        conn.execute(text(f"DROP TABLE {temp_table}"))
 
         conn.commit()
 
     logger.info(
-        f"Upserted {len(records)} records to {destination_table} in {destination_sqlite_db}"
+        f"Upserted {len(df)} records to {destination_table} in {destination_sqlite_db}"
     )
 
 
 def query_sqlite_to_dataframe(
-    sqlite_db_path: Path, query: str, params: Dict[str, Any] = None
+    sqlite_db_path: Path, query: str, params: Union[Dict[str, Any], None] = None
 ) -> pd.DataFrame:
     """Execute SQL query against SQLite database and return DataFrame."""
     engine = create_engine(f"sqlite:///{sqlite_db_path}")
@@ -166,3 +181,18 @@ def query_sqlite_to_dataframe(
         df = pd.read_sql_query(query, conn, params=params)
 
     return df
+
+
+def is_valid_sql_identifier(identifier: str) -> bool:
+    """Validate that a string is a safe SQL identifier (column/table name)."""
+    # Only allow alphanumeric characters, underscores, and hyphens
+    # Must start with a letter or underscore
+    pattern = r"^[a-zA-Z_][a-zA-Z0-9_-]*$"
+    return bool(re.match(pattern, identifier))
+
+
+def escape_sql_identifier(identifier: str) -> str:
+    """Escape a SQL identifier by wrapping in double quotes."""
+    if not is_valid_sql_identifier(identifier):
+        raise ValueError(f"Invalid SQL identifier: {identifier}")
+    return f'"{identifier}"'

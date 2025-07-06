@@ -12,7 +12,7 @@ from syrupy.assertion import SnapshotAssertion
 
 from crossfilter.core.schema import DataType, SchemaColumns
 from crossfilter.data_ingestion.sqlite_utils import (
-    create_or_update_table,
+    create_or_update_table_schema,
     get_pandas_to_sqlalchemy_dtype,
     has_unique_constraint_on_uuid,
     upsert_dataframe_to_sqlite,
@@ -45,7 +45,7 @@ def test_create_or_update_table_new_table(
             SchemaColumns.GPS_LONGITUDE: [-122.4194],
         }
     )
-    create_or_update_table(engine, "test_table", df)
+    create_or_update_table_schema(engine, "test_table", df)
     actual = query_sqlite_to_dataframe(db_path, "SELECT * FROM test_table")
     assert actual.to_dict() == snapshot
 
@@ -63,7 +63,7 @@ def test_create_or_update_table_add_columns(
             SchemaColumns.DATA_TYPE: [DataType.GPX_TRACKPOINT],
         }
     )
-    create_or_update_table(engine, "test_table", initial_df)
+    create_or_update_table_schema(engine, "test_table", initial_df)
     actual = query_sqlite_to_dataframe(db_path, "SELECT * FROM test_table")
     assert actual.to_dict() == snapshot
 
@@ -75,7 +75,7 @@ def test_create_or_update_table_add_columns(
             SchemaColumns.GPS_LONGITUDE: [-122.4194],
         }
     )
-    create_or_update_table(engine, "test_table", extended_df)
+    create_or_update_table_schema(engine, "test_table", extended_df)
     actual = query_sqlite_to_dataframe(db_path, "SELECT * FROM test_table")
     assert actual.to_dict() == snapshot
 
@@ -114,7 +114,7 @@ def test_create_or_update_table_nullable_columns(
             SchemaColumns.GPS_LATITUDE: [37.7749],
         }
     )
-    create_or_update_table(engine, "test_table", df)
+    create_or_update_table_schema(engine, "test_table", df)
     actual = query_sqlite_to_dataframe(db_path, "SELECT * FROM test_table")
     assert actual.to_dict() == snapshot
 
@@ -131,7 +131,9 @@ def test_upsert_dataframe_to_sqlite_empty(
     assert actual.to_dict() == snapshot
 
 
-def test_upsert_dataframe_to_sqlite_new_table(tmp_path: Path) -> None:
+def test_upsert_dataframe_to_sqlite_new_table(
+    tmp_path: Path, snapshot: SnapshotAssertion
+) -> None:
     """Test upserting to new table."""
     db_path = tmp_path / "test.db"
 
@@ -143,17 +145,9 @@ def test_upsert_dataframe_to_sqlite_new_table(tmp_path: Path) -> None:
             SchemaColumns.GPS_LONGITUDE: [-122.4194, -122.4195],
         }
     )
-
     upsert_dataframe_to_sqlite(df, db_path, "test_table")
-
-    # Check data was inserted
-    conn = sqlite3.connect(db_path)
-    cursor = conn.cursor()
-    cursor.execute("SELECT COUNT(*) FROM test_table")
-    count = cursor.fetchone()[0]
-    conn.close()
-
-    assert count == 2
+    actual = query_sqlite_to_dataframe(db_path, "SELECT * FROM test_table")
+    assert actual.to_dict() == snapshot
 
 
 def test_upsert_dataframe_to_sqlite_update_existing(tmp_path: Path) -> None:

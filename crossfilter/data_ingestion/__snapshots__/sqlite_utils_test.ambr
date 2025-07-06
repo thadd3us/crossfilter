@@ -59,3 +59,29 @@
     }),
   })
 # ---
+# name: test_upsert_dataframe_to_sqlite_empty
+  dict({
+    'UUID_STRING': dict({
+    }),
+  })
+# ---
+# name: test_upsert_dataframe_to_sqlite_new_table
+  dict({
+    'DATA_TYPE': dict({
+      0: 'GPX_TRACKPOINT',
+      1: 'GPX_WAYPOINT',
+    }),
+    'GPS_LATITUDE': dict({
+      0: 37.7749,
+      1: 37.775,
+    }),
+    'GPS_LONGITUDE': dict({
+      0: -122.4194,
+      1: -122.4195,
+    }),
+    'UUID_STRING': dict({
+      0: 'test-uuid-1',
+      1: 'test-uuid-2',
+    }),
+  })
+# ---

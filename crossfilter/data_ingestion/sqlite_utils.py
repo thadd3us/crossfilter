@@ -5,7 +5,16 @@ from pathlib import Path
 from typing import List, Dict, Any
 
 import pandas as pd
-from sqlalchemy import Column, MetaData, String, Table, create_engine, inspect, text
+from sqlalchemy import (
+    Column,
+    Engine,
+    MetaData,
+    String,
+    Table,
+    create_engine,
+    inspect,
+    text,
+)
 from sqlalchemy.dialects.sqlite import insert
 from sqlalchemy.orm import sessionmaker
 
@@ -55,28 +64,17 @@ def has_unique_constraint_on_uuid(engine, table_name: str) -> bool:
     return False
 
 
-def create_or_update_table(engine: Engine, table_name: str, df: pd.DataFrame) -> bool:
-    """Create table or add missing columns if table exists.
-
-    Returns True if unique constraint exists on UUID_STRING, False otherwise.
-    """
+def create_or_update_table(engine: Engine, table_name: str, df: pd.DataFrame) -> None:
+    """Create table or add missing columns if table exists."""
     inspector = inspect(engine)
-
-    if not inspector.has_table(table_name):
-        # Create new table
-        logger.info(f"Creating new table: {table_name}")
-        df.to_sql(table_name, engine, if_exists="replace", index=False)
-
-        # Set UUID_STRING as primary key
-        with engine.connect() as conn:
+    with engine.connect() as conn:
+        if not inspector.has_table(table_name):
+            # Create new empty table
+            logger.info(f"Creating new empty table: {table_name}")
             conn.execute(
-                text(
-                    f"CREATE UNIQUE INDEX IF NOT EXISTS idx_{table_name}_uuid ON {table_name} ({SchemaColumns.UUID_STRING})"
-                )
+                text(f"CREATE TABLE {table_name} ({SchemaColumns.UUID_STRING} STRING)")
             )
-            conn.commit()
-        return True
-    else:
+
         # Check if we need to add columns
         existing_columns = {col["name"] for col in inspector.get_columns(table_name)}
         df_columns = set(df.columns)
@@ -84,42 +82,33 @@ def create_or_update_table(engine: Engine, table_name: str, df: pd.DataFrame) ->
 
         if missing_columns:
             logger.info(f"Adding missing columns to {table_name}: {missing_columns}")
-
-            with engine.connect() as conn:
-                for col in missing_columns:
-                    dtype = get_pandas_to_sqlalchemy_dtype(str(df[col].dtype))
-                    conn.execute(
-                        text(f"ALTER TABLE {table_name} ADD COLUMN {col} {dtype}")
-                    )
-                conn.commit()
+            for col in missing_columns:
+                dtype = get_pandas_to_sqlalchemy_dtype(str(df[col].dtype))
+                conn.execute(text(f"ALTER TABLE {table_name} ADD COLUMN {col} {dtype}"))
 
         # Check if unique constraint exists on UUID_STRING
         has_unique = has_unique_constraint_on_uuid(engine, table_name)
-
         if not has_unique:
             # Create unique index - let exceptions propagate if there are duplicates
-            with engine.connect() as conn:
-                conn.execute(
-                    text(
-                        f"CREATE UNIQUE INDEX IF NOT EXISTS idx_{table_name}_uuid ON {table_name} ({SchemaColumns.UUID_STRING})"
-                    )
+            conn.execute(
+                text(
+                    f"CREATE UNIQUE INDEX IF NOT EXISTS idx_{table_name}_uuid ON {table_name} ({SchemaColumns.UUID_STRING})"
                 )
-                conn.commit()
+            )
             logger.info(
                 f"Created unique index on {SchemaColumns.UUID_STRING} for table {table_name}"
             )
-            return True
-
-        return has_unique
+        conn.commit()
 
 
 def upsert_dataframe_to_sqlite(
     df: pd.DataFrame, destination_sqlite_db: Path, destination_table: str
 ) -> None:
     """Upsert DataFrame to SQLite database using ON CONFLICT DO UPDATE."""
-    if df.empty:
-        logger.info("No data to upsert")
-        return
+    # THAD: Don't do this, just let the empty data flow through.
+    # if df.empty:
+    #     logger.info("No data to upsert")
+    #     return
 
     # Create database directory if it doesn't exist
     destination_sqlite_db.parent.mkdir(parents=True, exist_ok=True)

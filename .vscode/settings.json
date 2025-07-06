@@ -5,10 +5,9 @@
         "--headed",
         "-vvvv",
         "--tb=short",
-        // Coverage doesn't work with the debugger.    
         "--no-cov",
         "--cov-report=",
-
+        "--snapshot-update",
     ],
     "python.testing.unittestEnabled": false,
     "python.testing.pytestEnabled": true

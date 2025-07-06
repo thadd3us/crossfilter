@@ -1,0 +1,61 @@
+# serializer version: 1
+# name: test_create_or_update_table_add_columns
+  dict({
+    'DATA_TYPE': dict({
+    }),
+    'UUID_STRING': dict({
+    }),
+  })
+# ---
+# name: test_create_or_update_table_add_columns.1
+  dict({
+    'DATA_TYPE': dict({
+    }),
+    'GPS_LATITUDE': dict({
+    }),
+    'GPS_LONGITUDE': dict({
+    }),
+    'UUID_STRING': dict({
+    }),
+  })
+# ---
+# name: test_create_or_update_table_new_table
+  dict({
+    'DATA_TYPE': dict({
+    }),
+    'GPS_LATITUDE': dict({
+    }),
+    'GPS_LONGITUDE': dict({
+    }),
+    'UUID_STRING': dict({
+    }),
+  })
+# ---
+# name: test_create_or_update_table_nullable_columns
+  dict({
+    'DATA_TYPE': dict({
+    }),
+    'EXTRA_COLUMN': dict({
+    }),
+    'GPS_LATITUDE': dict({
+    }),
+    'GPS_LONGITUDE': dict({
+    }),
+    'UUID_STRING': dict({
+    }),
+  })
+# ---
+# name: test_create_or_update_table_nullable_columns.1
+  dict({
+    'DATA_TYPE': dict({
+    }),
+    'EXTRA_COLUMN': dict({
+    }),
+    'GPS_LATITUDE': dict({
+    }),
+    'GPS_LONGITUDE': dict({
+    }),
+    'UUID_STRING': dict({
+    }),
+  })
+# ---

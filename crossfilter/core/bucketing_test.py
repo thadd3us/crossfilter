@@ -168,6 +168,50 @@ def test_get_optimal_h3_level(sample_df: pd.DataFrame) -> None:
     assert optimal_small in H3_LEVELS
 
 
+def test_get_optimal_h3_level_large_dataset_issue() -> None:
+    """Test H3 level selection with large dataset to reproduce the issue."""
+    # Create a large dataset spread across different locations to simulate ~100k rows
+    import numpy as np
+    
+    # Create diverse coordinates that span different H3 cells
+    np.random.seed(42)  # For reproducible results
+    size = 10000  # Smaller for testing but still shows the issue
+    
+    # Generate coordinates spread across a large geographic area
+    # This ensures we get diverse H3 cells at different levels
+    lats = np.random.uniform(37.0, 38.0, size)  # SF Bay Area roughly
+    lons = np.random.uniform(-123.0, -122.0, size)
+    
+    df = pd.DataFrame({
+        C.UUID_STRING: [f"uuid_{i}" for i in range(size)],
+        C.GPS_LATITUDE: lats,
+        C.GPS_LONGITUDE: lons,
+    })
+    df.index.name = C.DF_ID
+    
+    # Add quantized H3 columns
+    quantized = add_quantized_geo_h3_columns(df)
+    
+    # Target 1000 rows (10% of our data)
+    target_rows = 1000
+    optimal_level = get_optimal_h3_level(quantized, max_rows=target_rows)
+    
+    # Check that we got a reasonable level (not 0)
+    assert optimal_level is not None
+    
+    # Get the actual bucket count for this level
+    h3_col = get_h3_column_name(optimal_level)
+    actual_buckets = quantized[h3_col].nunique()
+    
+    # The optimal level should produce close to target_rows buckets
+    # It should be <= target_rows but not dramatically smaller
+    assert actual_buckets <= target_rows
+    
+    # Verify that the algorithm chose a reasonable level that produces a good number of buckets
+    # (not too few, which would indicate it chose too coarse a resolution)
+    assert actual_buckets > target_rows / 10, f"Got {actual_buckets} buckets, expected more than {target_rows/10}"
+
+
 def test_get_optimal_temporal_level(snapshot: SnapshotAssertion) -> None:
     """Test finding optimal temporal level."""
     length = 10000

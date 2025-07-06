@@ -65,10 +65,10 @@ class BucketKey:
             object.__setattr__(self, "identifier", str(uuid.uuid4())[:8])
 
 
-# H3 resolution levels to pre-compute (0-15, where higher = more granular).  Important that these are ordered from smallest to largest grain.
+# H3 resolution levels to pre-compute (0-15, where higher = more granular).  Important that these are ordered from coarsest to finest resolution.
 H3_LEVELS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
 
-# Temporal quantization levels.  Important that these are ordered from smallest to largest grain.
+# Temporal quantization levels.  Important that these are ordered from finest to coarsest resolution.
 TEMPORAL_LEVELS = [
     TemporalLevel.SECOND,
     TemporalLevel.MINUTE,
@@ -256,7 +256,9 @@ def get_optimal_h3_level(df: pd.DataFrame, max_rows: int) -> Optional[int]:
         )
         return None
 
-    for level in H3_LEVELS:
+    # Iterate from finest to coarsest resolution to find the finest level 
+    # that still produces fewer than max_rows unique buckets
+    for level in reversed(H3_LEVELS):
         col_name = get_h3_column_name(level)
         assert col_name in df.columns, f"Column {col_name} not found in DataFrame"
         unique_count = df[col_name].nunique()

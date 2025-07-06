@@ -55,7 +55,7 @@ def has_unique_constraint_on_uuid(engine, table_name: str) -> bool:
     return False
 
 
-def create_or_update_table(engine, table_name: str, df: pd.DataFrame) -> bool:
+def create_or_update_table(engine: Engine, table_name: str, df: pd.DataFrame) -> bool:
     """Create table or add missing columns if table exists.
 
     Returns True if unique constraint exists on UUID_STRING, False otherwise.

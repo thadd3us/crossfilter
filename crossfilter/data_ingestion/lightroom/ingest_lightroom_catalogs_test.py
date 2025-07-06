@@ -1,16 +1,20 @@
 """Tests for Lightroom catalog ingestion CLI program."""
 
 import sqlite3
+import subprocess
+import sys
 import zipfile
 from pathlib import Path
 from typing import List
 
 import pandas as pd
 import pytest
+from syrupy.assertion import SnapshotAssertion
 
 from crossfilter.core.schema import DataType, SchemaColumns
 from crossfilter.data_ingestion.lightroom.ingest_lightroom_catalogs import (
     find_lightroom_catalogs,
+    main,
 )
 from crossfilter.data_ingestion.lightroom.lightroom_parser import (
     LightroomParserConfig,
@@ -133,7 +137,9 @@ def test_load_lightroom_catalog_real_data(test_catalogs_dir: Path) -> None:
     assert df[SchemaColumns.DATA_TYPE].isin([DataType.PHOTO, DataType.VIDEO]).all()
 
 
-def test_load_lightroom_catalog_with_config(test_catalogs_dir: Path, snapshot) -> None:
+def test_load_lightroom_catalog_with_config(
+    test_catalogs_dir: Path, snapshot: SnapshotAssertion
+) -> None:
     """Test loading catalog with custom configuration and verify full contents."""
     test_catalog = (
         test_catalogs_dir
@@ -284,3 +290,20 @@ def test_config_case_insensitive_ignore(test_catalogs_dir: Path) -> None:
 
     # Should process without errors
     assert SchemaColumns.UUID_STRING in df.columns
+
+
+@pytest.mark.skipif(sys.platform != "darwin", reason="Data is only on Thad's laptop")
+def test_thad_ingest_dev_data(
+    source_tree_root: Path, tmp_path: Path, snapshot: SnapshotAssertion
+) -> None:
+    main(
+        base_dir=source_tree_root / "dev_data",
+        destination_sqlite_db=tmp_path / "lightroom.sqlite",
+        destination_table="data",
+        include_metadata=True,
+        include_keywords=True,
+        include_collections=True,
+        ignore_collections="quick collection",
+    )
+
+    assert (tmp_path / "lightroom.sqlite").exists()

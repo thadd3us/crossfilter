@@ -81,7 +81,7 @@ def main(
     catalog_files = find_lightroom_catalogs(base_dir)
 
     if not catalog_files:
-        logger.info("No Lightroom catalog files found")
+        logger.error("No Lightroom catalog files found")
         return
 
     # Process files sequentially (no parallelism for simplicity as requested)

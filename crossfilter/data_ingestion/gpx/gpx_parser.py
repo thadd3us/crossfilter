@@ -11,6 +11,7 @@ import gpxpy
 import pandas as pd
 from gpxpy.gpx import GPXTrackPoint, GPXWaypoint
 
+from crossfilter.core.bucketing import add_geo_h3_bucket_columns
 from crossfilter.core.schema import DataType, SchemaColumns as C
 
 logger = logging.getLogger(__name__)
@@ -176,6 +177,11 @@ def load_gpx_file_to_df(gpx_file_path: Path) -> pd.DataFrame:
 
     # Set index name
     df.index.name = C.DF_ID
+
+    # Add H3 spatial index columns for each individual GPX file (parallelized computation)
+    if not df.empty and C.GPS_LATITUDE in df.columns and C.GPS_LONGITUDE in df.columns:
+        add_geo_h3_bucket_columns(df)
+        logger.debug(f"Added H3 columns to {len(df)} points from {gpx_file_path}")
 
     logger.info(f"Loaded {len(df)} points from {gpx_file_path}")
 

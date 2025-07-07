@@ -10,5 +10,9 @@ uv run python crossfilter/data_ingestion/gpx/ingest_gpx_files.py ~/Downloads ~/d
 
 ## Ingest Adobe Lightroom data
 ```sh
-uv run python crossfilter/data_ingestion/lightroom/ingest_lightroom_catalogs.py ~/Desktop/personal ~/data.sqlite
+uv run python crossfilter/data_ingestion/lightroom/ingest_lightroom_catalogs.py \
+    ~/personal ~/crossfilter/data.sqlite \
+    --sqlite_db_with_clip_embeddings ~/personal/lightroom_embedding_vectors.sqlite \
+    --output_umap_transformation_file ~/crossfilter/clip_umap_transformation.pickle
+
 ```

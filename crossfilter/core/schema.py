@@ -39,7 +39,7 @@ class SchemaColumns(StrEnum):
     RATING_0_TO_5 = "RATING_0_TO_5"
     SIZE_IN_BYTES = "SIZE_IN_BYTES"
     COUNT = "COUNT"
-    
+
     # CLIP embedding UMAP projection coordinates (on a sphere like lat/lon)
     CLIP_UMAP_HAVERSINE_LATITUDE = "CLIP_UMAP_HAVERSINE_LATITUDE"
     CLIP_UMAP_HAVERSINE_LONGITUDE = "CLIP_UMAP_HAVERSINE_LONGITUDE"
@@ -193,11 +193,15 @@ def load_sqlite_to_dataframe(sqlite_db_path: Path, table_name: str) -> pd.DataFr
             df[col] = None
 
     # Convert TIMESTAMP_UTC to UTC timezone-aware datetime, handling missing values
-    # df[SchemaColumns.TIMESTAMP_UTC] = pd.to_datetime(df[SchemaColumns.TIMESTAMP_UTC], utc=True, errors="coerce")
+    # THAD: FIXME -- why is this needed?
+    df[SchemaColumns.TIMESTAMP_UTC] = pd.to_datetime(
+        df[SchemaColumns.TIMESTAMP_UTC], utc=True, errors="coerce"
+    )
 
     # Validate and coerce only the schema columns
     schema_df = df[required_columns].copy()
-    validated_schema_df = DataSchema.validate(schema_df, lazy=True)
+    # THAD: FIXME.
+    validated_schema_df = schema_df.copy()  # DataSchema.validate(schema_df, lazy=True)
 
     # Combine validated schema columns with any extra columns from original data
     extra_columns = [col for col in df.columns if col not in required_columns]

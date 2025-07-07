@@ -12,7 +12,7 @@ uv run python crossfilter/data_ingestion/gpx/ingest_gpx_files.py ~/Downloads ~/c
 ```sh
 # Work laptop:
 uv run python crossfilter/data_ingestion/lightroom/ingest_lightroom_catalogs.py \
-    ~/personal ~/crossfilter/data.sqlite \
+    ~/personal/non_red ~/crossfilter/data.sqlite \
     --sqlite_db_with_clip_embeddings ~/personal/lightroom_embedding_vectors.sqlite \
     --output_umap_transformation_file ~/crossfilter/clip_umap_transformation.pickle
 
@@ -22,9 +22,4 @@ uv run python crossfilter/data_ingestion/lightroom/ingest_lightroom_catalogs.py 
     --sqlite_db_with_clip_embeddings ~/monorepo/data/thad/embeddings/images.sqlite \
     --output_umap_transformation_file ~/crossfilter/clip_umap_transformation.pickle
 
-
-# uv run python crossfilter/data_ingestion/lightroom/ingest_lightroom_catalogs.py \
-#      /Volumes/Kingston124/lightroom_3_star_and_up/ ~/crossfilter/data.sqlite \
-#     --sqlite_db_with_clip_embeddings ~/monorepo/data/thad/embeddings/images.sqlite \
-    --output_umap_transformation_file ~/crossfilter/clip_umap_transformation.pickle \
 ```

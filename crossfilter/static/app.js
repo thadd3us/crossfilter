@@ -5,7 +5,8 @@ const { createApp, ref, reactive, computed, watch, onMounted, onUnmounted } = Vu
 // ProjectionType enum to match backend schema.py
 const ProjectionType = {
     GEO: 'geo',
-    TEMPORAL: 'temporal'
+    TEMPORAL: 'temporal',
+    CLIP_EMBEDDING: 'clip_embedding'
 };
 
 // FilterOperatorType enum to match backend schema.py
@@ -108,6 +109,12 @@ class GeoProjectionState extends ProjectionState {
     }
 }
 
+class ClipEmbeddingProjectionState extends ProjectionState {
+    constructor() {
+        super(ProjectionType.CLIP_EMBEDDING, 'CLIP Embedding Semantic Space');
+    }
+}
+
 // Main application state
 class AppState {
     constructor() {
@@ -121,7 +128,8 @@ class AppState {
         };
         this.projections = {
             [ProjectionType.TEMPORAL]: new TemporalProjectionState(),
-            [ProjectionType.GEO]: new GeoProjectionState()
+            [ProjectionType.GEO]: new GeoProjectionState(),
+            [ProjectionType.CLIP_EMBEDDING]: new ClipEmbeddingProjectionState()
         };
         this.detailView = new DetailView();
         this.leftMenuOpen = false;
@@ -411,6 +419,7 @@ const CrossfilterApp = {
         // Make sure projections and detailView are reactive too
         appState.projections[ProjectionType.TEMPORAL] = reactive(appState.projections[ProjectionType.TEMPORAL]);
         appState.projections[ProjectionType.GEO] = reactive(appState.projections[ProjectionType.GEO]);
+        appState.projections[ProjectionType.CLIP_EMBEDDING] = reactive(appState.projections[ProjectionType.CLIP_EMBEDDING]);
         appState.detailView = reactive(appState.detailView);
         
         // API methods
@@ -542,12 +551,13 @@ const CrossfilterApp = {
             try {
                 console.log('CrossfilterApp: Fetching plot data...');
                 const loadingMessageId = Date.now();
-                appState.showMessage('Loading temporal and geographic plots...', 'info', loadingMessageId);
+                appState.showMessage('Loading temporal, geographic, and CLIP embedding plots...', 'info', loadingMessageId);
                 
-                // Load both plots simultaneously
-                const [temporalResponse, geoResponse] = await Promise.all([
+                // Load all plots simultaneously
+                const [temporalResponse, geoResponse, clipEmbeddingResponse] = await Promise.all([
                     fetch('/api/plots/temporal'),
-                    fetch('/api/plots/geo')
+                    fetch('/api/plots/geo'),
+                    fetch('/api/plots/clip_embedding')
                 ]);
                 
                 if (!temporalResponse.ok) {
@@ -556,21 +566,27 @@ const CrossfilterApp = {
                 if (!geoResponse.ok) {
                     throw new Error(`Geo plot HTTP error! status: ${geoResponse.status}`);
                 }
+                if (!clipEmbeddingResponse.ok) {
+                    throw new Error(`CLIP embedding plot HTTP error! status: ${clipEmbeddingResponse.status}`);
+                }
                 
-                const [temporalResult, geoResult] = await Promise.all([
+                const [temporalResult, geoResult, clipEmbeddingResult] = await Promise.all([
                     temporalResponse.json(),
-                    geoResponse.json()
+                    geoResponse.json(),
+                    clipEmbeddingResponse.json()
                 ]);
                 
-                console.log('CrossfilterApp: Both plot data received');
+                console.log('CrossfilterApp: All plot data received');
                 
                 // Update projection states
                 appState.projections[ProjectionType.TEMPORAL].updatePlotData(temporalResult);
                 appState.projections[ProjectionType.GEO].updatePlotData(geoResult);
+                appState.projections[ProjectionType.CLIP_EMBEDDING].updatePlotData(clipEmbeddingResult);
                 
                 // Render plots
                 renderPlot(appState.projections[ProjectionType.TEMPORAL], temporalResult);
                 renderPlot(appState.projections[ProjectionType.GEO], geoResult);
+                renderPlot(appState.projections[ProjectionType.CLIP_EMBEDDING], clipEmbeddingResult);
 
                 appState.removeMessage(loadingMessageId);
                 console.log('CrossfilterApp: Plot rendering complete');
@@ -597,11 +613,18 @@ const CrossfilterApp = {
                 console.log('CrossfilterApp: Plotly figure data:', figure);
                 
                 // Set up layout and config
+                let plotTitle = 'Data Distribution';
+                if (projection.projectionType === ProjectionType.TEMPORAL) {
+                    plotTitle = 'Temporal Distribution (CDF)';
+                } else if (projection.projectionType === ProjectionType.GEO) {
+                    plotTitle = 'Geographic Distribution';
+                } else if (projection.projectionType === ProjectionType.CLIP_EMBEDDING) {
+                    plotTitle = 'CLIP Embedding Semantic Space';
+                }
+                
                 const layout = {
                     ...figure.layout,
-                    title: projection.projectionType === ProjectionType.TEMPORAL 
-                        ? 'Temporal Distribution (CDF)' 
-                        : 'Geographic Distribution',
+                    title: plotTitle,
                     hovermode: 'closest',
                     selectdirection: projection.projectionType === ProjectionType.TEMPORAL ? 'horizontal' : undefined
                 };

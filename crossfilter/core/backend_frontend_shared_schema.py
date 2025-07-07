@@ -74,6 +74,7 @@ class SessionStateResponse(BaseModel):
     memory_usage_mb: str
     temporal_projection: dict[str, Any]
     geo_projection: dict[str, Any]
+    clip_embedding_projection: dict[str, Any]
     # Frontend-compatible aliases
     has_data: bool
     row_count: int

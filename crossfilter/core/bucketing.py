@@ -182,6 +182,41 @@ def get_optimal_h3_level(df: pd.DataFrame, max_rows: int) -> Optional[int]:
     return max(H3_LEVELS)
 
 
+def get_optimal_clip_umap_h3_level(df: pd.DataFrame, max_rows: int) -> Optional[int]:
+    """
+    Returns:
+        Optimal CLIP UMAP H3 aggregation level, or None if no aggregation is required.
+    """
+    if len(df.index) <= max_rows:
+        logger.info(f"No need to bucket data at any CLIP UMAP H3 level, {len(df)=}, {max_rows=}")
+        return None
+
+    # Check if CLIP UMAP H3 columns are available
+    first_clip_h3_column = get_clip_umap_h3_column_name(H3_LEVELS[0])
+    if first_clip_h3_column not in df.columns:
+        logger.warning(
+            "No CLIP UMAP H3 columns found in DataFrame, cannot perform CLIP UMAP H3 aggregation"
+        )
+        return None
+
+    # Iterate from finest to coarsest resolution to find the finest level
+    # that still produces fewer than max_rows unique buckets
+    for level in reversed(H3_LEVELS):
+        col_name = get_clip_umap_h3_column_name(level)
+        assert col_name in df.columns, f"Column {col_name} not found in DataFrame"
+        unique_count = df[col_name].nunique()
+        if unique_count <= max_rows:
+            logger.info(
+                f"Using CLIP UMAP H3 level {level} to bucket {len(df)=} rows into {max_rows=}, {unique_count=}"
+            )
+            return level
+
+    logger.warning(
+        f"No CLIP UMAP H3 level found that would bucket {len(df)=} rows into {max_rows=}, using {max(H3_LEVELS)}"
+    )
+    return max(H3_LEVELS)
+
+
 def get_optimal_temporal_level(
     df: pd.DataFrame, max_rows: int
 ) -> Optional[TemporalLevel]:

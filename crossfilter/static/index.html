@@ -467,7 +467,7 @@
 
         .preview-image-container {
             width: calc(100% - 20px); /* Full width minus small margin */
-            height: 300px; /* Fixed height instead of aspect-ratio for stability */
+            height: 500px; /* Increased height for larger preview */
             margin: 10px;
             border-radius: 4px;
             border: 1px solid #dee2e6;
@@ -486,6 +486,9 @@
             height: auto;
             border-radius: 4px;
             object-fit: contain;
+            /* Ensure landscape images use full width when possible */
+            min-width: 0;
+            min-height: 0;
         }
 
         .caption-display {
@@ -554,6 +557,7 @@
         @media (max-width: 768px) {
             .preview-image-container {
                 width: calc(100% - 16px); /* Smaller margins on tablets */
+                height: 400px; /* Slightly smaller height for tablets */
                 margin: 8px;
             }
         }
@@ -561,6 +565,7 @@
         @media (max-width: 480px) {
             .preview-image-container {
                 width: calc(100% - 12px); /* Even smaller margins on mobile */
+                height: 300px; /* Smaller height for mobile screens */
                 margin: 6px;
             }
         }

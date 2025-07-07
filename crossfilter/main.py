@@ -155,24 +155,7 @@ async def load_data_endpoint(
 async def root() -> str:
     """Serve the main application page."""
     static_file = static_path / "index.html"
-    if static_file.exists():
-        return static_file.read_text()
-    else:
-        return """
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <title>Crossfilter - Interactive Data Analysis</title>
-            <meta charset="utf-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1">
-        </head>
-        <body>
-            <h1>Crossfilter</h1>
-            <p>Interactive crossfilter application for geospatial and temporal data analysis</p>
-            <p><strong>Note:</strong> Static files not found. The full interface is not available.</p>
-        </body>
-        </html>
-        """
+    return static_file.read_text()
 
 
 @app.get("/api/session")
@@ -279,7 +262,8 @@ async def get_clip_embedding_plot_data(
     try:
         clip_embedding_data = session_state.get_clip_embedding_projection()
         fig = create_clip_embedding_plot(
-            clip_embedding_data, clip_embedding_projection_state=session_state.clip_embedding_projection
+            clip_embedding_data,
+            clip_embedding_projection_state=session_state.clip_embedding_projection,
         )
         fig_json = fig.to_json()
         if fig_json is None:
@@ -287,7 +271,9 @@ async def get_clip_embedding_plot_data(
         plotly_plot = json.loads(fig_json)
 
         total_row_count = (
-            clip_embedding_data[C.COUNT].sum() if C.COUNT in clip_embedding_data.columns else len(clip_embedding_data)
+            clip_embedding_data[C.COUNT].sum()
+            if C.COUNT in clip_embedding_data.columns
+            else len(clip_embedding_data)
         )
 
         # Get aggregation level from clip embedding projection state
@@ -412,14 +398,16 @@ async def get_uuid_metadata(
 
     try:
         # Find the row with matching UUID
-        matching_rows = session_state.all_rows[session_state.all_rows[C.UUID_STRING] == uuid]
-        
+        matching_rows = session_state.all_rows[
+            session_state.all_rows[C.UUID_STRING] == uuid
+        ]
+
         if len(matching_rows) == 0:
             raise HTTPException(status_code=404, detail=f"UUID {uuid} not found")
-        
+
         # Get the first (and should be only) matching row
         row = matching_rows.iloc[0]
-        
+
         # Convert to dictionary, handling pandas types
         metadata = {}
         for column_name, value in row.items():
@@ -428,9 +416,11 @@ async def get_uuid_metadata(
                 metadata[column_name] = None
             elif isinstance(value, pd.Timestamp):
                 metadata[column_name] = value.isoformat()
-            elif hasattr(value, 'item'):  # pandas scalar types
+            elif hasattr(value, "item"):  # pandas scalar types
                 metadata[column_name] = value.item() if pd.notna(value) else None
-            elif isinstance(value, (int, float)) and hasattr(value, 'dtype'):  # numpy types
+            elif isinstance(value, (int, float)) and hasattr(
+                value, "dtype"
+            ):  # numpy types
                 metadata[column_name] = value.item() if pd.notna(value) else None
             else:
                 # Handle other types by converting to standard Python types
@@ -442,7 +432,7 @@ async def get_uuid_metadata(
                         metadata[column_name] = str(value)
                 except Exception:
                     metadata[column_name] = str(value)
-        
+
         return JSONResponse(content=metadata)
     except HTTPException:
         # Re-raise HTTP exceptions as-is
@@ -458,7 +448,7 @@ async def get_uuid_metadata(
 @app.get("/api/active_uuids")
 async def get_active_uuids(
     limit: int = Query(1000, ge=1, le=10000),
-    session_state: SessionState = Depends(get_session_state)
+    session_state: SessionState = Depends(get_session_state),
 ) -> JSONResponse:
     """Get comma-separated string of active UUIDs (up to limit) with count."""
     if len(session_state.filtered_rows) == 0:
@@ -467,26 +457,24 @@ async def get_active_uuids(
     try:
         # Get the currently filtered data
         filtered_data = session_state.filtered_rows
-        
+
         # Filter to only image types (PHOTO and VIDEO)
         from crossfilter.core.schema import DataType
+
         image_data = filtered_data[
             filtered_data[C.DATA_TYPE].isin([DataType.PHOTO, DataType.VIDEO])
         ]
-        
+
         # Get unique UUIDs (in case there are duplicates)
         unique_uuids = image_data[C.UUID_STRING].drop_duplicates()
-        
+
         # Limit to the specified number
         limited_uuids = unique_uuids.head(limit)
-        
+
         # Create comma-separated string
         uuid_string = ",".join(limited_uuids.tolist())
-        
-        return JSONResponse(content={
-            "count": len(limited_uuids),
-            "uuids": uuid_string
-        })
+
+        return JSONResponse(content={"count": len(limited_uuids), "uuids": uuid_string})
     except Exception as e:
         # Log the full exception with stack trace
         logger.error(f"Error getting active UUIDs: {e}", exc_info=True)

@@ -17,7 +17,9 @@ from crossfilter.core.schema import SchemaColumns as C
 from crossfilter.core.bucketing import add_temporal_bucketed_columns
 from crossfilter.core.geo_projection_state import GeoProjectionState
 from crossfilter.core.temporal_projection_state import TemporalProjectionState
-from crossfilter.core.clip_embedding_projection_state import ClipEmbeddingProjectionState
+from crossfilter.core.clip_embedding_projection_state import (
+    ClipEmbeddingProjectionState,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -71,7 +73,9 @@ class SessionState:
         self.update_all_projections()
 
         # Broadcast data loaded event
-        self.broadcast_filter_change("data_loaded", ["temporal", "geo", "clip_embedding"])
+        self.broadcast_filter_change(
+            "data_loaded", ["temporal", "geo", "clip_embedding"]
+        )
 
     def update_all_projections(self) -> None:
         """Update all projection states with the current filtered data."""
@@ -96,8 +100,14 @@ class SessionState:
             logger.error(f"Invalid projection type: {filter_event.projection_type}")
             raise ValueError(f"Invalid projection type: {filter_event.projection_type}")
 
+        assert C.COUNT not in self.filtered_rows.columns
         new_filtered_rows = projection_state.apply_filter_event(
             filter_event, self.filtered_rows
+        )
+        assert C.COUNT not in new_filtered_rows.columns
+
+        logger.info(
+            f"Started from {len(self.filtered_rows)=} rows, now {len(new_filtered_rows)=} rows"
         )
         assert C.TIMESTAMP_UTC in new_filtered_rows.columns
 
@@ -108,15 +118,18 @@ class SessionState:
         self.update_all_projections()
 
         # Broadcast filter change event
-        self.broadcast_filter_change("filter_applied", ["temporal", "geo", "clip_embedding"])
+        self.broadcast_filter_change(
+            "filter_applied", ["temporal", "geo", "clip_embedding"]
+        )
 
     def reset_filters(self) -> None:
         """Reset all filters to show all data."""
-        if len(self.filtered_rows) != len(self.all_rows):
-            self.filtered_rows = self.all_rows.copy()
-            self.update_all_projections()
-            self.broadcast_filter_change("filter_reset", ["temporal", "geo", "clip_embedding"])
-            logger.info("Reset all filters - all points now visible")
+        self.filtered_rows = self.all_rows.copy()
+        self.update_all_projections()
+        self.broadcast_filter_change(
+            "filter_reset", ["temporal", "geo", "clip_embedding"]
+        )
+        logger.info(f"Reset all filters - back to {len(self.filtered_rows)=} rows")
 
     def get_summary(self) -> dict:
         """Get a summary of the current session state."""

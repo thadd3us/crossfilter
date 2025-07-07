@@ -117,7 +117,9 @@ def add_temporal_bucket_columns(df: pd.DataFrame) -> None:
     # Handle empty DataFrame case early - create all empty columns and return
     if len(df) == 0:
         for level in TEMPORAL_LEVELS:
-            df[get_temporal_column_name(level)] = pd.Series([], dtype="datetime64[ns, UTC]")
+            df[get_temporal_column_name(level)] = pd.Series(
+                [], dtype="datetime64[ns, UTC]"
+            )
         return
 
     # For non-empty DataFrames, enforce that timestamps are timezone-aware and in UTC
@@ -188,7 +190,9 @@ def get_optimal_clip_umap_h3_level(df: pd.DataFrame, max_rows: int) -> Optional[
         Optimal CLIP UMAP H3 aggregation level, or None if no aggregation is required.
     """
     if len(df.index) <= max_rows:
-        logger.info(f"No need to bucket data at any CLIP UMAP H3 level, {len(df)=}, {max_rows=}")
+        logger.info(
+            f"No need to bucket data at any CLIP UMAP H3 level, {len(df)=}, {max_rows=}"
+        )
         return None
 
     # Check if CLIP UMAP H3 columns are available
@@ -369,12 +373,19 @@ def filter_df_to_selected_buckets(
     Returns:
         Filtered DataFrame containing only rows from selected buckets
     """
+    assert SchemaColumns.COUNT not in original_data.columns
+
+    assert not pd.Series(bucket_indices_to_keep).duplicated().any()
+
     df = original_data.copy()
     df["original_index"] = df.index
     if target_column not in original_data.columns:
         raise ValueError(
             f"Target column '{target_column}' not found in original DataFrame"
         )
+    if SchemaColumns.COUNT not in bucketed_df.columns:
+        logger.info(f"Adding {SchemaColumns.COUNT} column to bucketed DataFrame")
+        bucketed_df[SchemaColumns.COUNT] = 1
 
     merge_on_columns = [target_column]
 
@@ -385,14 +396,24 @@ def filter_df_to_selected_buckets(
     assert bucketed_df[merge_on_columns].notna().all().all()
     assert bucketed_df[merge_on_columns].notna().all().all()
 
-    buckets_we_picked = bucketed_df.loc[bucket_indices_to_keep, merge_on_columns]
+    bucketed_df = bucketed_df.set_index(merge_on_columns, verify_integrity=True)
+
+    buckets_we_picked = bucketed_df.loc[
+        bucket_indices_to_keep, merge_on_columns + [SchemaColumns.COUNT]
+    ].set_index(merge_on_columns, verify_integrity=True)
+    picked_count = buckets_we_picked[SchemaColumns.COUNT].sum()
 
     merged = pd.merge(
         df[merge_on_columns + ["original_index"]],
         buckets_we_picked,
-        on=merge_on_columns,
+        left_on=merge_on_columns,
+        right_index=True,
         how="inner",
     )
+    assert not merged["original_index"].duplicated().any()
 
     result = original_data.loc[merged["original_index"].values, :]
+    assert (
+        len(result) == picked_count
+    ), f"{len(bucket_indices_to_keep)=} {picked_count=} , got {len(result)=}, {merge_on_columns=}"
     return result

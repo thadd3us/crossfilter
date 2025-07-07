@@ -34,7 +34,7 @@ class SessionState:
     the need for complex multi-user session handling.
 
     The SessionState manages a set of data projections (temporal, geographic, etc.) that
-    maintain their own visualization state and aggregation levels.
+    maintain their own visualization state and bucketing levels.
     """
 
     def __init__(self) -> None:

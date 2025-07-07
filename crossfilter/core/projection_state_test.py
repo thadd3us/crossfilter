@@ -152,7 +152,7 @@ def test_apply_filter_event_invalid_df_ids(
     filter_event = FilterEvent(
         ProjectionType.TEMPORAL, invalid_ids, FilterOperatorType.INTERSECTION
     )
-    with pytest.raises(ValueError):
+    with pytest.raises(KeyError):
         projection.apply_filter_event(filter_event, sample_data_with_buckets)
 
 

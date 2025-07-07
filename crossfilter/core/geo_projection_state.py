@@ -41,7 +41,7 @@ class GeoProjectionState:
         self.current_h3_level: Optional[int] = None
 
         # User selectable.
-        self.max_marker_size: int = 10
+        self.max_marker_size: int = 20
 
     def update_projection(self, filtered_rows: pd.DataFrame) -> None:
         """

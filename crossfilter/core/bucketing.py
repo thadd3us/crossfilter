@@ -357,7 +357,7 @@ def filter_df_to_selected_buckets(
         df[groupby_column] = groupby_fillna(df[groupby_column])
 
     assert bucketed_df[merge_on_columns].notna().all().all()
-    assert df[merge_on_columns].notna().all().all()
+    assert bucketed_df[merge_on_columns].notna().all().all()
 
     buckets_we_picked = bucketed_df.loc[bucket_indices_to_keep, merge_on_columns]
 

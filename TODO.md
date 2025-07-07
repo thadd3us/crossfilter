@@ -1,10 +1,7 @@
 # TODO Items
 
-# Fix the bug where deselecting a DataType and restricting to those points doesn't actually do the restriction because we don't match on the groupby column.  Add unit test.
-# Build a large dataset of images and GPS points to demo.
-  - Scan a bunch of JPEG and movie files to extract metadata (time, GPS, caption, camera, lens) into parquet DataFrame. (Are Lightroom UUIDs in there?)
-# Investigate a React-like framework for UI state progagation from bojects, and plot updates.
-# Build image click handler on a right-hand pane.
+* BUG: Selecting only photos on the CDF and intersecting shows too many rows on the Geo plot until you refresh the page.
+
 # umap projection on CLIP embeddings of images and , with text search.
 # Copy current uuids out inside clipboard.
 # Make a "settings" panel for each projection to control groupby, maxrows, etc.
@@ -15,11 +12,20 @@ No:
 
 Underway:
 
-# Frontend unit test that alternates between geo and temporal selection.
-#   - Including selecting bucketed points with a COUNT.
 
 
 All previous TODO items have been completed:
+
+# Fix the bug where deselecting a DataType and restricting to those points doesn't actually do the restriction because we don't match on the groupby column.  Add unit test.
+# Investigate a React-like framework for UI state progagation from bojects, and plot updates.
+# Build image click handler on a right-hand pane.
+
+
+# Frontend unit test that alternates between geo and temporal selection.
+#   - Including selecting bucketed points with a COUNT.
+
+# Build a large dataset of images and GPS points to demo.
+  - Scan a bunch of JPEG and movie files to extract metadata (time, GPS, caption, camera, lens) into parquet DataFrame. (Are Lightroom UUIDs in there?)
 
   - GPX to parquet DataFrame conversion.
 

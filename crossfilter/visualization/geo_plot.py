@@ -218,7 +218,7 @@ def create_geo_plot(
 
     # Calculate marker sizes based on COUNT, normalized so largest COUNT gets max_marker_size
     max_count = df[C.COUNT].max()
-    min_marker_size = 1  # Minimum visible size
+    min_marker_size = 3  # Minimum visible size
 
     if max_count > 0:
         # Make area proportional to COUNT: radius = sqrt(area) = sqrt(COUNT * scale_factor)

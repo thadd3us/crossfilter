@@ -9,6 +9,7 @@ import typer
 from tqdm import tqdm
 
 from crossfilter.core.schema import SchemaColumns
+from crossfilter.core.bucketing import add_geo_h3_bucket_columns
 from crossfilter.data_ingestion.lightroom.lightroom_parser import (
     LightroomParserConfig,
     load_lightroom_catalog_to_df,
@@ -124,6 +125,15 @@ def main(
         )
 
     logger.info(f"Total records: {len(combined_df)}")
+
+    # Add H3 columns at ingestion time for faster runtime performance
+    if (
+        SchemaColumns.GPS_LATITUDE in combined_df.columns
+        and SchemaColumns.GPS_LONGITUDE in combined_df.columns
+    ):
+        logger.info("Adding H3 spatial index columns during ingestion...")
+        add_geo_h3_bucket_columns(combined_df)
+        logger.info(f"Added H3 columns to {len(combined_df)} rows")
 
     # Upsert to database
     upsert_dataframe_to_sqlite(combined_df, destination_sqlite_db, destination_table)

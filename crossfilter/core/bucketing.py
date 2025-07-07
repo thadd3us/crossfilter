@@ -190,12 +190,40 @@ def get_optimal_temporal_level(
     return TemporalLevel.YEAR
 
 
+def add_temporal_bucketed_columns(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Add only temporal quantization columns to the DataFrame for bucketing operations.
+
+    This function adds temporal quantization columns based on the presence of timestamp columns.
+    It is separate from H3 bucketing to allow temporal bucketing to be done at runtime
+    while H3 bucketing can be done at ingestion time.
+
+    Args:
+        df: Input DataFrame
+
+    Returns:
+        DataFrame with added temporal quantized columns
+    """
+    df = df.copy()
+
+    # Add temporal quantization if timestamp is present
+    if SchemaColumns.TIMESTAMP_UTC in df.columns:
+        add_temporal_bucket_columns(df)
+
+    logger.info(f"Added temporal bucketed columns to DataFrame with {len(df)} rows")
+    return df
+
+
 def add_bucketed_columns(df: pd.DataFrame) -> pd.DataFrame:
     """
     Add all quantized columns to the DataFrame for bucketing operations.
 
     This function combines both spatial (H3) and temporal quantization columns,
     adding them conditionally based on the presence of required input columns.
+
+    DEPRECATED: This function is being phased out in favor of separate H3 and temporal
+    bucketing functions. H3 bucketing should be done at ingestion time, while temporal
+    bucketing should be done at runtime.
 
     Args:
         df: Input DataFrame

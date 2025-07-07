@@ -14,7 +14,7 @@ from crossfilter.core.backend_frontend_shared_schema import (
     SessionStateResponse,
 )
 from crossfilter.core.schema import SchemaColumns as C
-from crossfilter.core.bucketing import add_bucketed_columns
+from crossfilter.core.bucketing import add_temporal_bucketed_columns
 from crossfilter.core.geo_projection_state import GeoProjectionState
 from crossfilter.core.temporal_projection_state import TemporalProjectionState
 
@@ -54,15 +54,15 @@ class SessionState:
 
     def load_dataframe(self, df: pd.DataFrame) -> None:
         """Load a DataFrame into the session state."""
-        # Add bucketed columns and store as all_rows
-        bucketed_data = add_bucketed_columns(df)
+        # Add temporal bucketed columns at runtime (H3 columns should already be present from ingestion)
+        bucketed_data = add_temporal_bucketed_columns(df)
         self.all_rows = bucketed_data
 
         # Initialize filtered_rows to show all data
         self.filtered_rows = self.all_rows.copy()
 
         logger.info(
-            f"Loaded dataset with {len(df)} rows (expanded to {len(bucketed_data)} rows with bucketed columns) into session state"
+            f"Loaded dataset with {len(df)} rows (expanded to {len(bucketed_data)} rows with temporal bucketed columns) into session state"
         )
 
         # Update all projections with the new data

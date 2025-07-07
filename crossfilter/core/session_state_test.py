@@ -9,6 +9,7 @@ from crossfilter.core.backend_frontend_shared_schema import (
     FilterOperatorType,
     ProjectionType,
 )
+from crossfilter.core.bucketing import add_geo_h3_bucket_columns
 from crossfilter.core.schema import SchemaColumns as C, DataType
 from crossfilter.core.session_state import SessionState
 
@@ -31,6 +32,10 @@ def sample_df() -> pd.DataFrame:
     df[C.TIMESTAMP_UTC] = pd.to_datetime(df[C.TIMESTAMP_UTC], utc=True)
     # Set stable df_id index
     df.index.name = C.DF_ID
+    
+    # Add H3 columns to simulate data coming from ingestion
+    add_geo_h3_bucket_columns(df)
+    
     return df
 
 

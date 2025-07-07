@@ -9,6 +9,7 @@ from crossfilter.core.bucketing import (
     add_bucketed_columns,
     add_geo_h3_bucket_columns,
     add_temporal_bucket_columns,
+    add_temporal_bucketed_columns,
     bucket_by_target_column,
     filter_df_to_selected_buckets,
     get_optimal_h3_level,
@@ -711,5 +712,77 @@ def test_add_bucketed_columns_neither() -> None:
     ]
 
     assert len(h3_cols) == 0
+    assert len(temporal_cols) == 0
+    assert len(result.columns) == len(df.columns)
+
+
+def test_add_temporal_bucketed_columns() -> None:
+    """Test the new add_temporal_bucketed_columns function."""
+    test_data = {
+        C.UUID_STRING: ["uuid1", "uuid2"],
+        C.TIMESTAMP_UTC: pd.to_datetime(
+            ["2024-01-01 10:00:00", "2024-01-01 11:00:00"], utc=True
+        ),
+    }
+    df = pd.DataFrame(test_data)
+    df.index.name = C.DF_ID
+
+    result = add_temporal_bucketed_columns(df)
+
+    # Should have temporal columns but no H3 columns
+    h3_cols = [col for col in result.columns if col.startswith("QUANTIZED_H3_")]
+    temporal_cols = [
+        col for col in result.columns if col.startswith("QUANTIZED_TIMESTAMP_")
+    ]
+
+    assert len(h3_cols) == 0
+    assert len(temporal_cols) > 0
+    
+    # Original columns should be preserved
+    for col in df.columns:
+        assert col in result.columns
+
+
+def test_add_temporal_bucketed_columns_with_spatial_data() -> None:
+    """Test add_temporal_bucketed_columns ignores spatial data."""
+    test_data = {
+        C.UUID_STRING: ["uuid1", "uuid2"],
+        C.GPS_LATITUDE: [37.7749, 37.7849],
+        C.GPS_LONGITUDE: [-122.4194, -122.4094],
+        C.TIMESTAMP_UTC: pd.to_datetime(
+            ["2024-01-01 10:00:00", "2024-01-01 11:00:00"], utc=True
+        ),
+    }
+    df = pd.DataFrame(test_data)
+    df.index.name = C.DF_ID
+
+    result = add_temporal_bucketed_columns(df)
+
+    # Should only have temporal columns, not H3 columns
+    h3_cols = [col for col in result.columns if col.startswith("QUANTIZED_H3_")]
+    temporal_cols = [
+        col for col in result.columns if col.startswith("QUANTIZED_TIMESTAMP_")
+    ]
+
+    assert len(h3_cols) == 0
+    assert len(temporal_cols) > 0
+
+
+def test_add_temporal_bucketed_columns_no_temporal_data() -> None:
+    """Test add_temporal_bucketed_columns with no temporal data."""
+    test_data = {
+        C.UUID_STRING: ["uuid1", "uuid2"],
+        "some_other_column": ["value1", "value2"],
+    }
+    df = pd.DataFrame(test_data)
+    df.index.name = C.DF_ID
+
+    result = add_temporal_bucketed_columns(df)
+
+    # Should have no additional columns
+    temporal_cols = [
+        col for col in result.columns if col.startswith("QUANTIZED_TIMESTAMP_")
+    ]
+
     assert len(temporal_cols) == 0
     assert len(result.columns) == len(df.columns)

@@ -7,6 +7,8 @@ import zipfile
 from pathlib import Path
 from typing import List
 
+import msgpack
+import numpy as np
 import pandas as pd
 import pytest
 from syrupy.assertion import SnapshotAssertion
@@ -15,6 +17,8 @@ from crossfilter.core.schema import DataType, SchemaColumns
 from crossfilter.data_ingestion.lightroom.ingest_lightroom_catalogs import (
     find_lightroom_catalogs,
     main,
+    load_clip_embeddings_from_sqlite,
+    compute_umap_projection,
 )
 from crossfilter.data_ingestion.lightroom.lightroom_parser import (
     LightroomParserConfig,
@@ -263,3 +267,174 @@ def test_thad_ingest_dev_data(
     )
 
     assert (tmp_path / "lightroom.sqlite").exists()
+
+
+def create_test_clip_embeddings_db(db_path: Path) -> None:
+    """Create a test SQLite database with CLIP embeddings."""
+    # Create test embeddings - simple 3D embeddings for testing
+    test_embeddings = [
+        {
+            "uuid_index": "00002DDF-4255-4469-AC32-3EC6DA5B0D7C",
+            "type_index": "clip",
+            "embedding_msgpack": msgpack.packb(np.array([0.1, 0.2, 0.3], dtype=np.float32).tolist())
+        },
+        {
+            "uuid_index": "00009AD4-C588-4345-AB9C-C2DE2E9C1236", 
+            "type_index": "clip",
+            "embedding_msgpack": msgpack.packb(np.array([0.4, 0.5, 0.6], dtype=np.float32).tolist())
+        },
+        {
+            "uuid_index": "test-uuid-3",
+            "type_index": "clip", 
+            "embedding_msgpack": msgpack.packb(np.array([0.7, 0.8, 0.9], dtype=np.float32).tolist())
+        }
+    ]
+    
+    with sqlite3.connect(db_path) as conn:
+        # Create embeddings table
+        conn.execute("""
+            CREATE TABLE embeddings (
+                uuid_index TEXT,
+                type_index TEXT,
+                embedding_msgpack BLOB
+            )
+        """)
+        
+        # Insert test data
+        for embedding in test_embeddings:
+            conn.execute(
+                "INSERT INTO embeddings (uuid_index, type_index, embedding_msgpack) VALUES (?, ?, ?)",
+                (embedding["uuid_index"], embedding["type_index"], embedding["embedding_msgpack"])
+            )
+        
+        conn.commit()
+
+
+def test_load_clip_embeddings_from_sqlite(tmp_path: Path) -> None:
+    """Test loading CLIP embeddings from SQLite database."""
+    db_path = tmp_path / "test_embeddings.sqlite"
+    create_test_clip_embeddings_db(db_path)
+    
+    # Load embeddings
+    embeddings_df = load_clip_embeddings_from_sqlite(db_path)
+    
+    # Check structure
+    assert len(embeddings_df) == 3
+    assert SchemaColumns.UUID_STRING in embeddings_df.columns
+    assert "embedding" in embeddings_df.columns
+    
+    # Check data
+    assert embeddings_df[SchemaColumns.UUID_STRING].tolist() == [
+        "00002DDF-4255-4469-AC32-3EC6DA5B0D7C",
+        "00009AD4-C588-4345-AB9C-C2DE2E9C1236",
+        "test-uuid-3"
+    ]
+    
+    # Check embeddings are numpy arrays
+    for embedding in embeddings_df["embedding"]:
+        assert isinstance(embedding, np.ndarray)
+        assert embedding.shape == (3,)
+
+
+def test_load_clip_embeddings_from_sqlite_nonexistent_file(tmp_path: Path) -> None:
+    """Test loading CLIP embeddings from non-existent file."""
+    nonexistent_db = tmp_path / "nonexistent.sqlite"
+    
+    with pytest.raises(FileNotFoundError):
+        load_clip_embeddings_from_sqlite(nonexistent_db)
+
+
+def test_compute_umap_projection(tmp_path: Path) -> None:
+    """Test computing UMAP projection from embeddings."""
+    # Create test embeddings DataFrame
+    test_embeddings = pd.DataFrame({
+        SchemaColumns.UUID_STRING: ["uuid1", "uuid2", "uuid3", "uuid4"],
+        "embedding": [
+            np.array([1.0, 0.0, 0.0], dtype=np.float32),
+            np.array([0.0, 1.0, 0.0], dtype=np.float32),
+            np.array([0.0, 0.0, 1.0], dtype=np.float32),
+            np.array([1.0, 1.0, 1.0], dtype=np.float32)
+        ]
+    })
+    
+    # Test without output file
+    result_df, umap_transformer = compute_umap_projection(test_embeddings)
+    
+    # Check result structure
+    assert len(result_df) == 4
+    assert SchemaColumns.UUID_STRING in result_df.columns
+    assert SchemaColumns.CLIP_UMAP_HAVERSINE_LATITUDE in result_df.columns
+    assert SchemaColumns.CLIP_UMAP_HAVERSINE_LONGITUDE in result_df.columns
+    
+    # Check that UMAP coordinates are numeric
+    assert result_df[SchemaColumns.CLIP_UMAP_HAVERSINE_LATITUDE].dtype in [np.float32, np.float64]
+    assert result_df[SchemaColumns.CLIP_UMAP_HAVERSINE_LONGITUDE].dtype in [np.float32, np.float64]
+    
+    # Test with output file
+    output_file = tmp_path / "umap_transformer.pkl"
+    result_df2, umap_transformer2 = compute_umap_projection(test_embeddings, output_file)
+    
+    # Check that output file was created
+    assert output_file.exists()
+    
+    # Results should be the same (with same random seed)
+    pd.testing.assert_frame_equal(result_df, result_df2)
+
+
+def test_load_clip_embeddings_from_real_sample() -> None:
+    """Test loading CLIP embeddings from the real sample data."""
+    sample_db_path = Path("test_data/lightroom_embedding_vectors_sample.sqlite")
+    
+    # Skip if sample file doesn't exist
+    if not sample_db_path.exists():
+        pytest.skip("Sample embedding data not found")
+    
+    # Load embeddings
+    embeddings_df = load_clip_embeddings_from_sqlite(sample_db_path)
+    
+    # Check structure
+    assert len(embeddings_df) > 0
+    assert SchemaColumns.UUID_STRING in embeddings_df.columns
+    assert "embedding" in embeddings_df.columns
+    
+    # Check that all embeddings are numpy arrays
+    for embedding in embeddings_df["embedding"]:
+        assert isinstance(embedding, np.ndarray)
+        assert len(embedding.shape) == 1  # Should be 1D array
+        assert embedding.shape[0] > 0  # Should have some dimensions
+
+
+def test_main_with_no_catalog_files(tmp_path: Path) -> None:
+    """Test main function exits gracefully when no catalog files are found."""
+    # Create test catalog directory (empty for this test)
+    catalog_dir = tmp_path / "catalogs"
+    catalog_dir.mkdir()
+    
+    # Create test CLIP embeddings database
+    embeddings_db = tmp_path / "embeddings.sqlite"
+    create_test_clip_embeddings_db(embeddings_db)
+    
+    # Create output database path
+    output_db = tmp_path / "output.sqlite"
+    
+    # Create UMAP transformation output path
+    umap_output = tmp_path / "umap_transformer.pkl"
+    
+    # Run main function - should exit early due to no catalog files
+    main(
+        base_dir=catalog_dir,
+        destination_sqlite_db=output_db,
+        destination_table="data",
+        include_metadata=True,
+        include_keywords=True,
+        include_collections=True,
+        ignore_collections="quick collection",
+        sqlite_db_with_clip_embeddings=embeddings_db,
+        output_umap_transformation_file=umap_output,
+    )
+    
+    # Check that output database was NOT created (since no catalog files)
+    assert not output_db.exists()
+    
+    # Check that UMAP transformation file was NOT created
+    assert not umap_output.exists()

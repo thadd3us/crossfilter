@@ -39,6 +39,10 @@ class SchemaColumns(StrEnum):
     RATING_0_TO_5 = "RATING_0_TO_5"
     SIZE_IN_BYTES = "SIZE_IN_BYTES"
     COUNT = "COUNT"
+    
+    # CLIP embedding UMAP projection coordinates (on a sphere like lat/lon)
+    CLIP_UMAP_HAVERSINE_LATITUDE = "CLIP_UMAP_HAVERSINE_LATITUDE"
+    CLIP_UMAP_HAVERSINE_LONGITUDE = "CLIP_UMAP_HAVERSINE_LONGITUDE"
 
 
 class DataType(StrEnum):
@@ -80,6 +84,13 @@ def get_h3_column_name(level: int) -> str:
     if not 0 <= level <= 15:
         raise ValueError(f"H3 level must be between 0 and 15, got {level}")
     return f"BUCKETED_H3_L{level}"
+
+
+def get_clip_umap_h3_column_name(level: int) -> str:
+    """Get the CLIP UMAP H3 column name for a specific level (0-15)."""
+    if not 0 <= level <= 15:
+        raise ValueError(f"H3 level must be between 0 and 15, got {level}")
+    return f"BUCKETED_CLIP_HAVERSINE_UMAP_H3_L{level}"
 
 
 def get_temporal_column_name(level: TemporalLevel) -> str:

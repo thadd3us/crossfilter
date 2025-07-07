@@ -39,6 +39,7 @@ from crossfilter.core.schema import (
     SchemaColumns,
     TemporalLevel,
     get_h3_column_name,
+    get_clip_umap_h3_column_name,
     get_temporal_column_name,
 )
 
@@ -82,6 +83,26 @@ def add_geo_h3_bucket_columns(df: pd.DataFrame) -> None:
                 )
                 if pd.notna(row[SchemaColumns.GPS_LATITUDE])
                 and pd.notna(row[SchemaColumns.GPS_LONGITUDE])
+                else None
+            ),
+            axis=1,
+        )
+
+
+def add_clip_umap_h3_bucket_columns(df: pd.DataFrame) -> None:
+    """Add H3 hexagon columns at multiple resolutions for CLIP UMAP coordinates."""
+    logger.info(f"Adding CLIP UMAP H3 columns to DataFrame with {len(df)=} rows")
+    for level in H3_LEVELS:
+        col_name = get_clip_umap_h3_column_name(level)
+        df[col_name] = df.apply(
+            lambda row, level=level: (
+                h3.latlng_to_cell(
+                    row[SchemaColumns.CLIP_UMAP_HAVERSINE_LATITUDE],
+                    row[SchemaColumns.CLIP_UMAP_HAVERSINE_LONGITUDE],
+                    level,
+                )
+                if pd.notna(row[SchemaColumns.CLIP_UMAP_HAVERSINE_LATITUDE])
+                and pd.notna(row[SchemaColumns.CLIP_UMAP_HAVERSINE_LONGITUDE])
                 else None
             ),
             axis=1,

@@ -212,7 +212,8 @@ const DetailViewComponent = {
         return {
             metadata: null,
             metadataLoading: false,
-            metadataError: null
+            metadataError: null,
+            imageIsLandscape: false
         };
     },
     watch: {
@@ -220,9 +221,11 @@ const DetailViewComponent = {
             handler(newUuid) {
                 if (newUuid) {
                     this.fetchMetadata(newUuid);
+                    this.imageIsLandscape = false; // Reset orientation while new image loads
                 } else {
                     this.metadata = null;
                     this.metadataError = null;
+                    this.imageIsLandscape = false;
                 }
             },
             immediate: true
@@ -234,10 +237,13 @@ const DetailViewComponent = {
             <div v-if="detailView.hasSelection()" class="detail-content">
                 <div class="detail-item">
                     <strong>Preview Image:</strong>
-                    <img :src="'/api/image_preview/uuid/' + detailView.selectedPointUuid" 
-                         :alt="'Preview for ' + detailView.selectedPointUuid"
-                         class="preview-image"
-                         @error="onImageError">
+                    <div class="preview-image-container" :class="{ landscape: imageIsLandscape }">
+                        <img :src="'/api/image_preview/uuid/' + detailView.selectedPointUuid" 
+                             :alt="'Preview for ' + detailView.selectedPointUuid"
+                             class="preview-image"
+                             @error="onImageError"
+                             @load="onImageLoad">
+                    </div>
                 </div>
                 <div class="detail-item">
                     <strong>Caption:</strong>
@@ -310,6 +316,17 @@ const DetailViewComponent = {
         onImageError(event) {
             // If the image fails to load, it will show the default "No preview available" SVG
             console.log('Image failed to load, using fallback');
+            this.imageIsLandscape = false; // Reset orientation on error
+        },
+        onImageLoad(event) {
+            // Detect image orientation when it loads
+            const img = event.target;
+            this.imageIsLandscape = img.naturalWidth > img.naturalHeight;
+            console.log('Image loaded:', {
+                width: img.naturalWidth,
+                height: img.naturalHeight,
+                isLandscape: this.imageIsLandscape
+            });
         }
     }
 };

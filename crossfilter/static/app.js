@@ -234,10 +234,12 @@ const DetailViewComponent = {
             <div v-if="detailView.hasSelection()" class="detail-content">
                 <div class="detail-item">
                     <strong>Preview Image:</strong>
-                    <img :src="'/api/image_preview/uuid/' + detailView.selectedPointUuid" 
-                         :alt="'Preview for ' + detailView.selectedPointUuid"
-                         class="preview-image"
-                         @error="onImageError">
+                    <div class="preview-image-container">
+                        <img :src="'/api/image_preview/uuid/' + detailView.selectedPointUuid" 
+                             :alt="'Preview for ' + detailView.selectedPointUuid"
+                             class="preview-image"
+                             @error="onImageError">
+                    </div>
                 </div>
                 <div class="detail-item">
                     <strong>Caption:</strong>

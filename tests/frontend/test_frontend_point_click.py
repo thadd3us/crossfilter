@@ -179,7 +179,11 @@ def test_geo_point_click_uuid_display_with_preview(page: Page, server_with_data:
     # Wait for the detail view to update with preview image
     page.wait_for_selector(".preview-image", timeout=5000)
     
-    # Verify a preview image is displayed
+    # Verify the preview image container is displayed
+    preview_container = page.locator(".preview-image-container")
+    assert preview_container.count() > 0, "Preview image container should be visible after clicking"
+    
+    # Verify a preview image is displayed within the container
     preview_image = page.locator(".preview-image")
     assert preview_image.count() > 0, "Preview image should be visible after clicking"
     

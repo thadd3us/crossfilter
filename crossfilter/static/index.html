@@ -426,15 +426,25 @@
             font-style: italic;
         }
 
+        .preview-image-container {
+            width: calc(100% - 20px); /* Full width minus small margin */
+            aspect-ratio: 1 / 1; /* Square container */
+            margin: 10px;
+            border-radius: 4px;
+            border: 1px solid #dee2e6;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            background-color: #f8f9fa;
+        }
+
         .preview-image {
             max-width: 100%;
-            max-height: 400px;
+            max-height: 100%;
             width: auto;
             height: auto;
             border-radius: 4px;
-            border: 1px solid #dee2e6;
-            display: block;
-            margin-top: 5px;
             object-fit: contain;
         }
 
@@ -502,14 +512,16 @@
 
         /* Responsive image sizing for smaller screens */
         @media (max-width: 768px) {
-            .preview-image {
-                max-height: 300px;
+            .preview-image-container {
+                width: calc(100% - 16px); /* Smaller margins on tablets */
+                margin: 8px;
             }
         }
 
         @media (max-width: 480px) {
-            .preview-image {
-                max-height: 200px;
+            .preview-image-container {
+                width: calc(100% - 12px); /* Even smaller margins on mobile */
+                margin: 6px;
             }
         }
     </style>

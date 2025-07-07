@@ -128,6 +128,7 @@ class AppState {
         this.eventSource = null;
         this.filterVersion = 0;
         this.messages = [];
+        this.mouseoverClickEnabled = false;
     }
 
     updateSessionStatus(status) {
@@ -197,6 +198,11 @@ class AppState {
 
     closeLeftMenu() {
         this.leftMenuOpen = false;
+    }
+
+    toggleMouseoverClick() {
+        this.mouseoverClickEnabled = !this.mouseoverClickEnabled;
+        console.log('CrossfilterApp: Mouseover-to-click toggle:', this.mouseoverClickEnabled);
     }
 }
 
@@ -628,6 +634,14 @@ const CrossfilterApp = {
                     handlePlotClick(eventData, projection);
                 });
 
+                // Handle plot hover events - route to click handler if mouseover-to-click is enabled
+                projection.plotContainer.on('plotly_hover', (eventData) => {
+                    if (appState.mouseoverClickEnabled) {
+                        console.log(`CrossfilterApp: plotly_hover event fired for ${projection.projectionType} (mouseover-to-click enabled)`, eventData);
+                        handlePlotClick(eventData, projection);
+                    }
+                });
+
             } catch (error) {
                 appState.showError(`Failed to render ${projection.projectionType} plot: ` + error.message);
                 console.error('Plot rendering error:', error);
@@ -804,7 +818,8 @@ const CrossfilterApp = {
             resetFilters,
             filterToSelected,
             showAbout,
-            copyUuidsToClipboard
+            copyUuidsToClipboard,
+            toggleMouseoverClick: () => appState.toggleMouseoverClick()
         };
     },
     template: `
@@ -839,6 +854,11 @@ const CrossfilterApp = {
                     <button @click="loadSampleData">Load Sample Data</button>
                     <button @click="resetFilters" :disabled="!appState.hasData">Reset Filters</button>
                     <button @click="copyUuidsToClipboard" :disabled="!appState.hasData" class="copy-uuids-button">Copy UUIDs</button>
+                    <button @click="toggleMouseoverClick" :disabled="!appState.hasData" 
+                            :class="{ 'mouseover-toggle-active': appState.mouseoverClickEnabled }" 
+                            class="mouseover-toggle-button">
+                        {{ appState.mouseoverClickEnabled ? 'Hover: ON' : 'Hover: OFF' }}
+                    </button>
                 </div>
             </div>
 

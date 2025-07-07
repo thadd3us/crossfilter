@@ -72,7 +72,7 @@ def load_clip_embeddings_from_sqlite(sqlite_db_path: Path) -> pd.DataFrame:
     return df
 
 
-@cache_region.cache_on_arguments()
+# @cache_region.cache_on_arguments()
 def compute_umap_projection(embeddings_df: pd.DataFrame) -> Tuple[pd.DataFrame, object]:
     """Normalize embeddings and compute 2D UMAP projection with cosine metric.
 
@@ -172,7 +172,15 @@ def find_lightroom_catalogs(base_dir: Path) -> List[Path]:
     return all_catalog_files
 
 
-def main(
+cli = typer.Typer(
+    help="Ingest Lightroom catalog files into SQLite database",
+    pretty_exceptions_show_locals=False,
+    pretty_exceptions_enable=False,
+)
+
+
+@cli.command("ingest")
+def ingest(
     base_dir: Path = typer.Argument(
         ...,
         help="Directory to recursively search for Lightroom catalog files (.lrcat and .zip)",
@@ -325,5 +333,10 @@ def main(
 typer.main.get_command_name = lambda name: name
 
 
+def main() -> None:
+    """Entry point for the CLI application."""
+    cli()
+
+
 if __name__ == "__main__":
-    typer.run(main)
+    main()

@@ -427,7 +427,9 @@
         }
 
         .preview-image {
-            width: 100%;
+            max-width: 100%;
+            max-height: 400px;
+            width: auto;
             height: auto;
             border-radius: 4px;
             border: 1px solid #dee2e6;
@@ -496,6 +498,19 @@
             color: #666;
             font-family: 'Courier New', monospace;
             word-break: break-all;
+        }
+
+        /* Responsive image sizing for smaller screens */
+        @media (max-width: 768px) {
+            .preview-image {
+                max-height: 300px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .preview-image {
+                max-height: 200px;
+            }
         }
     </style>
 </head>

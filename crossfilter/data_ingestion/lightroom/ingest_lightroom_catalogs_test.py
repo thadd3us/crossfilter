@@ -385,12 +385,11 @@ def test_compute_umap_projection(tmp_path: Path) -> None:
 
     # Test with output file
     output_file = tmp_path / "umap_transformer.pkl"
-    result_df2, umap_transformer2 = compute_umap_projection(
-        test_embeddings, output_file
-    )
+    result_df2, umap_transformer2 = compute_umap_projection(test_embeddings)
 
-    # Check that output file was created
-    assert output_file.exists()
+    import umap
+
+    assert isinstance(umap_transformer2, umap.UMAP)
 
     # Results should be the same (with same random seed)
     pd.testing.assert_frame_equal(result_df, result_df2)

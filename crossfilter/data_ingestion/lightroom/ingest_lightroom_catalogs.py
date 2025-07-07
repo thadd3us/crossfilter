@@ -12,6 +12,8 @@ import pandas as pd
 import typer
 from tqdm import tqdm
 
+import dogpile.cache
+
 from crossfilter.core.schema import SchemaColumns
 from crossfilter.core.bucketing import (
     add_geo_h3_bucket_columns,
@@ -25,7 +27,13 @@ from crossfilter.data_ingestion.sqlite_utils import upsert_dataframe_to_sqlite
 
 logger = logging.getLogger(__name__)
 
+# Configure dogpile.cache
+cache_region = dogpile.cache.make_region().configure(
+    "dogpile.cache.dbm", arguments={"filename": "/tmp/crossfilter_dogpile_cache.dbm"}
+)
 
+
+@cache_region.cache_on_arguments()
 def load_clip_embeddings_from_sqlite(sqlite_db_path: Path) -> pd.DataFrame:
     """Load CLIP embeddings from SQLite database and return as DataFrame.
 
@@ -64,9 +72,8 @@ def load_clip_embeddings_from_sqlite(sqlite_db_path: Path) -> pd.DataFrame:
     return df
 
 
-def compute_umap_projection(
-    embeddings_df: pd.DataFrame, output_file: Optional[Path] = None
-) -> Tuple[pd.DataFrame, object]:
+@cache_region.cache_on_arguments()
+def compute_umap_projection(embeddings_df: pd.DataFrame) -> Tuple[pd.DataFrame, object]:
     """Normalize embeddings and compute 2D UMAP projection with cosine metric.
 
     This function normalizes CLIP embeddings to unit length and computes a 2D UMAP projection
@@ -140,14 +147,6 @@ def compute_umap_projection(
     # Latitude should be -90 to 90, longitude should be -180 to 180.
     result_df[SchemaColumns.CLIP_UMAP_HAVERSINE_LATITUDE] = umap_embedding[:, 1]
     result_df[SchemaColumns.CLIP_UMAP_HAVERSINE_LONGITUDE] = umap_embedding[:, 0]
-
-    # Save UMAP transformation object if requested
-    if output_file and umap_transformer is not None:
-        logger.info(f"Saving UMAP transformation to {output_file}")
-        with open(output_file, "wb") as f:
-            pickle.dump(umap_transformer, f)
-    elif output_file and umap_transformer is None:
-        logger.warning("No UMAP transformer to save (fallback projection used)")
 
     logger.info("UMAP projection completed successfully")
     return result_df, umap_transformer
@@ -284,9 +283,14 @@ def main(
         embeddings_df = load_clip_embeddings_from_sqlite(sqlite_db_with_clip_embeddings)
 
         # Compute UMAP projection
-        umap_coords_df, umap_transformer = compute_umap_projection(
-            embeddings_df, output_umap_transformation_file
-        )
+        umap_coords_df, umap_transformer = compute_umap_projection(embeddings_df)
+
+        if umap_transformer is not None:
+            logger.info(
+                f"Saving UMAP transformation to {output_umap_transformation_file}"
+            )
+            with open(str(output_umap_transformation_file), "wb") as f:
+                pickle.dump(umap_transformer, f)
 
         # Merge UMAP coordinates with main DataFrame (LEFT JOIN)
         logger.info("Merging CLIP UMAP coordinates with main DataFrame...")

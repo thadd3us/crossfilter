@@ -123,21 +123,23 @@ def compute_umap_projection(
         )
 
         # Compute UMAP projection with cosine metric for high-dimensional embeddings
-        # Cosine metric is appropriate for normalized embeddings since we normalized to unit length
         # The output will be treated as spherical coordinates, hence the "haversine" in the column names
+        # https://umap-learn.readthedocs.io/en/latest/embedding_space.html
         umap_transformer = umap.UMAP(
             n_components=2,
-            metric="cosine",
+            metric="euclidean",
             random_state=42,  # For reproducibility
             verbose=True,
+            output_metric="haversine",
         )
 
         umap_embedding = umap_transformer.fit_transform(embeddings_normalized)
 
     # Create result DataFrame
     result_df = embeddings_df[[SchemaColumns.UUID_STRING]].copy()
-    result_df[SchemaColumns.CLIP_UMAP_HAVERSINE_LATITUDE] = umap_embedding[:, 0]
-    result_df[SchemaColumns.CLIP_UMAP_HAVERSINE_LONGITUDE] = umap_embedding[:, 1]
+    # Latitude should be -90 to 90, longitude should be -180 to 180.
+    result_df[SchemaColumns.CLIP_UMAP_HAVERSINE_LATITUDE] = umap_embedding[:, 1]
+    result_df[SchemaColumns.CLIP_UMAP_HAVERSINE_LONGITUDE] = umap_embedding[:, 0]
 
     # Save UMAP transformation object if requested
     if output_file and umap_transformer is not None:
@@ -313,6 +315,10 @@ def main(
     upsert_dataframe_to_sqlite(combined_df, destination_sqlite_db, destination_table)
 
     logger.info("Lightroom catalog ingestion completed successfully")
+
+
+# https://github.com/fastapi/typer/issues/341
+typer.main.get_command_name = lambda name: name
 
 
 if __name__ == "__main__":

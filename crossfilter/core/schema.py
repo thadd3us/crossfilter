@@ -79,12 +79,12 @@ def get_h3_column_name(level: int) -> str:
     """Get the H3 column name for a specific level (0-15)."""
     if not 0 <= level <= 15:
         raise ValueError(f"H3 level must be between 0 and 15, got {level}")
-    return f"QUANTIZED_H3_L{level}"
+    return f"BUCKETED_H3_L{level}"
 
 
 def get_temporal_column_name(level: TemporalLevel) -> str:
     """Get the temporal column name for a specific temporal level."""
-    return f"QUANTIZED_TIMESTAMP_{level}"
+    return f"BUCKETED_TIMESTAMP_{level}"
 
 
 required_columns = [

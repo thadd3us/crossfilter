@@ -32,10 +32,10 @@ def sample_df() -> pd.DataFrame:
     df[C.TIMESTAMP_UTC] = pd.to_datetime(df[C.TIMESTAMP_UTC], utc=True)
     # Set stable df_id index
     df.index.name = C.DF_ID
-    
+
     # Add H3 columns to simulate data coming from ingestion
     add_geo_h3_bucket_columns(df)
-    
+
     return df
 
 
@@ -52,10 +52,11 @@ def test_session_state_initialization() -> None:
     assert summary["filtered_rows_count"] == 0
 
 
-def test_load_dataframe(sample_df: pd.DataFrame) -> None:
+def test_load_dataframe(sample_df: pd.DataFrame, snapshot: SnapshotAssertion) -> None:
     """Test loading a DataFrame into session state."""
     session = SessionState()
     session.load_dataframe(sample_df)
+    assert sample_df.to_dict(orient="records") == snapshot  # TODO: delete the rest
 
     assert len(session.all_rows) > 0
     assert len(session.all_rows) == 20
@@ -65,8 +66,8 @@ def test_load_dataframe(sample_df: pd.DataFrame) -> None:
 
     # Check that bucketed columns were added
     all_rows = session.all_rows
-    assert any(col.startswith("QUANTIZED_H3_L") for col in all_rows.columns)
-    assert any(col.startswith("QUANTIZED_TIMESTAMP_") for col in all_rows.columns)
+    assert any(col.startswith("BUCKETED_H3_L") for col in all_rows.columns)
+    assert any(col.startswith("BUCKETED_TIMESTAMP_") for col in all_rows.columns)
 
 
 def test_session_state_metadata(sample_df: pd.DataFrame) -> None:

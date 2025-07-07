@@ -609,7 +609,7 @@ def test_filter_df_to_selected_buckets_snapshot(
     assert filtered.to_dict(orient="records") == snapshot
 
 
-def test_add_bucketed_columns() -> None:
+def test_add_bucketed_columns(snapshot: SnapshotAssertion) -> None:
     """Test the combined add_bucketed_columns function."""
     # Create test data with both spatial and temporal columns
     test_data = {
@@ -627,29 +627,11 @@ def test_add_bucketed_columns() -> None:
     }
     df = pd.DataFrame(test_data)
     df.index.name = C.DF_ID
-
-    # Apply add_bucketed_columns
     result = add_bucketed_columns(df)
-
-    # Check that original columns are preserved
-    for col in df.columns:
-        assert col in result.columns
-
-    # Check that H3 columns were added
-    h3_cols = [col for col in result.columns if col.startswith("QUANTIZED_H3_")]
-    assert len(h3_cols) > 0
-
-    # Check that temporal columns were added
-    temporal_cols = [
-        col for col in result.columns if col.startswith("QUANTIZED_TIMESTAMP_")
-    ]
-    assert len(temporal_cols) > 0
-
-    # Check that we have the expected number of additional columns
-    assert len(result.columns) > len(df.columns)
+    assert result.to_dict(orient="records") == snapshot
 
 
-def test_add_bucketed_columns_spatial_only() -> None:
+def test_add_bucketed_columns_spatial_only(snapshot: SnapshotAssertion) -> None:
     """Test add_bucketed_columns with only spatial data."""
     test_data = {
         C.UUID_STRING: ["uuid1", "uuid2"],
@@ -660,18 +642,10 @@ def test_add_bucketed_columns_spatial_only() -> None:
     df.index.name = C.DF_ID
 
     result = add_bucketed_columns(df)
-
-    # Should have H3 columns but no temporal columns
-    h3_cols = [col for col in result.columns if col.startswith("QUANTIZED_H3_")]
-    temporal_cols = [
-        col for col in result.columns if col.startswith("QUANTIZED_TIMESTAMP_")
-    ]
-
-    assert len(h3_cols) > 0
-    assert len(temporal_cols) == 0
+    assert result.to_dict(orient="records") == snapshot
 
 
-def test_add_bucketed_columns_temporal_only() -> None:
+def test_add_bucketed_columns_temporal_only(snapshot: SnapshotAssertion) -> None:
     """Test add_bucketed_columns with only temporal data."""
     test_data = {
         C.UUID_STRING: ["uuid1", "uuid2"],
@@ -683,18 +657,10 @@ def test_add_bucketed_columns_temporal_only() -> None:
     df.index.name = C.DF_ID
 
     result = add_bucketed_columns(df)
-
-    # Should have temporal columns but no H3 columns
-    h3_cols = [col for col in result.columns if col.startswith("QUANTIZED_H3_")]
-    temporal_cols = [
-        col for col in result.columns if col.startswith("QUANTIZED_TIMESTAMP_")
-    ]
-
-    assert len(h3_cols) == 0
-    assert len(temporal_cols) > 0
+    assert result.to_dict(orient="records") == snapshot
 
 
-def test_add_bucketed_columns_neither() -> None:
+def test_add_bucketed_columns_neither(snapshot: SnapshotAssertion) -> None:
     """Test add_bucketed_columns with neither spatial nor temporal data."""
     test_data = {
         C.UUID_STRING: ["uuid1", "uuid2"],
@@ -704,19 +670,10 @@ def test_add_bucketed_columns_neither() -> None:
     df.index.name = C.DF_ID
 
     result = add_bucketed_columns(df)
-
-    # Should have no additional columns
-    h3_cols = [col for col in result.columns if col.startswith("QUANTIZED_H3_")]
-    temporal_cols = [
-        col for col in result.columns if col.startswith("QUANTIZED_TIMESTAMP_")
-    ]
-
-    assert len(h3_cols) == 0
-    assert len(temporal_cols) == 0
-    assert len(result.columns) == len(df.columns)
+    assert result.to_dict(orient="records") == snapshot
 
 
-def test_add_temporal_bucketed_columns() -> None:
+def test_add_temporal_bucketed_columns(snapshot: SnapshotAssertion) -> None:
     """Test the new add_temporal_bucketed_columns function."""
     test_data = {
         C.UUID_STRING: ["uuid1", "uuid2"],
@@ -729,21 +686,12 @@ def test_add_temporal_bucketed_columns() -> None:
 
     result = add_temporal_bucketed_columns(df)
 
-    # Should have temporal columns but no H3 columns
-    h3_cols = [col for col in result.columns if col.startswith("QUANTIZED_H3_")]
-    temporal_cols = [
-        col for col in result.columns if col.startswith("QUANTIZED_TIMESTAMP_")
-    ]
-
-    assert len(h3_cols) == 0
-    assert len(temporal_cols) > 0
-    
-    # Original columns should be preserved
-    for col in df.columns:
-        assert col in result.columns
+    assert result.to_dict(orient="records") == snapshot
 
 
-def test_add_temporal_bucketed_columns_with_spatial_data() -> None:
+def test_add_temporal_bucketed_columns_with_spatial_data(
+    snapshot: SnapshotAssertion,
+) -> None:
     """Test add_temporal_bucketed_columns ignores spatial data."""
     test_data = {
         C.UUID_STRING: ["uuid1", "uuid2"],
@@ -757,18 +705,12 @@ def test_add_temporal_bucketed_columns_with_spatial_data() -> None:
     df.index.name = C.DF_ID
 
     result = add_temporal_bucketed_columns(df)
-
-    # Should only have temporal columns, not H3 columns
-    h3_cols = [col for col in result.columns if col.startswith("QUANTIZED_H3_")]
-    temporal_cols = [
-        col for col in result.columns if col.startswith("QUANTIZED_TIMESTAMP_")
-    ]
-
-    assert len(h3_cols) == 0
-    assert len(temporal_cols) > 0
+    assert result.to_dict(orient="records") == snapshot
 
 
-def test_add_temporal_bucketed_columns_no_temporal_data() -> None:
+def test_add_temporal_bucketed_columns_no_temporal_data(
+    snapshot: SnapshotAssertion,
+) -> None:
     """Test add_temporal_bucketed_columns with no temporal data."""
     test_data = {
         C.UUID_STRING: ["uuid1", "uuid2"],

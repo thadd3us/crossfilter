@@ -31,9 +31,9 @@ def test_data_type_enum() -> None:
 def test_h3_column_name_construction() -> None:
     """Test H3 column name construction."""
     # Test the helper function
-    assert get_h3_column_name(7) == "QUANTIZED_H3_L7"
-    assert get_h3_column_name(0) == "QUANTIZED_H3_L0"
-    assert get_h3_column_name(15) == "QUANTIZED_H3_L15"
+    assert get_h3_column_name(7) == "BUCKETED_H3_L7"
+    assert get_h3_column_name(0) == "BUCKETED_H3_L0"
+    assert get_h3_column_name(15) == "BUCKETED_H3_L15"
 
     # Test that it raises for invalid levels
     with pytest.raises(ValueError):
@@ -45,11 +45,9 @@ def test_h3_column_name_construction() -> None:
 def test_temporal_column_name_construction() -> None:
     """Test temporal column name construction."""
     # Test that the temporal columns are constructed using TemporalLevel enum
-    assert get_temporal_column_name(TemporalLevel.HOUR) == "QUANTIZED_TIMESTAMP_HOUR"
-    assert (
-        get_temporal_column_name(TemporalLevel.SECOND) == "QUANTIZED_TIMESTAMP_SECOND"
-    )
-    assert get_temporal_column_name(TemporalLevel.YEAR) == "QUANTIZED_TIMESTAMP_YEAR"
+    assert get_temporal_column_name(TemporalLevel.HOUR) == "BUCKETED_TIMESTAMP_HOUR"
+    assert get_temporal_column_name(TemporalLevel.SECOND) == "BUCKETED_TIMESTAMP_SECOND"
+    assert get_temporal_column_name(TemporalLevel.YEAR) == "BUCKETED_TIMESTAMP_YEAR"
 
 
 def test_load_jsonl_empty_file(tmp_path: Path) -> None:

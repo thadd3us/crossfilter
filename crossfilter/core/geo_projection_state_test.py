@@ -63,16 +63,21 @@ def test_update_projection_individual_points(sample_data: pd.DataFrame) -> None:
     assert projection.projection_state.current_bucketing_column is None
 
 
-def test_update_projection_aggregated(sample_data: pd.DataFrame) -> None:
+def test_update_projection_aggregated(
+    sample_data: pd.DataFrame, snapshot: SnapshotAssertion
+) -> None:
     """Test updating projection with aggregation (over threshold)."""
     projection = GeoProjectionState(max_rows=5)
     projection.update_projection(sample_data)
 
     result = projection.projection_state.projection_df
+    assert result.to_dict(orient="records") == snapshot
 
     # Should return aggregated data (note: result is grouped by both H3 cell and DATA_TYPE,
     # so the actual count may be higher than max_rows due to multiple data types per H3 cell)
-    assert len(result) < len(sample_data)  # Should be aggregated (fewer rows than original)
+    assert len(result) < len(
+        sample_data
+    )  # Should be aggregated (fewer rows than original)
     assert C.GPS_LATITUDE in result.columns
     assert C.GPS_LONGITUDE in result.columns
     assert C.COUNT in result.columns
@@ -84,7 +89,7 @@ def test_update_projection_aggregated(sample_data: pd.DataFrame) -> None:
     assert projection.current_h3_level is not None
     assert projection.projection_state.current_bucketing_column is not None
     assert projection.projection_state.current_bucketing_column.startswith(
-        "QUANTIZED_H3_L"
+        "BUCKETED_H3_L"
     )
     assert projection.current_h3_level >= 0
     assert projection.current_h3_level <= 15
@@ -160,14 +165,16 @@ def test_max_rows_threshold_boundary(sample_data: pd.DataFrame) -> None:
     assert C.COUNT not in result.columns
     assert projection.current_h3_level is None
 
-    # Now use a much smaller max_rows to force aggregation  
+    # Now use a much smaller max_rows to force aggregation
     projection = GeoProjectionState(max_rows=5)
     projection.update_projection(sample_data)
 
     # Should aggregate (note: result is grouped by both H3 cell and DATA_TYPE,
     # so the actual count may be higher than max_rows due to multiple data types per H3 cell)
     result = projection.projection_state.projection_df
-    assert len(result) < len(sample_data)  # Should be aggregated (fewer rows than original)
+    assert len(result) < len(
+        sample_data
+    )  # Should be aggregated (fewer rows than original)
     assert C.COUNT in result.columns
     assert projection.current_h3_level is not None
 

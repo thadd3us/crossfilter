@@ -33,7 +33,7 @@ cache_region = dogpile.cache.make_region().configure(
 )
 
 
-@cache_region.cache_on_arguments()
+# @cache_region.cache_on_arguments()
 def load_clip_embeddings_from_sqlite(sqlite_db_path: Path) -> pd.DataFrame:
     """Load CLIP embeddings from SQLite database and return as DataFrame.
 

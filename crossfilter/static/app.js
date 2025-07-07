@@ -853,10 +853,10 @@ const CrossfilterApp = {
                 <div class="controls">
                     <button @click="loadSampleData">Load Sample Data</button>
                     <button @click="resetFilters" :disabled="!appState.hasData">Reset Filters</button>
-                    <button @click="copyUuidsToClipboard" :disabled="!appState.hasData" class="copy-uuids-button">Copy UUIDs</button>
+                    <button @click="copyUuidsToClipboard" :disabled="!appState.hasData" class="btn-primary">Copy UUIDs</button>
                     <button @click="toggleMouseoverClick" :disabled="!appState.hasData" 
-                            :class="{ 'mouseover-toggle-active': appState.mouseoverClickEnabled }" 
-                            class="mouseover-toggle-button">
+                            :class="{ 'btn-success': appState.mouseoverClickEnabled }" 
+                            class="btn-sm">
                         {{ appState.mouseoverClickEnabled ? 'Hover: ON' : 'Hover: OFF' }}
                     </button>
                 </div>

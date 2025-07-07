@@ -1,15 +1,20 @@
 """CLI program for ingesting Lightroom catalog files into SQLite database."""
 
 import logging
+import pickle
+import sqlite3
 from pathlib import Path
-from typing import List
+from typing import List, Optional, Tuple
 
+import msgpack
+import numpy as np
 import pandas as pd
 import typer
+import umap
 from tqdm import tqdm
 
 from crossfilter.core.schema import SchemaColumns
-from crossfilter.core.bucketing import add_geo_h3_bucket_columns
+from crossfilter.core.bucketing import add_geo_h3_bucket_columns, add_clip_umap_h3_bucket_columns
 from crossfilter.data_ingestion.lightroom.lightroom_parser import (
     LightroomParserConfig,
     load_lightroom_catalog_to_df,
@@ -17,6 +22,122 @@ from crossfilter.data_ingestion.lightroom.lightroom_parser import (
 from crossfilter.data_ingestion.sqlite_utils import upsert_dataframe_to_sqlite
 
 logger = logging.getLogger(__name__)
+
+
+def load_clip_embeddings_from_sqlite(sqlite_db_path: Path) -> pd.DataFrame:
+    """Load CLIP embeddings from SQLite database and return as DataFrame.
+    
+    Args:
+        sqlite_db_path: Path to SQLite database with CLIP embeddings
+        
+    Returns:
+        DataFrame with UUID_STRING and embedding columns
+    """
+    if not sqlite_db_path.exists():
+        raise FileNotFoundError(f"CLIP embeddings database not found: {sqlite_db_path}")
+    
+    logger.info(f"Loading CLIP embeddings from {sqlite_db_path}")
+    
+    with sqlite3.connect(sqlite_db_path) as conn:
+        # Load embeddings table
+        df = pd.read_sql("SELECT * FROM embeddings", conn)
+    
+    # Rename uuid_index to UUID_STRING to match schema
+    df = df.rename(columns={"uuid_index": SchemaColumns.UUID_STRING})
+    
+    # Unpack msgpack embeddings and convert to numpy arrays
+    def unpack_embedding(msgpack_data):
+        unpacked = msgpack.unpackb(msgpack_data)
+        if isinstance(unpacked, dict):
+            # Handle numpy array serialized as dict with shape and data
+            shape = unpacked[b'shape']
+            dtype = unpacked[b'type']
+            data = unpacked[b'data']
+            return np.frombuffer(data, dtype=dtype).reshape(shape)
+        else:
+            # Handle simple list data
+            return np.array(unpacked)
+    
+    df["embedding"] = df["embedding_msgpack"].map(unpack_embedding)
+    
+    # Drop the msgpack column as we now have the unpacked version
+    df = df.drop(columns=["embedding_msgpack", "type_index"])
+    
+    logger.info(f"Loaded {len(df)} CLIP embeddings")
+    return df
+
+
+def compute_umap_projection(embeddings_df: pd.DataFrame, output_file: Optional[Path] = None) -> Tuple[pd.DataFrame, object]:
+    """Normalize embeddings and compute 2D UMAP projection with cosine metric.
+    
+    This function normalizes CLIP embeddings to unit length and computes a 2D UMAP projection
+    using the cosine metric, which is appropriate for normalized high-dimensional embeddings.
+    The resulting 2D coordinates are treated as spherical coordinates (latitude/longitude).
+    
+    References:
+        https://umap-learn.readthedocs.io/en/latest/embedding_space.html
+    
+    Args:
+        embeddings_df: DataFrame with UUID_STRING and embedding columns
+        output_file: Optional path to save the UMAP transformation object
+        
+    Returns:
+        Tuple of (DataFrame with UMAP coordinates, UMAP transformation object)
+    """
+    logger.info(f"Computing UMAP projection for {len(embeddings_df)} embeddings")
+    
+    # Check minimum number of points for UMAP
+    if len(embeddings_df) < 4:
+        logger.warning(f"UMAP requires at least 4 points, got {len(embeddings_df)}. Using fallback to simple projection.")
+        # For very small datasets, just use the first two dimensions as a fallback
+        embeddings_list = embeddings_df["embedding"].tolist()
+        embeddings_array = np.array(embeddings_list)
+        
+        # Use first two dimensions or pad with zeros if needed
+        if embeddings_array.shape[1] >= 2:
+            umap_embedding = embeddings_array[:, :2]
+        else:
+            umap_embedding = np.column_stack([
+                embeddings_array[:, 0] if embeddings_array.shape[1] >= 1 else np.zeros(len(embeddings_df)),
+                np.zeros(len(embeddings_df))
+            ])
+        
+        umap_transformer = None  # No transformer for fallback case
+    else:
+        # Extract embeddings and convert to numpy array
+        embeddings_list = embeddings_df["embedding"].tolist()
+        embeddings_array = np.array(embeddings_list)
+        
+        # Normalize embeddings to unit length
+        embeddings_normalized = embeddings_array / np.linalg.norm(embeddings_array, axis=1, keepdims=True)
+        
+        # Compute UMAP projection with cosine metric for high-dimensional embeddings
+        # Cosine metric is appropriate for normalized embeddings since we normalized to unit length
+        # The output will be treated as spherical coordinates, hence the "haversine" in the column names
+        umap_transformer = umap.UMAP(
+            n_components=2,
+            metric="cosine",
+            random_state=42,  # For reproducibility
+            verbose=True
+        )
+        
+        umap_embedding = umap_transformer.fit_transform(embeddings_normalized)
+    
+    # Create result DataFrame
+    result_df = embeddings_df[[SchemaColumns.UUID_STRING]].copy()
+    result_df[SchemaColumns.CLIP_UMAP_HAVERSINE_LATITUDE] = umap_embedding[:, 0]
+    result_df[SchemaColumns.CLIP_UMAP_HAVERSINE_LONGITUDE] = umap_embedding[:, 1]
+    
+    # Save UMAP transformation object if requested
+    if output_file and umap_transformer is not None:
+        logger.info(f"Saving UMAP transformation to {output_file}")
+        with open(output_file, 'wb') as f:
+            pickle.dump(umap_transformer, f)
+    elif output_file and umap_transformer is None:
+        logger.warning("No UMAP transformer to save (fallback projection used)")
+    
+    logger.info("UMAP projection completed successfully")
+    return result_df, umap_transformer
 
 
 def find_lightroom_catalogs(base_dir: Path) -> List[Path]:
@@ -58,6 +179,12 @@ def main(
     ignore_collections: str = typer.Option(
         "quick collection",
         help="Comma-separated list of collection names to ignore (case-insensitive)",
+    ),
+    sqlite_db_with_clip_embeddings: Optional[Path] = typer.Option(
+        None, help="SQLite database containing CLIP embeddings associated with each UUID"
+    ),
+    output_umap_transformation_file: Optional[Path] = typer.Option(
+        None, help="File to save UMAP transformation object for later use"
     ),
 ) -> None:
     """Ingest Lightroom catalog files into SQLite database."""
@@ -134,6 +261,40 @@ def main(
         logger.info("Adding H3 spatial index columns during ingestion...")
         add_geo_h3_bucket_columns(combined_df)
         logger.info(f"Added H3 columns to {len(combined_df)} rows")
+
+    # Process CLIP embeddings if provided
+    if sqlite_db_with_clip_embeddings:
+        logger.info("Processing CLIP embeddings...")
+        
+        # Load CLIP embeddings
+        embeddings_df = load_clip_embeddings_from_sqlite(sqlite_db_with_clip_embeddings)
+        
+        # Compute UMAP projection
+        umap_coords_df, umap_transformer = compute_umap_projection(
+            embeddings_df, output_umap_transformation_file
+        )
+        
+        # Merge UMAP coordinates with main DataFrame (LEFT JOIN)
+        logger.info("Merging CLIP UMAP coordinates with main DataFrame...")
+        combined_df = pd.merge(
+            combined_df, 
+            umap_coords_df, 
+            on=SchemaColumns.UUID_STRING, 
+            how="left"
+        )
+        
+        # Add H3 columns for CLIP UMAP coordinates
+        if (
+            SchemaColumns.CLIP_UMAP_HAVERSINE_LATITUDE in combined_df.columns
+            and SchemaColumns.CLIP_UMAP_HAVERSINE_LONGITUDE in combined_df.columns
+        ):
+            logger.info("Adding H3 spatial index columns for CLIP UMAP coordinates...")
+            add_clip_umap_h3_bucket_columns(combined_df)
+            logger.info(f"Added CLIP UMAP H3 columns to {len(combined_df)} rows")
+        
+        # Log statistics
+        rows_with_clip_embeddings = combined_df[SchemaColumns.CLIP_UMAP_HAVERSINE_LATITUDE].notna().sum()
+        logger.info(f"Successfully processed {rows_with_clip_embeddings} rows with CLIP embeddings")
 
     # Upsert to database
     upsert_dataframe_to_sqlite(combined_df, destination_sqlite_db, destination_table)

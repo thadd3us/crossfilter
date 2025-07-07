@@ -30,6 +30,9 @@ dependencies = [
     "nbformat",
     "sqlalchemy>=2.0.41",
     "tqdm>=4.67.1",
+    "msgpack>=1.0.0",
+    "numba>=0.56.0",
+    "umap-learn>=0.5.9",
 ]
 
 [project.optional-dependencies]
@@ -95,6 +98,8 @@ module = [
     "gpxpy.*",
     "h3.*",
     "keplergl.*",
+    "msgpack.*",
+    "umap.*",
 ]
 ignore_missing_imports = true
 

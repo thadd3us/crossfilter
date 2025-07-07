@@ -197,6 +197,15 @@ def load_sqlite_to_dataframe(sqlite_db_path: Path, table_name: str) -> pd.DataFr
     df[SchemaColumns.TIMESTAMP_UTC] = pd.to_datetime(
         df[SchemaColumns.TIMESTAMP_UTC], utc=True, errors="coerce"
     )
+    df[SchemaColumns.GPS_LATITUDE] = df[SchemaColumns.GPS_LATITUDE].clip(-90, 90)
+    df[SchemaColumns.GPS_LONGITUDE] = df[SchemaColumns.GPS_LONGITUDE].clip(-180, 180)
+
+    df[SchemaColumns.CLIP_UMAP_HAVERSINE_LATITUDE] = df[
+        SchemaColumns.CLIP_UMAP_HAVERSINE_LATITUDE
+    ].clip(-90, 90)
+    df[SchemaColumns.CLIP_UMAP_HAVERSINE_LONGITUDE] = df[
+        SchemaColumns.CLIP_UMAP_HAVERSINE_LONGITUDE
+    ].clip(-180, 180)
 
     # Validate and coerce only the schema columns
     schema_df = df[required_columns].copy()

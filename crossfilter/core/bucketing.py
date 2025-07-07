@@ -68,50 +68,7 @@ TEMPORAL_LEVELS = [
 ]
 
 
-def add_quantized_geo_h3_columns(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Add H3 spatial quantization columns to the DataFrame.
-
-    Args:
-        df: Input DataFrame with GPS_LATITUDE and GPS_LONGITUDE columns
-
-    Returns:
-        DataFrame with added H3 quantization columns
-    """
-    if not (
-        SchemaColumns.GPS_LATITUDE in df.columns
-        and SchemaColumns.GPS_LONGITUDE in df.columns
-    ):
-        raise ValueError(
-            "DataFrame must contain GPS_LATITUDE and GPS_LONGITUDE columns"
-        )
-
-    df = df.copy()
-    df = _add_h3_columns(df)
-    logger.info(f"Added H3 quantization columns to DataFrame with {len(df)} rows")
-    return df
-
-
-def add_quantized_temporal_columns(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Add temporal quantization columns to the DataFrame.
-
-    Args:
-        df: Input DataFrame with TIMESTAMP_UTC column
-
-    Returns:
-        DataFrame with added temporal quantization columns
-    """
-    if SchemaColumns.TIMESTAMP_UTC not in df.columns:
-        raise ValueError("DataFrame must contain TIMESTAMP_UTC column")
-
-    df = df.copy()
-    df = _add_temporal_columns(df)
-    logger.info(f"Added temporal quantization columns to DataFrame with {len(df)} rows")
-    return df
-
-
-def _add_h3_columns(df: pd.DataFrame) -> pd.DataFrame:
+def add_geo_h3_bucket_columns(df: pd.DataFrame) -> None:
     """Add H3 hexagon columns at multiple resolutions."""
     logger.info(f"Adding H3 columns to DataFrame with {len(df)=} rows")
     for level in H3_LEVELS:
@@ -129,14 +86,14 @@ def _add_h3_columns(df: pd.DataFrame) -> pd.DataFrame:
             ),
             axis=1,
         )
-    return df
 
 
-def _add_temporal_columns(df: pd.DataFrame) -> pd.DataFrame:
+def add_temporal_bucket_columns(df: pd.DataFrame) -> None:
     """Add temporal quantization columns at multiple levels."""
     logger.info(f"Adding temporal columns to DataFrame with {len(df)=} rows.")
     # Convert to datetime if string
-    timestamps = pd.to_datetime(df[SchemaColumns.TIMESTAMP_UTC])
+    # timestamps = pd.to_datetime(df[SchemaColumns.TIMESTAMP_UTC])
+    timestamps: pd.Series = df[SchemaColumns.TIMESTAMP_UTC]
 
     # For non-empty DataFrames, enforce that timestamps are timezone-aware and in UTC
     if len(df) > 0:
@@ -180,7 +137,6 @@ def _add_temporal_columns(df: pd.DataFrame) -> pd.DataFrame:
         df[get_temporal_column_name(TemporalLevel.YEAR)] = timestamps.dt.to_period(
             "Y"
         ).dt.start_time
-
     return df
 
 
@@ -268,11 +224,11 @@ def add_bucketed_columns(df: pd.DataFrame) -> pd.DataFrame:
         SchemaColumns.GPS_LATITUDE in df.columns
         and SchemaColumns.GPS_LONGITUDE in df.columns
     ):
-        df = _add_h3_columns(df)
+        add_geo_h3_bucket_columns(df)
 
     # Add temporal quantization if timestamp is present
     if SchemaColumns.TIMESTAMP_UTC in df.columns:
-        df = _add_temporal_columns(df)
+        add_temporal_bucket_columns(df)
 
     logger.info(f"Added bucketed columns to DataFrame with {len(df)} rows")
     return df

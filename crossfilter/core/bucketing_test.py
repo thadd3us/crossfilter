@@ -7,8 +7,8 @@ from syrupy import SnapshotAssertion
 from crossfilter.core.bucketing import (
     H3_LEVELS,
     add_bucketed_columns,
-    add_quantized_geo_h3_columns,
-    add_quantized_temporal_columns,
+    add_geo_h3_bucket_columns,
+    add_temporal_bucket_columns,
     bucket_by_target_column,
     filter_df_to_selected_buckets,
     get_optimal_h3_level,
@@ -80,7 +80,8 @@ def test_add_quantized_columns_for_h3(
     sample_df: pd.DataFrame, snapshot: SnapshotAssertion
 ) -> None:
     """Test adding H3 spatial quantization columns."""
-    result = add_quantized_geo_h3_columns(sample_df)
+    result = sample_df.copy()
+    add_geo_h3_bucket_columns(result)
     assert result.dtypes.to_dict() == snapshot
     assert result.to_dict(orient="records") == snapshot
 
@@ -89,7 +90,8 @@ def test_add_quantized_columns_for_timestamp(
     sample_df: pd.DataFrame, snapshot: SnapshotAssertion
 ) -> None:
     """Test adding temporal quantization columns."""
-    result = add_quantized_temporal_columns(sample_df)
+    result = sample_df.copy()
+    add_temporal_bucket_columns(result)
     assert result.dtypes.to_dict() == snapshot
     assert result.to_dict(orient="records") == snapshot
 
@@ -111,7 +113,8 @@ def test_add_quantized_temporal_columns_no_timezone_warnings() -> None:
         )
 
         # This should not raise any warnings
-        result = add_quantized_temporal_columns(df)
+        result = df.copy()
+        add_temporal_bucket_columns(result)
 
         # Verify the result has the expected timezone-aware columns
         assert result[get_temporal_column_name(TemporalLevel.MONTH)].dt.tz is not None
@@ -132,11 +135,8 @@ def test_add_quantized_columns_for_h3_missing_columns() -> None:
     )
     df.index.name = C.DF_ID
 
-    with pytest.raises(
-        ValueError,
-        match="DataFrame must contain GPS_LATITUDE and GPS_LONGITUDE columns",
-    ):
-        add_quantized_geo_h3_columns(df)
+    with pytest.raises(KeyError):
+        add_geo_h3_bucket_columns(df)
 
 
 def test_add_quantized_columns_for_timestamp_missing_column() -> None:
@@ -150,8 +150,8 @@ def test_add_quantized_columns_for_timestamp_missing_column() -> None:
     )
     df.index.name = C.DF_ID
 
-    with pytest.raises(ValueError, match="DataFrame must contain TIMESTAMP_UTC column"):
-        add_quantized_temporal_columns(df)
+    with pytest.raises(KeyError):
+        add_temporal_bucket_columns(df)
 
 
 def test_get_optimal_h3_level(sample_df: pd.DataFrame) -> None:

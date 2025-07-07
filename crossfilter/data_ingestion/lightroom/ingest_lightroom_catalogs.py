@@ -90,6 +90,8 @@ def compute_umap_projection(embeddings_df: pd.DataFrame) -> Tuple[pd.DataFrame, 
     Returns:
         Tuple of (DataFrame with UMAP coordinates, UMAP transformation object)
     """
+    # embeddings_df = embeddings_df.head(5000)  # TODO: Remove this.
+
     import umap
 
     logger.info(f"Computing UMAP projection for {len(embeddings_df)} embeddings")
@@ -148,7 +150,9 @@ def compute_umap_projection(embeddings_df: pd.DataFrame) -> Tuple[pd.DataFrame, 
     result_df[SchemaColumns.CLIP_UMAP_HAVERSINE_LATITUDE] = umap_embedding[:, 1]
     result_df[SchemaColumns.CLIP_UMAP_HAVERSINE_LONGITUDE] = umap_embedding[:, 0]
 
-    logger.info("UMAP projection completed successfully")
+    logger.info(
+        f"UMAP projection completed successfully, {result_df.shape=}, {result_df.columns=}"
+    )
     return result_df, umap_transformer
 
 
@@ -289,6 +293,8 @@ def ingest(
 
         # Load CLIP embeddings
         embeddings_df = load_clip_embeddings_from_sqlite(sqlite_db_with_clip_embeddings)
+        assert embeddings_df[SchemaColumns.UUID_STRING].notna().all()
+        assert not embeddings_df[SchemaColumns.UUID_STRING].duplicated().any()
 
         # Compute UMAP projection
         umap_coords_df, umap_transformer = compute_umap_projection(embeddings_df)
@@ -299,11 +305,17 @@ def ingest(
             )
             with open(str(output_umap_transformation_file), "wb") as f:
                 pickle.dump(umap_transformer, f)
+        logger.info(
+            f"UMAP transformation saved successfully, {len(umap_coords_df)} rows"
+        )
 
         # Merge UMAP coordinates with main DataFrame (LEFT JOIN)
         logger.info("Merging CLIP UMAP coordinates with main DataFrame...")
         combined_df = pd.merge(
             combined_df, umap_coords_df, on=SchemaColumns.UUID_STRING, how="left"
+        )
+        logger.info(
+            f"Combined DataFrame with {len(combined_df)=} rows and {len(umap_coords_df)=} rows with CLIP embeddings"
         )
 
         # Add H3 columns for CLIP UMAP coordinates

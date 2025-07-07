@@ -234,7 +234,7 @@ def create_geo_plot(
 
     # Build hover_data list based on available columns
     hover_data_columns = [C.COUNT]
-    for col in [C.NAME, C.DATA_TYPE, C.UUID_STRING, C.TIMESTAMP_UTC]:
+    for col in [C.NAME, C.DATA_TYPE, C.TIMESTAMP_UTC]:
         if col in df.columns:
             hover_data_columns.append(col)
 

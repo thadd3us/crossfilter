@@ -51,7 +51,13 @@ class ClipEmbeddingProjectionState:
             filtered_rows: Current filtered subset of all_rows
         """
         # Drop rows with missing CLIP UMAP coordinates
-        filtered_rows = filtered_rows.dropna(subset=[C.CLIP_UMAP_HAVERSINE_LATITUDE, C.CLIP_UMAP_HAVERSINE_LONGITUDE])
+        logger.info(
+            f"Projecting {len(filtered_rows)=} rows with CLIP UMAP coordinates."
+        )
+        filtered_rows = filtered_rows.dropna(
+            subset=[C.CLIP_UMAP_HAVERSINE_LATITUDE, C.CLIP_UMAP_HAVERSINE_LONGITUDE]
+        )
+        logger.info(f"Kept {len(filtered_rows)=} rows with CLIP UMAP coordinates")
 
         optimal_level = get_optimal_clip_umap_h3_level(
             filtered_rows, self.projection_state.max_rows

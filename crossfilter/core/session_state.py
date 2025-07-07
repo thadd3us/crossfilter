@@ -17,6 +17,7 @@ from crossfilter.core.schema import SchemaColumns as C
 from crossfilter.core.bucketing import add_temporal_bucketed_columns
 from crossfilter.core.geo_projection_state import GeoProjectionState
 from crossfilter.core.temporal_projection_state import TemporalProjectionState
+from crossfilter.core.clip_embedding_projection_state import ClipEmbeddingProjectionState
 
 logger = logging.getLogger(__name__)
 
@@ -47,6 +48,7 @@ class SessionState:
         # Initialize projection states
         self.temporal_projection = TemporalProjectionState(max_rows=10_000)
         self.geo_projection = GeoProjectionState(max_rows=10_000)
+        self.clip_embedding_projection = ClipEmbeddingProjectionState(max_rows=10_000)
 
         # SSE event broadcasting
         self.filter_version = 0
@@ -69,12 +71,13 @@ class SessionState:
         self.update_all_projections()
 
         # Broadcast data loaded event
-        self.broadcast_filter_change("data_loaded", ["temporal", "geo"])
+        self.broadcast_filter_change("data_loaded", ["temporal", "geo", "clip_embedding"])
 
     def update_all_projections(self) -> None:
         """Update all projection states with the current filtered data."""
         self.temporal_projection.update_projection(self.filtered_rows)
         self.geo_projection.update_projection(self.filtered_rows)
+        self.clip_embedding_projection.update_projection(self.filtered_rows)
 
     def apply_filter_event(self, filter_event: FilterEvent) -> None:
         """
@@ -87,6 +90,8 @@ class SessionState:
             projection_state = self.temporal_projection.projection_state
         elif filter_event.projection_type == ProjectionType.GEO:
             projection_state = self.geo_projection.projection_state
+        elif filter_event.projection_type == ProjectionType.CLIP_EMBEDDING:
+            projection_state = self.clip_embedding_projection.projection_state
         else:
             logger.error(f"Invalid projection type: {filter_event.projection_type}")
             raise ValueError(f"Invalid projection type: {filter_event.projection_type}")
@@ -103,14 +108,14 @@ class SessionState:
         self.update_all_projections()
 
         # Broadcast filter change event
-        self.broadcast_filter_change("filter_applied", ["temporal", "geo"])
+        self.broadcast_filter_change("filter_applied", ["temporal", "geo", "clip_embedding"])
 
     def reset_filters(self) -> None:
         """Reset all filters to show all data."""
         if len(self.filtered_rows) != len(self.all_rows):
             self.filtered_rows = self.all_rows.copy()
             self.update_all_projections()
-            self.broadcast_filter_change("filter_reset", ["temporal", "geo"])
+            self.broadcast_filter_change("filter_reset", ["temporal", "geo", "clip_embedding"])
             logger.info("Reset all filters - all points now visible")
 
     def get_summary(self) -> dict:
@@ -122,6 +127,7 @@ class SessionState:
             "filtered_rows_count": len(self.filtered_rows),
             "temporal_projection": self.temporal_projection.get_summary(),
             "geo_projection": self.geo_projection.get_summary(),
+            "clip_embedding_projection": self.clip_embedding_projection.get_summary(),
         }
 
     def _create_session_state_response(self) -> SessionStateResponse:
@@ -135,6 +141,7 @@ class SessionState:
             memory_usage_mb=f"{self.all_rows.memory_usage(deep=True).sum() / 1024 / 1024:.2f}",
             temporal_projection=self.temporal_projection.get_summary(),
             geo_projection=self.geo_projection.get_summary(),
+            clip_embedding_projection=self.clip_embedding_projection.get_summary(),
             has_data=all_rows_count > 0,
             row_count=all_rows_count,
             filtered_count=filtered_rows_count,
@@ -145,6 +152,9 @@ class SessionState:
 
     def get_temporal_projection(self) -> pd.DataFrame:
         return self.temporal_projection.projection_state.projection_df.copy()
+
+    def get_clip_embedding_projection(self) -> pd.DataFrame:
+        return self.clip_embedding_projection.projection_state.projection_df.copy()
 
     def get_filtered_data(self) -> pd.DataFrame:
         """
@@ -184,7 +194,7 @@ class SessionState:
             # Send initial connection event
             initial_event = {
                 "type": "connection_established",
-                "affected_components": ["temporal", "geo"],
+                "affected_components": ["temporal", "geo", "clip_embedding"],
                 "version": self.filter_version,
                 "timestamp": time.time(),
                 "session_state": self._create_session_state_response().model_dump(),

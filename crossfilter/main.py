@@ -34,6 +34,7 @@ from crossfilter.core.schema import load_jsonl_to_dataframe, load_sqlite_to_data
 from crossfilter.core.session_state import SessionState
 from crossfilter.visualization.temporal_cdf_plot import create_temporal_cdf
 from crossfilter.visualization.geo_plot import create_geo_plot
+from crossfilter.visualization.clip_embedding_plot import create_clip_embedding_plot
 
 
 @dataclass
@@ -264,6 +265,48 @@ async def get_geo_plot_data(
         logger.error(f"Error generating geo plot: {e}", exc_info=True)
         raise HTTPException(
             status_code=500, detail=f"Error generating geo plot: {str(e)}"
+        )
+
+
+@app.get("/api/plots/clip_embedding")
+async def get_clip_embedding_plot_data(
+    session_state: SessionState = Depends(get_session_state),
+) -> ProjectionPlotResponse:
+    """Get data for the CLIP embedding plot."""
+    if len(session_state.all_rows) == 0:
+        raise HTTPException(status_code=404, detail="No data loaded")
+
+    try:
+        clip_embedding_data = session_state.get_clip_embedding_projection()
+        fig = create_clip_embedding_plot(
+            clip_embedding_data, clip_embedding_projection_state=session_state.clip_embedding_projection
+        )
+        fig_json = fig.to_json()
+        if fig_json is None:
+            raise ValueError("Failed to serialize CLIP embedding plot to JSON")
+        plotly_plot = json.loads(fig_json)
+
+        total_row_count = (
+            clip_embedding_data[C.COUNT].sum() if C.COUNT in clip_embedding_data.columns else len(clip_embedding_data)
+        )
+
+        # Get aggregation level from clip embedding projection state
+        aggregation_level = session_state.clip_embedding_projection.current_h3_level
+        return ProjectionPlotResponse(
+            plotly_plot=plotly_plot,
+            total_row_count=total_row_count,
+            is_bucketed=aggregation_level is not None,
+            bucketing_level=str(aggregation_level) if aggregation_level else None,
+            bucket_count=len(clip_embedding_data),
+        )
+    except HTTPException:
+        # Re-raise HTTP exceptions as-is
+        raise
+    except Exception as e:
+        # Log the full exception with stack trace
+        logger.error(f"Error generating CLIP embedding plot: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500, detail=f"Error generating CLIP embedding plot: {str(e)}"
         )
 
 

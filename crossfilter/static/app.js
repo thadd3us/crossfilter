@@ -756,6 +756,33 @@ const CrossfilterApp = {
             alert('Crossfilter - Interactive data exploration, filtering, and selection');
         };
 
+        const copyUuidsToClipboard = async () => {
+            try {
+                appState.showInfo('Fetching active UUIDs...');
+                
+                const response = await fetch('/api/active_uuids');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const result = await response.json();
+                
+                if (result.count === 0) {
+                    appState.showInfo('No active image UUIDs found');
+                    return;
+                }
+                
+                // Copy to clipboard
+                await navigator.clipboard.writeText(result.uuids);
+                
+                // Show success message
+                appState.showInfo(`Copied ${result.count} UUIDs to clipboard`);
+            } catch (error) {
+                console.error('Error copying UUIDs:', error);
+                appState.showError('Failed to copy UUIDs: ' + error.message);
+            }
+        };
+
         // Initialize on mount
         onMounted(async () => {
             console.log('CrossfilterApp: Initializing...');
@@ -776,7 +803,8 @@ const CrossfilterApp = {
             loadSampleData,
             resetFilters,
             filterToSelected,
-            showAbout
+            showAbout,
+            copyUuidsToClipboard
         };
     },
     template: `
@@ -810,6 +838,7 @@ const CrossfilterApp = {
                 <div class="controls">
                     <button @click="loadSampleData">Load Sample Data</button>
                     <button @click="resetFilters" :disabled="!appState.hasData">Reset Filters</button>
+                    <button @click="copyUuidsToClipboard" :disabled="!appState.hasData" class="copy-uuids-button">Copy UUIDs</button>
                 </div>
             </div>
 

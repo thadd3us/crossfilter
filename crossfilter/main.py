@@ -412,6 +412,46 @@ async def get_uuid_metadata(
         )
 
 
+@app.get("/api/active_uuids")
+async def get_active_uuids(
+    limit: int = Query(1000, ge=1, le=10000),
+    session_state: SessionState = Depends(get_session_state)
+) -> JSONResponse:
+    """Get comma-separated string of active UUIDs (up to limit) with count."""
+    if len(session_state.filtered_rows) == 0:
+        return JSONResponse(content={"count": 0, "uuids": ""})
+
+    try:
+        # Get the currently filtered data
+        filtered_data = session_state.filtered_rows
+        
+        # Filter to only image types (PHOTO and VIDEO)
+        from crossfilter.core.schema import DataType
+        image_data = filtered_data[
+            filtered_data[C.DATA_TYPE].isin([DataType.PHOTO, DataType.VIDEO])
+        ]
+        
+        # Get unique UUIDs (in case there are duplicates)
+        unique_uuids = image_data[C.UUID_STRING].drop_duplicates()
+        
+        # Limit to the specified number
+        limited_uuids = unique_uuids.head(limit)
+        
+        # Create comma-separated string
+        uuid_string = ",".join(limited_uuids.tolist())
+        
+        return JSONResponse(content={
+            "count": len(limited_uuids),
+            "uuids": uuid_string
+        })
+    except Exception as e:
+        # Log the full exception with stack trace
+        logger.error(f"Error getting active UUIDs: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500, detail=f"Error getting active UUIDs: {str(e)}"
+        )
+
+
 def _create_no_preview_available_image() -> Response:
     """Create a dummy image with 'No preview available' text."""
     # Create a simple SVG image

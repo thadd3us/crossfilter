@@ -156,7 +156,8 @@ def test_add_quantized_columns_for_timestamp_missing_column() -> None:
 
 def test_get_optimal_h3_level(sample_df: pd.DataFrame) -> None:
     """Test finding optimal H3 level."""
-    quantized = add_quantized_geo_h3_columns(sample_df)
+    quantized = sample_df.copy()
+    add_geo_h3_bucket_columns(quantized)
 
     # With large max_rows, should return None (no aggregation needed)
     optimal = get_optimal_h3_level(quantized, max_rows=1000)
@@ -192,7 +193,8 @@ def test_get_optimal_h3_level_large_dataset_issue() -> None:
     df.index.name = C.DF_ID
 
     # Add quantized H3 columns
-    quantized = add_quantized_geo_h3_columns(df)
+    quantized = df.copy()
+    add_geo_h3_bucket_columns(quantized)
 
     # Target 1000 rows (10% of our data)
     target_rows = 1000
@@ -228,7 +230,8 @@ def test_get_optimal_temporal_level(snapshot: SnapshotAssertion) -> None:
             ],
         }
     )
-    quantized = add_quantized_temporal_columns(df)
+    quantized = df.copy()
+    add_temporal_bucket_columns(quantized)
     actual = {
         probe: get_optimal_temporal_level(quantized, max_rows=probe)
         for probe in [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 100, 1000, 5000, 10000]
@@ -239,7 +242,8 @@ def test_get_optimal_temporal_level(snapshot: SnapshotAssertion) -> None:
 def test_bucket_by_target_column_h3(sample_df: pd.DataFrame) -> None:
     """Test bucketing by H3 column."""
     # First add H3 quantization columns
-    quantized = add_quantized_geo_h3_columns(sample_df)
+    quantized = sample_df.copy()
+    add_geo_h3_bucket_columns(quantized)
     h3_level = 7  # Use a specific level for testing
     target_column = get_h3_column_name(h3_level)
 
@@ -263,7 +267,8 @@ def test_bucket_by_target_column_h3(sample_df: pd.DataFrame) -> None:
 def test_bucket_by_target_column_temporal(sample_df: pd.DataFrame) -> None:
     """Test bucketing by temporal column."""
     # First add temporal quantization columns
-    quantized = add_quantized_temporal_columns(sample_df)
+    quantized = sample_df.copy()
+    add_temporal_bucket_columns(quantized)
     temporal_level = TemporalLevel.HOUR
     target_column = get_temporal_column_name(temporal_level)
 
@@ -302,7 +307,8 @@ def test_add_quantized_columns_for_h3_empty_dataframe() -> None:
     )
     df.index.name = C.DF_ID
 
-    result = add_quantized_geo_h3_columns(df)
+    result = df.copy()
+    add_geo_h3_bucket_columns(result)
 
     # Should not raise errors
     assert len(result) == 0
@@ -320,7 +326,8 @@ def test_add_quantized_columns_for_timestamp_empty_dataframe() -> None:
     )
     df.index.name = C.DF_ID
 
-    result = add_quantized_temporal_columns(df)
+    result = df.copy()
+    add_temporal_bucket_columns(result)
 
     # Should not raise errors
     assert len(result) == 0
@@ -340,7 +347,8 @@ def test_add_quantized_columns_for_h3_null_coordinates() -> None:
     )
     df.index.name = C.DF_ID
 
-    result = add_quantized_geo_h3_columns(df)
+    result = df.copy()
+    add_geo_h3_bucket_columns(result)
 
     # H3 columns should have null for null coordinates
     h3_col = get_h3_column_name(H3_LEVELS[0])
@@ -372,7 +380,8 @@ def test_bucket_by_target_column_h3_column_preservation_snapshot(
 ) -> None:
     """Test bucketing by H3 column with snapshot to show column preservation."""
     # First add H3 quantization columns
-    quantized = add_quantized_geo_h3_columns(sample_df)
+    quantized = sample_df.copy()
+    add_geo_h3_bucket_columns(quantized)
     h3_level = 7  # Use a specific level for testing
     target_column = get_h3_column_name(h3_level)
 
@@ -387,7 +396,8 @@ def test_bucket_by_target_column_temporal_column_preservation_snapshot(
 ) -> None:
     """Test bucketing by temporal column with snapshot to show column preservation."""
     # First add temporal quantization columns
-    quantized = add_quantized_temporal_columns(sample_df)
+    quantized = sample_df.copy()
+    add_temporal_bucket_columns(quantized)
     temporal_level = TemporalLevel.HOUR
     target_column = get_temporal_column_name(temporal_level)
 

@@ -54,6 +54,9 @@ class ProjectionState:
         Returns:
             New filtered DataFrame containing only rows matching the selection
         """
+        logger.info(
+            f"Applying filter event: {filter_event.filter_operator=}, {filter_event.projection_type=}, {self.current_bucketing_column=}, {self.groupby_column=}, {len(self.projection_df)=}"
+        )
         if not filter_event.selected_df_ids:
             return pd.DataFrame()
 
@@ -78,7 +81,9 @@ class ProjectionState:
                 filtered_rows,
                 self.projection_df,
                 self.current_bucketing_column,
-                selected_bucket_df_ids,
+                bucket_indices_to_keep=selected_bucket_df_ids,
+                # BUG is fixed, but not tested.  Is this code covered?
+                groupby_column=self.groupby_column,
             )
 
         # Apply the filter operation

@@ -64,16 +64,16 @@ class GeoProjectionState:
             return
 
         self.current_h3_level = optimal_level
-        self.projection_state.current_bucketing_column = get_h3_column_name(
-            optimal_level
-        )
-        self.projection_state.projection_df = bucket_by_target_column(
+        bucket_column = get_h3_column_name(optimal_level)
+        self.projection_state.current_bucketing_column = bucket_column
+        bucketed_df = bucket_by_target_column(
             filtered_rows,
-            self.projection_state.current_bucketing_column,
-            self.projection_state.groupby_column,
+            target_column=bucket_column,
+            groupby_column=self.projection_state.groupby_column,
         )
+        self.projection_state.projection_df = bucketed_df
         logger.info(
-            f"Bucketed data at optimal H3 level {optimal_level=}, {len(self.projection_state.projection_df)=}"
+            f"Bucketed Geo data at optimal H3 level {optimal_level=}, {bucket_column=}, {self.projection_state.groupby_column=}, {len(self.projection_state.projection_df)=}"
         )
 
     def get_summary(self) -> dict:

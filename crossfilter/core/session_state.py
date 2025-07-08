@@ -90,6 +90,7 @@ class SessionState:
         Args:
             filter_event: The filter event containing projection type and selected df_ids
         """
+        logger.info(f"Applying filter event: {filter_event.projection_type=}")
         if filter_event.projection_type == ProjectionType.TEMPORAL:
             projection_state = self.temporal_projection.projection_state
         elif filter_event.projection_type == ProjectionType.GEO:

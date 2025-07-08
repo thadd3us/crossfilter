@@ -323,6 +323,9 @@ def bucket_by_target_column(
     Returns:
         Bucketed DataFrame with one row per unique target_column value (and per groupby_column value if provided)
     """
+    logger.info(
+        f"bucket_by_target_column called with {target_column=}, {groupby_column=}, {id(original_data)=}"
+    )
     logger.debug(f"bucket_by_target_column called with target_column='{target_column}'")
     logger.debug(f"Original data columns: {list(original_data.columns)}")
     logger.debug(
@@ -347,8 +350,12 @@ def bucket_by_target_column(
 
     df[SchemaColumns.COUNT] = df.groupby(groupby_columns).transform("size")
     df = df.drop_duplicates(subset=groupby_columns)
-    df = df.reset_index(drop=True)
+    df = df.reset_index(drop=True)  # Keep the first.
     df.index.name = SchemaColumns.DF_ID
+
+    logger.info(f"Setting index on {groupby_columns=}, {id(df)=}")
+    df.set_index(groupby_columns, verify_integrity=True)
+
     return df
 
 
@@ -368,11 +375,12 @@ def filter_df_to_selected_buckets(
 
     This is how we translate backwards from the df_ids in the bucketed data to the rows/df_ids in the original data.
 
-    TODO(THAD): This needs to account for the groupby_column, too, if there was any groupby.  Basically it needs to
-
     Returns:
         Filtered DataFrame containing only rows from selected buckets
     """
+    logger.info(
+        f"filter_df_to_selected_buckets called with {target_column=}, {groupby_column=}, {len(original_data)=}, {len(bucketed_df)=}, {id(original_data)=}, {id(bucketed_df)=}"
+    )
     assert SchemaColumns.COUNT not in original_data.columns
 
     assert not pd.Series(bucket_indices_to_keep).duplicated().any()
@@ -396,7 +404,13 @@ def filter_df_to_selected_buckets(
     assert bucketed_df[merge_on_columns].notna().all().all()
     assert bucketed_df[merge_on_columns].notna().all().all()
 
-    bucketed_df = bucketed_df.set_index(merge_on_columns, verify_integrity=True)
+    logger.info(
+        f"Checking index on {merge_on_columns=}, {id(bucketed_df)=}, {bucketed_df.columns=}"
+    )
+    # import pdb
+
+    # pdb.set_trace()
+    bucketed_df.set_index(merge_on_columns, verify_integrity=True)
 
     buckets_we_picked = bucketed_df.loc[
         bucket_indices_to_keep, merge_on_columns + [SchemaColumns.COUNT]

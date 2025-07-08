@@ -302,7 +302,7 @@ async def filter_to_df_ids(
     session_state: SessionState = Depends(get_session_state),
 ) -> FilterResponse:
     """Filter data to only include points with specified df_ids from a plot."""
-    logger.info(f"Filtering to df_ids: {request=}")
+    logger.info(f"Filtering to df_ids.")
 
     try:
         filter_event = FilterEvent(

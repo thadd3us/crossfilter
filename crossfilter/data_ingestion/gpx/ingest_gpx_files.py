@@ -99,10 +99,12 @@ def main(
 
     if combined_df[C.UUID_STRING].duplicated().any():
         logger.warning("Duplicate UUIDs found in data")
-        assert False
+        # assert False
         combined_df = combined_df.drop_duplicates(subset=[C.UUID_STRING])
 
-    logger.info(f"Total records: {len(combined_df)} (H3 columns computed per-file in parallel)")
+    logger.info(
+        f"Total records: {len(combined_df)} (H3 columns computed per-file in parallel)"
+    )
 
     # Upsert to database
     upsert_dataframe_to_sqlite(combined_df, destination_sqlite_db, destination_table)

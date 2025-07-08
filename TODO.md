@@ -1,5 +1,18 @@
 # TODO Items
 
+* SQLite to Plotly treemap of size of each table and column.
+* Handle bad data on ingestion and validate against the pandera schema before writing the to DB.
+* Make per-plot settings objects in the frontend/backend shared schema.
+* GPS loader for the Google Takeout data -- add schema fields?
+* Allow program to read from multiple sqlite DBs, to speed loading when you want to focus (2022 GPS tracks, for example).)
+* Make the sqlite query from the LR catalog timezone aware, and get a sense of how often it's being used.
+* When you colorby, each trace gets max_rows, and then we bucket, rather than bucketing first, then doing the color grouping.  Make the bucketing code aware of the colorby.
+* Be able to add and remove projections, and configure them separately with a config button.
+* Folder projection.
+* Be able to shift the time stamps of all the images in a folder, and add a timezone to the lightroom catalog.
+
+
+
 * BUG: Selecting only photos on the CDF and intersecting shows too many rows on the Geo plot until you refresh the page.
 
 # umap projection on CLIP embeddings of images and , with text search.

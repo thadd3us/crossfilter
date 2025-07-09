@@ -7,3 +7,26 @@ coverage.xml
 .venv
 
 **/.DS_Store
+
+# Docker and container files
+.docker/
+docker-compose.override.yml
+.dockerignore
+
+# Development container files
+.devcontainer/docker-compose.yml
+.devcontainer/.env
+
+# Test artifacts
+htmlcov/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+
+# Jupyter notebook checkpoints
+.ipynb_checkpoints/
+
+# VS Code settings (if not shared)
+.vscode/settings.json
+.vscode/launch.json

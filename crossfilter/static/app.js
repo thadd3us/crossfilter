@@ -921,7 +921,9 @@ const CrossfilterApp = {
 
 // Create and mount the Vue app
 const app = createApp(CrossfilterApp);
-app.mount('#app');
+const mountedApp = app.mount('#app');
 
 // Export for backwards compatibility and testing
 window.app = app;
+window.appState = mountedApp.appState;
+window.vueApp = mountedApp;

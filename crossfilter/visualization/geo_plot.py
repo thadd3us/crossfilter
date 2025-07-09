@@ -232,12 +232,6 @@ def create_geo_plot(
     else:
         df["marker_size"] = min_marker_size
 
-    # Build hover_data list based on available columns
-    hover_data_columns = [C.COUNT]
-    for col in [C.NAME, C.DATA_TYPE, C.TIMESTAMP_UTC]:
-        if col in df.columns:
-            hover_data_columns.append(col)
-
     fig = px.scatter_map(
         df,
         lat=C.GPS_LATITUDE,
@@ -245,7 +239,11 @@ def create_geo_plot(
         size="marker_size",
         color="Group (Count)",
         custom_data=CUSTOM_DATA_COLUMNS,
-        hover_data=hover_data_columns,
+        hover_data={
+            C.DF_ID: True,
+            C.COUNT: True,
+            C.UUID_STRING: True,
+        },
         title=title,
         map_style="open-street-map",
         size_max=geo_projection_state.max_marker_size,

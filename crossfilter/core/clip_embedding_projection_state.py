@@ -50,6 +50,20 @@ class ClipEmbeddingProjectionState:
         Args:
             filtered_rows: Current filtered subset of all_rows
         """
+        # Check if CLIP columns are present in the data
+        if (
+            C.CLIP_UMAP_HAVERSINE_LATITUDE not in filtered_rows.columns
+            or C.CLIP_UMAP_HAVERSINE_LONGITUDE not in filtered_rows.columns
+        ):
+            logger.info(
+                f"CLIP UMAP columns not found in data, skipping CLIP embedding projection update"
+            )
+            # Set empty projection with no buckets
+            self.projection_state.current_bucketing_column = None
+            self.current_h3_level = None
+            self.projection_state.projection_df = pd.DataFrame()
+            return
+
         # Drop rows with missing CLIP UMAP coordinates
         logger.info(
             f"Projecting {len(filtered_rows)=} rows with CLIP UMAP coordinates."

@@ -61,21 +61,18 @@ def create_temporal_cdf(
         groups.append(group)
     plot_df = pd.concat(groups)
 
-    # Build hover_data list based on available columns
-    hover_data_columns = [C.DF_ID]
-    for col in [C.NAME, C.DATA_TYPE, C.UUID_STRING]:
-        if col in plot_df.columns:
-            hover_data_columns.append(col)
-
     fig = px.line(
         plot_df,
         x=time_column,
         y="CDF",
         color="Group (Count)",
         custom_data=CUSTOM_DATA_COLUMNS,
-        hover_data=hover_data_columns,
+        hover_data={
+            C.DF_ID: True,
+            C.COUNT: True,
+            C.UUID_STRING: True,
+        },
         markers=True,
-        # hover_data={"label": True},
     )
     # fig.update_traces(
     #     hovertemplate="x: %{x}<br>ECDF: %{y}<br>Label: %{customdata[0]}<extra></extra>"

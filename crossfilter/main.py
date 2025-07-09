@@ -259,6 +259,38 @@ async def get_clip_embedding_plot_data(
     if len(session_state.all_rows) == 0:
         raise HTTPException(status_code=404, detail="No data loaded")
 
+    # Check if CLIP columns are present in the data
+    if (
+        C.CLIP_UMAP_HAVERSINE_LATITUDE not in session_state.all_rows.columns
+        or C.CLIP_UMAP_HAVERSINE_LONGITUDE not in session_state.all_rows.columns
+    ):
+        # Return empty plot when CLIP columns are missing
+        import plotly.graph_objects as go
+        fig = go.Figure()
+        fig.update_layout(
+            title="CLIP Embedding Plot",
+            xaxis_title="CLIP UMAP Longitude",
+            yaxis_title="CLIP UMAP Latitude",
+            annotations=[
+                dict(
+                    x=0.5,
+                    y=0.5,
+                    xref="paper",
+                    yref="paper",
+                    text="No CLIP embedding data available",
+                    showarrow=False,
+                    font=dict(size=16),
+                )
+            ],
+        )
+        return ProjectionPlotResponse(
+            plotly_plot=json.loads(fig.to_json()),
+            total_row_count=0,
+            is_bucketed=False,
+            bucketing_level=None,
+            bucket_count=0,
+        )
+
     try:
         clip_embedding_data = session_state.get_clip_embedding_projection()
         fig = create_clip_embedding_plot(

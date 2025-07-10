@@ -10,7 +10,7 @@ RUN pip install uv
 
 WORKDIR /workspace
 
-COPY pyproject.toml uv.lock ./
+COPY pyproject.toml uv.lock README.md ./
 RUN uv sync --extra dev
 
 RUN uv run --extra dev playwright install-deps

@@ -228,13 +228,31 @@ def parse_lightroom_catalog(
             axis=1,
         )
 
-        # Handle timestamps
-        result_df[SchemaColumns.TIMESTAMP_MAYBE_TIMEZONE_AWARE] = df[
-            "captureTime"
-        ]  # THAD: Can we actually get tz-aware timestamps?
-        result_df[SchemaColumns.TIMESTAMP_UTC] = pd.to_datetime(
-            df["captureTime"], utc=True, format="ISO8601"
-        )
+        # Handle timestamps with proper timezone handling
+        # Keep original timestamp strings in TIMESTAMP_MAYBE_TIMEZONE_AWARE
+        result_df[SchemaColumns.TIMESTAMP_MAYBE_TIMEZONE_AWARE] = df["captureTime"]
+        
+        # Convert to UTC timestamps, handling different timezone formats
+        def convert_to_utc(timestamp_str):
+            """Convert timestamp string to UTC, handling various timezone formats."""
+            if pd.isna(timestamp_str) or timestamp_str is None:
+                return pd.NaT
+            
+            try:
+                # Parse with pandas, which handles ISO8601 formats including timezones
+                parsed = pd.to_datetime(timestamp_str, format="ISO8601")
+                
+                # If the parsed timestamp is timezone-naive, assume it's UTC
+                if parsed.tz is None:
+                    return parsed.tz_localize('UTC')
+                else:
+                    # If it's timezone-aware, convert to UTC
+                    return parsed.tz_convert('UTC')
+            except (ValueError, TypeError, pd.errors.OutOfBoundsDatetime) as e:
+                logger.warning(f"Failed to parse timestamp '{timestamp_str}': {e}")
+                return pd.NaT
+        
+        result_df[SchemaColumns.TIMESTAMP_UTC] = df["captureTime"].apply(convert_to_utc)
         if result_df[SchemaColumns.TIMESTAMP_UTC].isna().any():
             logger.warning(
                 f"Found {result_df[SchemaColumns.TIMESTAMP_UTC].isna().sum()} missing timestamps"

@@ -354,3 +354,36 @@ def test_parse_multiple_catalogs(test_catalogs_dir: Path) -> None:
 
     # This is informational - we might expect some duplicates between test catalogs
     assert len(all_dataframes) > 0, "Should have parsed at least one catalog"
+
+
+def test_parse_timezone_aware_timestamps(test_catalogs_dir: Path, snapshot) -> None:
+    """Test parsing catalog with various timezone formats in timestamps."""
+    from syrupy.assertion import SnapshotAssertion
+    
+    # Use test_catalog_00 which has been modified with different timezone formats
+    test_catalog = (
+        test_catalogs_dir / "test_catalog_00" / "test_catalog_fresh.lrcat"
+    )
+
+    config = LightroomParserConfig(
+        include_metadata=False, include_keywords=False, include_collections=False
+    )
+    df = parse_lightroom_catalog(test_catalog, config)
+
+    # Extract only the timestamp columns for snapshot testing
+    timestamp_data = df[
+        [
+            SchemaColumns.UUID_STRING,
+            SchemaColumns.TIMESTAMP_MAYBE_TIMEZONE_AWARE,
+            SchemaColumns.TIMESTAMP_UTC,
+        ]
+    ].copy()
+
+    # Convert timezone-aware timestamps to string for snapshot comparison
+    # (since timezone-aware timestamps can be tricky to compare in snapshots)
+    timestamp_data[SchemaColumns.TIMESTAMP_UTC] = timestamp_data[
+        SchemaColumns.TIMESTAMP_UTC
+    ].dt.strftime("%Y-%m-%d %H:%M:%S%z")
+
+    # Create snapshot of the timezone handling
+    assert timestamp_data.to_dict("records") == snapshot

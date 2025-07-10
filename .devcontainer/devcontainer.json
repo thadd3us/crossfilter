@@ -2,6 +2,7 @@
   "name": "Crossfilter Development",
   "dockerFile": "../Dockerfile",
   "context": "..",
+  "postCreateCommand": "uv sync --extra=dev",
   "customizations": {
     "vscode": {
       "extensions": [

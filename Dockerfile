@@ -32,7 +32,7 @@ COPY pyproject.toml uv.lock README.md ./
 # Pre-heat uv.
 RUN uv sync --extra=dev
 
-# Install playwright system deps -- must be root.
+# Install playwright system deps -- must be root, but has to happen after we have uv and the pyproject.toml installed.
 # THIS TAKES ~2 minutes.
 USER root
 RUN .venv/bin/playwright install-deps

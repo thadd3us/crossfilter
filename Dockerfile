@@ -2,23 +2,28 @@ FROM python:3.11
 
 USER root
 
+# Make the dev user.
+RUN adduser --disabled-password dev
+
 RUN apt-get update && apt-get install -y \
+    direnv \
+    build-essential \
+    curl \
     git \
     ncdu
 
-# Install uv.
-FROM python:3.12-slim-bookworm
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
-
-# Make the dev user.
-RUN adduser --disabled-password --comment 'dev user' dev
+# Some general things I like.
+RUN \
+    curl --proto '=https' --tlsv1.2 -LsSf https://setup.atuin.sh | sh && \
+    curl -sS https://starship.rs/install.sh | sh -s -- --yes && \
+    echo "Done."
 
 USER dev
 
-# Some general things I like.
-RUN curl --proto '=https' --tlsv1.2 -LsSf https://setup.atuin.sh | sh \
-    curl -sS https://starship.rs/install.sh | sh
 
+RUN curl -LsSf https://astral.sh/uv/install.sh | env UV_UNMANAGED_INSTALL="/home/dev/uv_install/" sh
+ENV PATH="/home/dev/uv_install:$PATH"
+RUN uv --version
 
 # What do we need for this project??
 WORKDIR /workspace

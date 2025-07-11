@@ -82,7 +82,19 @@
 # name: test_load_gpx_file_to_df_valid_file
   list([
     tuple(
+      <SchemaColumns.UUID_STRING: 'UUID_STRING'>,
+      dtype('O'),
+    ),
+    tuple(
       <SchemaColumns.DATA_TYPE: 'DATA_TYPE'>,
+      dtype('O'),
+    ),
+    tuple(
+      <SchemaColumns.NAME: 'NAME'>,
+      dtype('O'),
+    ),
+    tuple(
+      <SchemaColumns.CAPTION: 'CAPTION'>,
       dtype('O'),
     ),
     tuple(
@@ -104,18 +116,6 @@
     tuple(
       <SchemaColumns.GPS_LONGITUDE: 'GPS_LONGITUDE'>,
       dtype('float64'),
-    ),
-    tuple(
-      <SchemaColumns.NAME: 'NAME'>,
-      dtype('O'),
-    ),
-    tuple(
-      <SchemaColumns.CAPTION: 'CAPTION'>,
-      dtype('O'),
-    ),
-    tuple(
-      <SchemaColumns.UUID_STRING: 'UUID_STRING'>,
-      dtype('O'),
     ),
     tuple(
       'BUCKETED_H3_L0',
@@ -202,11 +202,11 @@
       'BUCKETED_H3_L7': '872830828ffffff',
       'BUCKETED_H3_L8': '8828308281fffff',
       'BUCKETED_H3_L9': '89283082803ffff',
-      <SchemaColumns.CAPTION: 'CAPTION'>: nan,
+      <SchemaColumns.CAPTION: 'CAPTION'>: None,
       <SchemaColumns.DATA_TYPE: 'DATA_TYPE'>: <DataType.GPX_TRACKPOINT: 'GPX_TRACKPOINT'>,
       <SchemaColumns.GPS_LATITUDE: 'GPS_LATITUDE'>: 37.7749,
       <SchemaColumns.GPS_LONGITUDE: 'GPS_LONGITUDE'>: -122.4194,
-      <SchemaColumns.NAME: 'NAME'>: nan,
+      <SchemaColumns.NAME: 'NAME'>: None,
       <SchemaColumns.SOURCE_FILE: 'SOURCE_FILE'>: 'test.gpx',
       <SchemaColumns.TIMESTAMP_MAYBE_TIMEZONE_AWARE: 'TIMESTAMP_MAYBE_TIMEZONE_AWARE'>: '2023-01-01T12:00:00+00:00',
       <SchemaColumns.TIMESTAMP_UTC: 'TIMESTAMP_UTC'>: Timestamp('2023-01-01 12:00:00+0000', tz='UTC'),
@@ -229,11 +229,11 @@
       'BUCKETED_H3_L7': '872830828ffffff',
       'BUCKETED_H3_L8': '8828308281fffff',
       'BUCKETED_H3_L9': '89283082803ffff',
-      <SchemaColumns.CAPTION: 'CAPTION'>: nan,
+      <SchemaColumns.CAPTION: 'CAPTION'>: None,
       <SchemaColumns.DATA_TYPE: 'DATA_TYPE'>: <DataType.GPX_TRACKPOINT: 'GPX_TRACKPOINT'>,
       <SchemaColumns.GPS_LATITUDE: 'GPS_LATITUDE'>: 37.775,
       <SchemaColumns.GPS_LONGITUDE: 'GPS_LONGITUDE'>: -122.4195,
-      <SchemaColumns.NAME: 'NAME'>: nan,
+      <SchemaColumns.NAME: 'NAME'>: None,
       <SchemaColumns.SOURCE_FILE: 'SOURCE_FILE'>: 'test.gpx',
       <SchemaColumns.TIMESTAMP_MAYBE_TIMEZONE_AWARE: 'TIMESTAMP_MAYBE_TIMEZONE_AWARE'>: '2023-01-01T12:05:00+00:00',
       <SchemaColumns.TIMESTAMP_UTC: 'TIMESTAMP_UTC'>: Timestamp('2023-01-01 12:05:00+0000', tz='UTC'),

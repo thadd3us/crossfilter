@@ -14,6 +14,8 @@ from crossfilter.core.schema import (
     get_temporal_column_name,
     load_jsonl_to_dataframe,
     load_sqlite_to_dataframe,
+    validate_gpx_dataframe,
+    GPXSchema,
 )
 from crossfilter.core.schema import (
     SchemaColumns as C,
@@ -270,3 +272,214 @@ def test_thad_load_real_data() -> None:
     assert df[C.DATA_TYPE].isna().sum() == 0
     assert df[C.TIMESTAMP_UTC].isna().sum() == 0
     assert df[C.TIMESTAMP_UTC].dtype == pd.DatetimeTZDtype(tz="UTC")
+
+
+def test_validate_gpx_dataframe_valid_trackpoint() -> None:
+    """Test GPX validation with valid trackpoint data."""
+    # Create a valid GPX trackpoint DataFrame
+    df = pd.DataFrame({
+        C.UUID_STRING: ["test-uuid-1"],
+        C.DATA_TYPE: [DataType.GPX_TRACKPOINT],
+        C.NAME: [None],
+        C.CAPTION: [None],
+        C.SOURCE_FILE: ["test.gpx"],
+        C.TIMESTAMP_MAYBE_TIMEZONE_AWARE: ["2024-01-01T10:00:00Z"],
+        C.TIMESTAMP_UTC: [pd.Timestamp("2024-01-01T10:00:00Z", tz="UTC")],
+        C.GPS_LATITUDE: [37.7749],
+        C.GPS_LONGITUDE: [-122.4194],
+    })
+    
+    # Validation should pass
+    validated_df = validate_gpx_dataframe(df)
+    assert len(validated_df) == 1
+    assert validated_df.loc[0, C.UUID_STRING] == "test-uuid-1"
+    assert validated_df.loc[0, C.DATA_TYPE] == DataType.GPX_TRACKPOINT
+    assert validated_df.loc[0, C.GPS_LATITUDE] == 37.7749
+    assert validated_df.loc[0, C.GPS_LONGITUDE] == -122.4194
+
+
+def test_validate_gpx_dataframe_valid_waypoint() -> None:
+    """Test GPX validation with valid waypoint data."""
+    # Create a valid GPX waypoint DataFrame
+    df = pd.DataFrame({
+        C.UUID_STRING: ["test-uuid-2"],
+        C.DATA_TYPE: [DataType.GPX_WAYPOINT],
+        C.NAME: ["Test Waypoint"],
+        C.CAPTION: ["A test waypoint"],
+        C.SOURCE_FILE: ["test.gpx"],
+        C.TIMESTAMP_MAYBE_TIMEZONE_AWARE: ["2024-01-01T10:00:00Z"],
+        C.TIMESTAMP_UTC: [pd.Timestamp("2024-01-01T10:00:00Z", tz="UTC")],
+        C.GPS_LATITUDE: [37.7849],
+        C.GPS_LONGITUDE: [-122.4094],
+    })
+    
+    # Validation should pass
+    validated_df = validate_gpx_dataframe(df)
+    assert len(validated_df) == 1
+    assert validated_df.loc[0, C.UUID_STRING] == "test-uuid-2"
+    assert validated_df.loc[0, C.DATA_TYPE] == DataType.GPX_WAYPOINT
+    assert validated_df.loc[0, C.NAME] == "Test Waypoint"
+    assert validated_df.loc[0, C.CAPTION] == "A test waypoint"
+
+
+def test_validate_gpx_dataframe_empty() -> None:
+    """Test GPX validation with empty DataFrame."""
+    df = pd.DataFrame()
+    
+    # Should return empty DataFrame without error
+    validated_df = validate_gpx_dataframe(df)
+    assert len(validated_df) == 0
+
+
+def test_validate_gpx_dataframe_invalid_coordinates() -> None:
+    """Test GPX validation with invalid coordinates."""
+    import pandera as pa
+    
+    # Create DataFrame with invalid latitude (> 90)
+    df = pd.DataFrame({
+        C.UUID_STRING: ["test-uuid-3"],
+        C.DATA_TYPE: [DataType.GPX_TRACKPOINT],
+        C.NAME: [None],
+        C.CAPTION: [None],
+        C.SOURCE_FILE: ["test.gpx"],
+        C.TIMESTAMP_MAYBE_TIMEZONE_AWARE: ["2024-01-01T10:00:00Z"],
+        C.TIMESTAMP_UTC: [pd.Timestamp("2024-01-01T10:00:00Z", tz="UTC")],
+        C.GPS_LATITUDE: [95.0],  # Invalid latitude
+        C.GPS_LONGITUDE: [-122.4194],
+    })
+    
+    # Should raise schema error
+    with pytest.raises((pa.errors.SchemaError, pa.errors.SchemaErrors)):
+        validate_gpx_dataframe(df)
+
+
+def test_validate_gpx_dataframe_invalid_longitude() -> None:
+    """Test GPX validation with invalid longitude."""
+    import pandera as pa
+    
+    # Create DataFrame with invalid longitude (< -180)
+    df = pd.DataFrame({
+        C.UUID_STRING: ["test-uuid-4"],
+        C.DATA_TYPE: [DataType.GPX_TRACKPOINT],
+        C.NAME: [None],
+        C.CAPTION: [None],
+        C.SOURCE_FILE: ["test.gpx"],
+        C.TIMESTAMP_MAYBE_TIMEZONE_AWARE: ["2024-01-01T10:00:00Z"],
+        C.TIMESTAMP_UTC: [pd.Timestamp("2024-01-01T10:00:00Z", tz="UTC")],
+        C.GPS_LATITUDE: [37.7749],
+        C.GPS_LONGITUDE: [-185.0],  # Invalid longitude
+    })
+    
+    # Should raise schema error
+    with pytest.raises((pa.errors.SchemaError, pa.errors.SchemaErrors)):
+        validate_gpx_dataframe(df)
+
+
+def test_validate_gpx_dataframe_invalid_data_type() -> None:
+    """Test GPX validation with invalid data type."""
+    import pandera as pa
+    
+    # Create DataFrame with invalid data type
+    df = pd.DataFrame({
+        C.UUID_STRING: ["test-uuid-5"],
+        C.DATA_TYPE: [DataType.PHOTO],  # Invalid for GPX
+        C.NAME: [None],
+        C.CAPTION: [None],
+        C.SOURCE_FILE: ["test.gpx"],
+        C.TIMESTAMP_MAYBE_TIMEZONE_AWARE: ["2024-01-01T10:00:00Z"],
+        C.TIMESTAMP_UTC: [pd.Timestamp("2024-01-01T10:00:00Z", tz="UTC")],
+        C.GPS_LATITUDE: [37.7749],
+        C.GPS_LONGITUDE: [-122.4194],
+    })
+    
+    # Should raise schema error
+    with pytest.raises((pa.errors.SchemaError, pa.errors.SchemaErrors)):
+        validate_gpx_dataframe(df)
+
+
+def test_validate_gpx_dataframe_missing_required_column() -> None:
+    """Test GPX validation with missing required column."""
+    import pandera as pa
+    
+    # Create DataFrame missing UUID_STRING
+    df = pd.DataFrame({
+        C.DATA_TYPE: [DataType.GPX_TRACKPOINT],
+        C.NAME: [None],
+        C.CAPTION: [None],
+        C.SOURCE_FILE: ["test.gpx"],
+        C.TIMESTAMP_MAYBE_TIMEZONE_AWARE: ["2024-01-01T10:00:00Z"],
+        C.TIMESTAMP_UTC: [pd.Timestamp("2024-01-01T10:00:00Z", tz="UTC")],
+        C.GPS_LATITUDE: [37.7749],
+        C.GPS_LONGITUDE: [-122.4194],
+    })
+    
+    # Should raise schema error
+    with pytest.raises((pa.errors.SchemaError, pa.errors.SchemaErrors)):
+        validate_gpx_dataframe(df)
+
+
+def test_validate_gpx_dataframe_with_extra_columns() -> None:
+    """Test GPX validation preserves extra columns."""
+    # Create DataFrame with extra columns
+    df = pd.DataFrame({
+        C.UUID_STRING: ["test-uuid-6"],
+        C.DATA_TYPE: [DataType.GPX_TRACKPOINT],
+        C.NAME: [None],
+        C.CAPTION: [None],
+        C.SOURCE_FILE: ["test.gpx"],
+        C.TIMESTAMP_MAYBE_TIMEZONE_AWARE: ["2024-01-01T10:00:00Z"],
+        C.TIMESTAMP_UTC: [pd.Timestamp("2024-01-01T10:00:00Z", tz="UTC")],
+        C.GPS_LATITUDE: [37.7749],
+        C.GPS_LONGITUDE: [-122.4194],
+        "EXTRA_COLUMN": ["extra_value"],
+        "ANOTHER_COLUMN": [42],
+    })
+    
+    # Validation should pass and preserve extra columns
+    validated_df = validate_gpx_dataframe(df)
+    assert len(validated_df) == 1
+    assert "EXTRA_COLUMN" in validated_df.columns
+    assert "ANOTHER_COLUMN" in validated_df.columns
+    assert validated_df.loc[0, "EXTRA_COLUMN"] == "extra_value"
+    assert validated_df.loc[0, "ANOTHER_COLUMN"] == 42
+
+
+def test_validate_gpx_dataframe_multiple_rows() -> None:
+    """Test GPX validation with multiple rows."""
+    # Create DataFrame with multiple valid rows
+    df = pd.DataFrame({
+        C.UUID_STRING: ["uuid-1", "uuid-2", "uuid-3"],
+        C.DATA_TYPE: [DataType.GPX_TRACKPOINT, DataType.GPX_WAYPOINT, DataType.GPX_TRACKPOINT],
+        C.NAME: [None, "Waypoint 1", None],
+        C.CAPTION: [None, "Test waypoint", None],
+        C.SOURCE_FILE: ["test.gpx", "test.gpx", "test.gpx"],
+        C.TIMESTAMP_MAYBE_TIMEZONE_AWARE: ["2024-01-01T10:00:00Z", "2024-01-01T10:05:00Z", "2024-01-01T10:10:00Z"],
+        C.TIMESTAMP_UTC: [
+            pd.Timestamp("2024-01-01T10:00:00Z", tz="UTC"),
+            pd.Timestamp("2024-01-01T10:05:00Z", tz="UTC"),
+            pd.Timestamp("2024-01-01T10:10:00Z", tz="UTC"),
+        ],
+        C.GPS_LATITUDE: [37.7749, 37.7849, 37.7949],
+        C.GPS_LONGITUDE: [-122.4194, -122.4094, -122.3994],
+    })
+    
+    # Validation should pass for all rows
+    validated_df = validate_gpx_dataframe(df)
+    assert len(validated_df) == 3
+    assert validated_df.loc[0, C.DATA_TYPE] == DataType.GPX_TRACKPOINT
+    assert validated_df.loc[1, C.DATA_TYPE] == DataType.GPX_WAYPOINT
+    assert validated_df.loc[2, C.DATA_TYPE] == DataType.GPX_TRACKPOINT
+    assert validated_df.loc[1, C.NAME] == "Waypoint 1"
+
+
+def test_validate_gpx_dataframe_no_schema_columns() -> None:
+    """Test GPX validation with DataFrame that has no schema columns."""
+    # Create DataFrame with no GPX schema columns
+    df = pd.DataFrame({
+        "random_column": ["value1", "value2"],
+        "another_column": [1, 2],
+    })
+    
+    # Should raise ValueError
+    with pytest.raises(ValueError, match="No GPX schema columns found in DataFrame"):
+        validate_gpx_dataframe(df)

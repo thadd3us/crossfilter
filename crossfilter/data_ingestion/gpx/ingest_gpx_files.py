@@ -7,7 +7,7 @@ from typing import List
 import pandas as pd
 import typer
 from tqdm.contrib.concurrent import process_map
-from crossfilter.core.schema import SchemaColumns as C
+from crossfilter.core.schema import SchemaColumns as C, validate_gpx_dataframe
 
 from crossfilter.core.schema import SchemaColumns
 from crossfilter.data_ingestion.gpx.gpx_parser import load_gpx_file_to_df
@@ -105,6 +105,16 @@ def main(
     logger.info(
         f"Total records: {len(combined_df)} (H3 columns computed per-file in parallel)"
     )
+
+    # Final validation before SQLite insertion
+    logger.info("Performing final GPX schema validation before SQLite insertion...")
+    try:
+        combined_df = validate_gpx_dataframe(combined_df)
+        logger.info(f"Final validation successful for {len(combined_df)} total records")
+    except Exception as e:
+        logger.error(f"Final GPX schema validation failed: {e}")
+        logger.error("This indicates a problem with the combined dataset before SQLite insertion")
+        raise ValueError(f"Combined GPX dataset validation failed: {e}") from e
 
     # Upsert to database
     upsert_dataframe_to_sqlite(combined_df, destination_sqlite_db, destination_table)

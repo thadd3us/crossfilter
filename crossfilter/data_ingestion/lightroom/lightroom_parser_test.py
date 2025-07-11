@@ -357,12 +357,12 @@ def test_parse_multiple_catalogs(test_catalogs_dir: Path) -> None:
 
 
 def test_parse_timezone_aware_timestamps(test_catalogs_dir: Path, snapshot) -> None:
-    """Test parsing catalog with various timezone formats in timestamps."""
+    """Test parsing catalog with various timezone formats in timestamps including NULL values."""
     from syrupy.assertion import SnapshotAssertion
     
-    # Use test_catalog_00 which has been modified with different timezone formats
+    # Use dedicated test catalog with timezone formats and NULL captureTime
     test_catalog = (
-        test_catalogs_dir / "test_catalog_00" / "test_catalog_fresh.lrcat"
+        test_catalogs_dir / "test_parse_timezone_aware_timestamps" / "test_parse_timezone_aware_timestamps.lrcat"
     )
 
     config = LightroomParserConfig(

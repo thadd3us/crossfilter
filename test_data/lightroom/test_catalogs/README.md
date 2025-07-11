@@ -13,11 +13,10 @@ The `test_parse_timezone_aware_timestamps/test_parse_timezone_aware_timestamps.l
 | 87 | `2020-06-01T01:45:58Z` | UTC | Timezone-aware UTC (Z suffix) |
 | 88 | `2020-06-01T01:49:28+01:00` | +01:00 | Timezone-aware +1 hour (Central European Time) |
 | 89 | `2020-06-01T01:50:02-07:00` | -07:00 | Timezone-aware -7 hours (Pacific Daylight Time) |
-| 90 | `2020-06-01T01:51:36` | Naive | No timezone information (assumed UTC) |
-| 91 | `NULL` | NULL | NULL captureTime value |
+| 90 | `NULL` | NULL | NULL captureTime value |
 
 ### test_catalog_00/test_catalog_fresh.lrcat
-The original test catalog also has timezone test data (same as rows 86-90 above) but without the NULL case.
+The original test catalog also has timezone test data with rows 86-90, but row 90 has a naive timestamp instead of NULL.
 
 ## CLI Command to View Timezone Data
 

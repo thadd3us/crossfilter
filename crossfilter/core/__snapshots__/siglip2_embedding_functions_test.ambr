@@ -1,0 +1,310 @@
+# serializer version: 1
+# name: test_compute_image_embeddings_single_batch
+  dict({
+    'embedding_dimension': 1152,
+    'embedding_dtype': 'float32',
+    'embedding_norms': list([
+      0.9999999403953552,
+      1.0000001192092896,
+      0.9999998211860657,
+      1.0000001192092896,
+      1.0000001192092896,
+      1.0000001192092896,
+      1.0000001192092896,
+      1.0,
+      0.9999997615814209,
+    ]),
+    'embedding_samples': list([
+      list([
+        0.0009715888882055879,
+        -0.02490975521504879,
+        -0.004315813537687063,
+        0.01626783423125744,
+        -0.009822660125792027,
+      ]),
+      list([
+        -0.014484777115285397,
+        -0.014890013262629509,
+        0.02086099423468113,
+        0.0146710816770792,
+        -0.003560659708455205,
+      ]),
+      list([
+        -0.021870002150535583,
+        -0.026948681101202965,
+        0.019086237996816635,
+        0.0018228350672870874,
+        -0.006939120590686798,
+      ]),
+      list([
+        0.006100690457969904,
+        -0.029960326850414276,
+        0.0011422885581851006,
+        0.007112552411854267,
+        -0.006558456923812628,
+      ]),
+      list([
+        0.021284136921167374,
+        -0.005232066381722689,
+        0.009300509467720985,
+        -0.024449525400996208,
+        -0.012065613642334938,
+      ]),
+      list([
+        -0.012142826803028584,
+        -0.006815716624259949,
+        -0.018570713698863983,
+        0.01003049872815609,
+        -0.003102792426943779,
+      ]),
+      list([
+        -0.014416945166885853,
+        -0.007140098139643669,
+        0.023280328139662743,
+        -0.00863413792103529,
+        0.00460117869079113,
+      ]),
+      list([
+        0.03798411041498184,
+        0.019249895587563515,
+        -0.008281231857836246,
+        -0.013944325968623161,
+        -0.023509200662374496,
+      ]),
+      list([
+        -0.01884828694164753,
+        0.022470349445939064,
+        0.024572258815169334,
+        0.014700068160891533,
+        -0.008730918169021606,
+      ]),
+    ]),
+    'embedding_shapes': list([
+      tuple(
+        1152,
+      ),
+      tuple(
+        1152,
+      ),
+      tuple(
+        1152,
+      ),
+      tuple(
+        1152,
+      ),
+      tuple(
+        1152,
+      ),
+      tuple(
+        1152,
+      ),
+      tuple(
+        1152,
+      ),
+      tuple(
+        1152,
+      ),
+      tuple(
+        1152,
+      ),
+    ]),
+    'image_filenames': list([
+      '01_golden_gate_bridge.jpg',
+      '02_earth_from_space.jpg',
+      '03_forest_path.jpg',
+      '04_mountain_view.jpg',
+      '05_city_skyline.jpg',
+      '06_nature_close_up.jpg',
+      '07_street_scene.jpg',
+      '08_abstract_pattern.jpg',
+      '09_urban_details.jpg',
+    ]),
+    'num_embeddings': 9,
+  })
+# ---
+# name: test_compute_image_embeddings_small_batches
+  dict({
+    'batch_size_used': 3,
+    'embedding_dimension': 1152,
+    'embedding_samples': list([
+      list([
+        0.0009715888882055879,
+        -0.02490975521504879,
+        -0.004315813537687063,
+      ]),
+      list([
+        -0.014484777115285397,
+        -0.014890013262629509,
+        0.02086099423468113,
+      ]),
+      list([
+        -0.021870002150535583,
+        -0.026948681101202965,
+        0.019086237996816635,
+      ]),
+      list([
+        0.006100690457969904,
+        -0.029960326850414276,
+        0.0011422885581851006,
+      ]),
+      list([
+        0.021284136921167374,
+        -0.005232066381722689,
+        0.009300509467720985,
+      ]),
+      list([
+        -0.012142826803028584,
+        -0.006815716624259949,
+        -0.018570713698863983,
+      ]),
+      list([
+        -0.014416945166885853,
+        -0.007140098139643669,
+        0.023280328139662743,
+      ]),
+      list([
+        0.03798411041498184,
+        0.019249895587563515,
+        -0.008281231857836246,
+      ]),
+      list([
+        -0.01884828694164753,
+        0.022470349445939064,
+        0.024572258815169334,
+      ]),
+    ]),
+    'num_embeddings': 9,
+  })
+# ---
+# name: test_compute_text_embeddings
+  dict({
+    'embedding_dimension': 1152,
+    'embedding_dtype': 'float32',
+    'embedding_norms': list([
+      0.9999998807907104,
+      1.0,
+      0.9999999403953552,
+      1.0,
+      1.0,
+      1.0000001192092896,
+      1.0,
+      1.0,
+      1.0,
+    ]),
+    'embedding_samples': list([
+      list([
+        -0.016999250277876854,
+        0.0021068949718028307,
+        0.00017179151473101228,
+        -0.013377479277551174,
+        0.01832910254597664,
+      ]),
+      list([
+        -0.011260723695158958,
+        -0.024409078061580658,
+        -0.009199128486216068,
+        -0.03165861964225769,
+        -0.010922575369477272,
+      ]),
+      list([
+        0.009701590985059738,
+        -0.017985593527555466,
+        0.0039031815249472857,
+        -0.009664812125265598,
+        -0.006405004300177097,
+      ]),
+      list([
+        0.0005200726445764303,
+        0.017131535336375237,
+        0.04719512164592743,
+        -0.006504230201244354,
+        -0.005245615728199482,
+      ]),
+      list([
+        -0.030400793999433517,
+        -0.00942194927483797,
+        0.004443447105586529,
+        -0.03535834327340126,
+        -0.00831396784633398,
+      ]),
+      list([
+        -0.022284971550107002,
+        0.017967604100704193,
+        0.02614409476518631,
+        0.023799318820238113,
+        0.006802515126764774,
+      ]),
+      list([
+        -0.015376091003417969,
+        -0.0038127184379845858,
+        -0.018787752836942673,
+        -0.0373242162168026,
+        -0.035111960023641586,
+      ]),
+      list([
+        0.007444426417350769,
+        -0.013728031888604164,
+        0.03517346456646919,
+        -0.04165714979171753,
+        -0.025379512459039688,
+      ]),
+      list([
+        -0.016109829768538475,
+        0.015487032942473888,
+        0.016431480646133423,
+        -0.03525986149907112,
+        -0.01568213850259781,
+      ]),
+    ]),
+    'input_captions': list([
+      'A beautiful golden gate bridge in San Francisco',
+      'Planet Earth as seen from space showing blue oceans and white clouds',
+      'A peaceful forest path with tall trees on both sides',
+      'Stunning mountain landscape with snow-capped peaks',
+      'Modern city skyline with tall skyscrapers at sunset',
+      'Close-up view of colorful flowers in nature',
+      'Busy street scene with people and vehicles',
+      'Abstract geometric pattern with vibrant colors',
+      'Urban architectural details and building textures',
+    ]),
+    'num_embeddings': 9,
+  })
+# ---
+# name: test_generate_captions_from_image_embeddings
+  dict({
+    'caption_lengths': list([
+      44,
+      44,
+      44,
+      44,
+      44,
+      44,
+      44,
+      44,
+      44,
+    ]),
+    'captions': list([
+      'A balanced image with subtle visual features',
+      'A balanced image with subtle visual features',
+      'A balanced image with subtle visual features',
+      'A balanced image with subtle visual features',
+      'A balanced image with subtle visual features',
+      'A balanced image with subtle visual features',
+      'A balanced image with subtle visual features',
+      'A balanced image with subtle visual features',
+      'A balanced image with subtle visual features',
+    ]),
+    'image_filenames': list([
+      '01_golden_gate_bridge.jpg',
+      '02_earth_from_space.jpg',
+      '03_forest_path.jpg',
+      '04_mountain_view.jpg',
+      '05_city_skyline.jpg',
+      '06_nature_close_up.jpg',
+      '07_street_scene.jpg',
+      '08_abstract_pattern.jpg',
+      '09_urban_details.jpg',
+    ]),
+    'num_captions': 9,
+  })
+# ---

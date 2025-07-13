@@ -10,7 +10,7 @@ import numpy as np
 import pytest
 from syrupy import SnapshotAssertion
 
-from crossfilter.core.siglip2_embedding_functions import (
+from crossfilter.inference.siglip2_embedding_functions import (
     compute_image_embeddings,
     compute_text_embeddings,
     generate_captions_from_image_embeddings,

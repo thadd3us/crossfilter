@@ -79,28 +79,6 @@ class DataSchema(pa.DataFrameModel):
         coerce = True
 
 
-class GPXSchema(pa.DataFrameModel):
-    """GPX-specific schema validation for trackpoints and waypoints."""
-    
-    UUID_STRING: Series[str] = pa.Field(nullable=False)
-    DATA_TYPE: Series[str] = pa.Field(
-        nullable=False, isin=[DataType.GPX_TRACKPOINT, DataType.GPX_WAYPOINT]
-    )
-    NAME: Series[str] = pa.Field(nullable=True)
-    CAPTION: Series[str] = pa.Field(nullable=True)
-    SOURCE_FILE: Series[str] = pa.Field(nullable=False)
-    TIMESTAMP_MAYBE_TIMEZONE_AWARE: Series[str] = pa.Field(nullable=False)
-    TIMESTAMP_UTC: Series[pd.DatetimeTZDtype] = pa.Field(
-        nullable=False, dtype_kwargs={"tz": "UTC"}
-    )
-    GPS_LATITUDE: Series[float] = pa.Field(nullable=False, ge=-90, le=90)
-    GPS_LONGITUDE: Series[float] = pa.Field(nullable=False, ge=-180, le=180)
-    
-    class Config:
-        strict = True
-        coerce = True
-
-
 def get_h3_column_name(level: int) -> str:
     """Get the H3 column name for a specific level (0-15)."""
     if not 0 <= level <= 15:
@@ -118,83 +96,6 @@ def get_clip_umap_h3_column_name(level: int) -> str:
 def get_temporal_column_name(level: TemporalLevel) -> str:
     """Get the temporal column name for a specific temporal level."""
     return f"BUCKETED_TIMESTAMP_{level}"
-
-
-def validate_gpx_dataframe(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Validate a GPX DataFrame using the GPX schema.
-    
-    Args:
-        df: DataFrame from GPX parsing
-        
-    Returns:
-        Validated DataFrame with proper types and constraints
-        
-    Raises:
-        pandera.errors.SchemaError: If validation fails with detailed error information
-        ValueError: If the DataFrame structure is invalid
-    """
-    if df.empty:
-        logger.debug("GPX DataFrame is empty, skipping validation")
-        return df
-    
-    logger.debug(f"Validating GPX DataFrame with {len(df)} records and columns: {list(df.columns)}")
-    
-    # Extract only the columns that exist in the GPX schema
-    # and are present in the DataFrame
-    gpx_columns = [
-        SchemaColumns.UUID_STRING,
-        SchemaColumns.DATA_TYPE,
-        SchemaColumns.NAME,
-        SchemaColumns.CAPTION,
-        SchemaColumns.SOURCE_FILE,
-        SchemaColumns.TIMESTAMP_MAYBE_TIMEZONE_AWARE,
-        SchemaColumns.TIMESTAMP_UTC,
-        SchemaColumns.GPS_LATITUDE,
-        SchemaColumns.GPS_LONGITUDE,
-    ]
-    
-    # Only validate columns that exist in the DataFrame
-    available_columns = [col for col in gpx_columns if col in df.columns]
-    missing_columns = [col for col in gpx_columns if col not in df.columns]
-    
-    if missing_columns:
-        logger.debug(f"Missing GPX columns (will be skipped): {missing_columns}")
-    
-    if not available_columns:
-        raise ValueError("No GPX schema columns found in DataFrame")
-    
-    validation_df = df[available_columns].copy()
-    
-    try:
-        # Validate using GPX schema
-        logger.debug(f"Validating columns: {available_columns}")
-        validated_df = GPXSchema.validate(validation_df, lazy=True)
-        
-        # Combine validated columns with any additional columns from original DataFrame
-        extra_columns = [col for col in df.columns if col not in gpx_columns]
-        if extra_columns:
-            logger.debug(f"Preserving extra columns: {extra_columns}")
-            result_df = pd.concat([validated_df, df[extra_columns]], axis=1)
-        else:
-            result_df = validated_df
-            
-        logger.info(f"GPX DataFrame validation successful for {len(result_df)} records")
-        return result_df
-        
-    except Exception as e:
-        # Enhanced error logging for better debugging
-        logger.error(f"GPX DataFrame validation failed: {type(e).__name__}: {e}")
-        
-        # Log sample of problematic data for debugging
-        if len(df) > 0:
-            logger.debug("Sample of first few rows that failed validation:")
-            logger.debug(f"Column types: {df.dtypes.to_dict()}")
-            for i, row in df.head(3).iterrows():
-                logger.debug(f"Row {i}: {row.to_dict()}")
-        
-        # Re-raise the original exception with context preserved
-        raise
 
 
 required_columns = [

@@ -12,7 +12,7 @@ import pandas as pd
 from gpxpy.gpx import GPXTrackPoint, GPXWaypoint
 
 from crossfilter.core.bucketing import add_geo_h3_bucket_columns
-from crossfilter.core.schema import DataType, SchemaColumns as C, validate_gpx_dataframe
+from crossfilter.core.schema import DataType, SchemaColumns as C
 
 logger = logging.getLogger(__name__)
 
@@ -101,8 +101,6 @@ def load_gpx_file_to_df(gpx_file_path: Path) -> pd.DataFrame:
                     records.append(
                         {
                             C.DATA_TYPE: DataType.GPX_TRACKPOINT,
-                            C.NAME: None,  # Trackpoints don't have names
-                            C.CAPTION: None,  # Trackpoints don't have captions
                             C.SOURCE_FILE: str(gpx_file_path.name),
                             C.TIMESTAMP_MAYBE_TIMEZONE_AWARE: point.time.isoformat(),
                             C.TIMESTAMP_UTC: (
@@ -179,15 +177,6 @@ def load_gpx_file_to_df(gpx_file_path: Path) -> pd.DataFrame:
 
     # Set index name
     df.index.name = C.DF_ID
-
-    # Validate GPX DataFrame using Pandera schema
-    if not df.empty:
-        try:
-            df = validate_gpx_dataframe(df)
-            logger.debug(f"Validated GPX schema for {len(df)} points from {gpx_file_path}")
-        except Exception as e:
-            logger.error(f"Schema validation failed for GPX file {gpx_file_path}: {e}")
-            raise ValueError(f"GPX file {gpx_file_path} contains invalid data: {e}") from e
 
     # Add H3 spatial index columns for each individual GPX file (parallelized computation)
     if not df.empty and C.GPS_LATITUDE in df.columns and C.GPS_LONGITUDE in df.columns:

@@ -8,6 +8,7 @@ from typing import List, Tuple
 import numpy as np
 import pandas as pd
 import pytest
+from syrupy import SnapshotAssertion
 
 from crossfilter.inference.run_umap import run_umap_projection
 
@@ -236,3 +237,144 @@ def test_run_umap_projection_happy_path() -> None:
             # This is expected behavior for some datasets with output_metric="haversine"
     
     logger.info("Happy path test completed successfully!")
+
+
+def test_run_umap_projection_snapshot(snapshot: SnapshotAssertion) -> None:
+    """Test UMAP projection output with syrupy snapshots."""
+    # Generate deterministic test data with fixed parameters
+    df, _ = _generate_test_embeddings(
+        n_samples=20,  # Smaller sample for cleaner snapshots
+        embedding_dim=128,  # Smaller dimensionality for faster testing
+        missing_fraction=0.1,  # 10% missing data
+        random_state=42,  # Fixed seed for deterministic output
+    )
+    
+    # Run UMAP projection with fixed parameters for reproducible results
+    result_df = run_umap_projection(
+        df,
+        random_state=42,
+        n_neighbors=5,  # Smaller for the small dataset
+        min_dist=0.1,
+    )
+    
+    # Prepare snapshot data - extract key columns and round coordinates for stability
+    snapshot_data = {
+        "input_summary": {
+            "total_rows": len(df),
+            "rows_with_embeddings": df["SIGLIP2_EMBEDDING"].notna().sum(),
+            "rows_missing_embeddings": df["SIGLIP2_EMBEDDING"].isna().sum(),
+            "embedding_dimension": len(df.loc[df["SIGLIP2_EMBEDDING"].notna(), "SIGLIP2_EMBEDDING"].iloc[0]) if df["SIGLIP2_EMBEDDING"].notna().any() else None,
+        },
+        "output_summary": {
+            "total_rows": len(result_df),
+            "rows_with_coordinates": result_df[["SIGLIP2_UMAP2D_HAVERSINE_LATITUDE", "SIGLIP2_UMAP2D_HAVERSINE_LONGITUDE"]].notna().all(axis=1).sum(),
+            "rows_missing_coordinates": result_df[["SIGLIP2_UMAP2D_HAVERSINE_LATITUDE", "SIGLIP2_UMAP2D_HAVERSINE_LONGITUDE"]].isna().any(axis=1).sum(),
+        },
+        "coordinate_ranges": {
+            "latitude_min": float(result_df["SIGLIP2_UMAP2D_HAVERSINE_LATITUDE"].min()) if result_df["SIGLIP2_UMAP2D_HAVERSINE_LATITUDE"].notna().any() else None,
+            "latitude_max": float(result_df["SIGLIP2_UMAP2D_HAVERSINE_LATITUDE"].max()) if result_df["SIGLIP2_UMAP2D_HAVERSINE_LATITUDE"].notna().any() else None,
+            "longitude_min": float(result_df["SIGLIP2_UMAP2D_HAVERSINE_LONGITUDE"].min()) if result_df["SIGLIP2_UMAP2D_HAVERSINE_LONGITUDE"].notna().any() else None,
+            "longitude_max": float(result_df["SIGLIP2_UMAP2D_HAVERSINE_LONGITUDE"].max()) if result_df["SIGLIP2_UMAP2D_HAVERSINE_LONGITUDE"].notna().any() else None,
+        },
+        "sample_coordinates": []
+    }
+    
+    # Extract sample coordinates (rounded for stability) for non-missing embeddings
+    valid_coords = result_df.dropna(subset=["SIGLIP2_UMAP2D_HAVERSINE_LATITUDE", "SIGLIP2_UMAP2D_HAVERSINE_LONGITUDE"]).head(10)
+    for _, row in valid_coords.iterrows():
+        snapshot_data["sample_coordinates"].append({
+            "umap_string": row["UMAP_STRING"],
+            "true_class": int(row["TRUE_CLASS"]),
+            "latitude": round(float(row["SIGLIP2_UMAP2D_HAVERSINE_LATITUDE"]), 6),
+            "longitude": round(float(row["SIGLIP2_UMAP2D_HAVERSINE_LONGITUDE"]), 6),
+        })
+    
+    # Verify clustering behavior by checking if points from same class are closer together
+    clustering_stats = {}
+    for class_id in df["TRUE_CLASS"].unique():
+        class_coords = result_df[
+            (result_df["TRUE_CLASS"] == class_id) & 
+            result_df[["SIGLIP2_UMAP2D_HAVERSINE_LATITUDE", "SIGLIP2_UMAP2D_HAVERSINE_LONGITUDE"]].notna().all(axis=1)
+        ]
+        if len(class_coords) > 1:
+            # Calculate mean latitude and longitude for this class
+            clustering_stats[f"class_{class_id}"] = {
+                "count": len(class_coords),
+                "mean_latitude": round(float(class_coords["SIGLIP2_UMAP2D_HAVERSINE_LATITUDE"].mean()), 6),
+                "mean_longitude": round(float(class_coords["SIGLIP2_UMAP2D_HAVERSINE_LONGITUDE"].mean()), 6),
+                "std_latitude": round(float(class_coords["SIGLIP2_UMAP2D_HAVERSINE_LATITUDE"].std()), 6),
+                "std_longitude": round(float(class_coords["SIGLIP2_UMAP2D_HAVERSINE_LONGITUDE"].std()), 6),
+            }
+    
+    snapshot_data["clustering_stats"] = clustering_stats
+    
+    # Test missing embedding handling
+    missing_coords = result_df[result_df["SIGLIP2_EMBEDDING"].isna()]
+    snapshot_data["missing_embedding_handling"] = {
+        "missing_count": len(missing_coords),
+        "all_missing_have_nan_coords": bool(
+            missing_coords[["SIGLIP2_UMAP2D_HAVERSINE_LATITUDE", "SIGLIP2_UMAP2D_HAVERSINE_LONGITUDE"]].isna().all().all()
+        ),
+    }
+    
+    # Assert against snapshot
+    assert snapshot_data == snapshot
+
+
+def test_run_umap_projection_edge_cases_snapshot(snapshot: SnapshotAssertion) -> None:
+    """Test UMAP projection edge cases with syrupy snapshots."""
+    
+    # Test 1: Empty DataFrame
+    empty_df = pd.DataFrame()
+    empty_result = run_umap_projection(empty_df, random_state=42)
+    
+    # Test 2: DataFrame with only missing embeddings
+    all_missing_df = pd.DataFrame({
+        "UMAP_STRING": ["sample_1", "sample_2", "sample_3"],
+        "SIGLIP2_EMBEDDING": [None, None, None],
+    })
+    all_missing_result = run_umap_projection(all_missing_df, random_state=42)
+    
+    # Test 3: DataFrame with single valid embedding
+    single_embedding = np.random.RandomState(42).normal(0, 1, 128)
+    single_embedding = single_embedding / np.linalg.norm(single_embedding)
+    
+    single_df = pd.DataFrame({
+        "UMAP_STRING": ["sample_1", "sample_2"],
+        "SIGLIP2_EMBEDDING": [single_embedding, None],
+    })
+    single_result = run_umap_projection(single_df, random_state=42)
+    
+    edge_case_data = {
+        "empty_dataframe": {
+            "input_rows": len(empty_df),
+            "output_rows": len(empty_result),
+            "has_coordinate_columns": all(col in empty_result.columns for col in 
+                ["SIGLIP2_UMAP2D_HAVERSINE_LATITUDE", "SIGLIP2_UMAP2D_HAVERSINE_LONGITUDE"]),
+        },
+        "all_missing_embeddings": {
+            "input_rows": len(all_missing_df),
+            "output_rows": len(all_missing_result),
+            "valid_coordinates": all_missing_result[["SIGLIP2_UMAP2D_HAVERSINE_LATITUDE", "SIGLIP2_UMAP2D_HAVERSINE_LONGITUDE"]].notna().all(axis=1).sum(),
+            "missing_coordinates": all_missing_result[["SIGLIP2_UMAP2D_HAVERSINE_LATITUDE", "SIGLIP2_UMAP2D_HAVERSINE_LONGITUDE"]].isna().any(axis=1).sum(),
+        },
+        "single_embedding": {
+            "input_rows": len(single_df),
+            "output_rows": len(single_result),
+            "valid_coordinates": single_result[["SIGLIP2_UMAP2D_HAVERSINE_LATITUDE", "SIGLIP2_UMAP2D_HAVERSINE_LONGITUDE"]].notna().all(axis=1).sum(),
+            "center_coordinates": bool(
+                (single_result["SIGLIP2_UMAP2D_HAVERSINE_LATITUDE"] == 0.0).any() and 
+                (single_result["SIGLIP2_UMAP2D_HAVERSINE_LONGITUDE"] == 0.0).any()
+            ),
+            "coordinate_sample": [
+                {
+                    "umap_string": row["UMAP_STRING"],
+                    "latitude": round(float(row["SIGLIP2_UMAP2D_HAVERSINE_LATITUDE"]), 6) if pd.notna(row["SIGLIP2_UMAP2D_HAVERSINE_LATITUDE"]) else None,
+                    "longitude": round(float(row["SIGLIP2_UMAP2D_HAVERSINE_LONGITUDE"]), 6) if pd.notna(row["SIGLIP2_UMAP2D_HAVERSINE_LONGITUDE"]) else None,
+                }
+                for _, row in single_result.iterrows()
+            ],
+        },
+    }
+    
+    assert edge_case_data == snapshot

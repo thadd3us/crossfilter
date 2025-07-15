@@ -1,0 +1,144 @@
+# serializer version: 1
+# name: test_run_umap_projection_edge_cases_snapshot
+  dict({
+    'all_missing_embeddings': dict({
+      'input_rows': 3,
+      'missing_coordinates': 3,
+      'output_rows': 3,
+      'valid_coordinates': 0,
+    }),
+    'empty_dataframe': dict({
+      'has_coordinate_columns': True,
+      'input_rows': 0,
+      'output_rows': 0,
+    }),
+    'single_embedding': dict({
+      'center_coordinates': True,
+      'coordinate_sample': list([
+        dict({
+          'latitude': 0.0,
+          'longitude': 0.0,
+          'umap_string': 'sample_1',
+        }),
+        dict({
+          'latitude': None,
+          'longitude': None,
+          'umap_string': 'sample_2',
+        }),
+      ]),
+      'input_rows': 2,
+      'output_rows': 2,
+      'valid_coordinates': 1,
+    }),
+  })
+# ---
+# name: test_run_umap_projection_snapshot
+  dict({
+    'clustering_stats': dict({
+      'class_0': dict({
+        'count': 6,
+        'mean_latitude': -8.330429,
+        'mean_longitude': 43.739677,
+        'std_latitude': 48.733766,
+        'std_longitude': 93.677404,
+      }),
+      'class_1': dict({
+        'count': 7,
+        'mean_latitude': -5.769924,
+        'mean_longitude': 10.55033,
+        'std_latitude': 42.93811,
+        'std_longitude': 96.201742,
+      }),
+      'class_2': dict({
+        'count': 5,
+        'mean_latitude': 3.175984,
+        'mean_longitude': 45.943509,
+        'std_latitude': 42.818948,
+        'std_longitude': 71.123782,
+      }),
+    }),
+    'coordinate_ranges': dict({
+      'latitude_max': 90.0,
+      'latitude_min': -90.0,
+      'longitude_max': 180.0,
+      'longitude_min': -180.0,
+    }),
+    'input_summary': dict({
+      'embedding_dimension': 128,
+      'rows_missing_embeddings': 2,
+      'rows_with_embeddings': 18,
+      'total_rows': 20,
+    }),
+    'missing_embedding_handling': dict({
+      'all_missing_have_nan_coords': True,
+      'missing_count': 2,
+    }),
+    'output_summary': dict({
+      'rows_missing_coordinates': 2,
+      'rows_with_coordinates': 18,
+      'total_rows': 20,
+    }),
+    'sample_coordinates': list([
+      dict({
+        'latitude': 90.0,
+        'longitude': -31.052109,
+        'true_class': 0,
+        'umap_string': 'sample_000',
+      }),
+      dict({
+        'latitude': 54.306122,
+        'longitude': 105.612396,
+        'true_class': 1,
+        'umap_string': 'sample_001',
+      }),
+      dict({
+        'latitude': 25.496391,
+        'longitude': 135.964813,
+        'true_class': 2,
+        'umap_string': 'sample_002',
+      }),
+      dict({
+        'latitude': 6.391304,
+        'longitude': 43.591858,
+        'true_class': 1,
+        'umap_string': 'sample_004',
+      }),
+      dict({
+        'latitude': -36.841385,
+        'longitude': 138.447052,
+        'true_class': 0,
+        'umap_string': 'sample_006',
+      }),
+      dict({
+        'latitude': -5.512314,
+        'longitude': 3.024902,
+        'true_class': 1,
+        'umap_string': 'sample_007',
+      }),
+      dict({
+        'latitude': 55.602005,
+        'longitude': -50.934052,
+        'true_class': 2,
+        'umap_string': 'sample_008',
+      }),
+      dict({
+        'latitude': -36.259979,
+        'longitude': -28.603043,
+        'true_class': 0,
+        'umap_string': 'sample_009',
+      }),
+      dict({
+        'latitude': 3.0569,
+        'longitude': -180.0,
+        'true_class': 1,
+        'umap_string': 'sample_010',
+      }),
+      dict({
+        'latitude': 14.296928,
+        'longitude': 90.340149,
+        'true_class': 2,
+        'umap_string': 'sample_011',
+      }),
+    ]),
+  })
+# ---

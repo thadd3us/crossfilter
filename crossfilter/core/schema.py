@@ -43,6 +43,10 @@ class SchemaColumns(StrEnum):
     # CLIP embedding UMAP projection coordinates (on a sphere like lat/lon)
     CLIP_UMAP_HAVERSINE_LATITUDE = "CLIP_UMAP_HAVERSINE_LATITUDE"
     CLIP_UMAP_HAVERSINE_LONGITUDE = "CLIP_UMAP_HAVERSINE_LONGITUDE"
+    
+    # SigLIP2 embedding UMAP projection coordinates (on a sphere like lat/lon)
+    SIGLIP2_UMAP2D_HAVERSINE_LATITUDE = "SIGLIP2_UMAP2D_HAVERSINE_LATITUDE"
+    SIGLIP2_UMAP2D_HAVERSINE_LONGITUDE = "SIGLIP2_UMAP2D_HAVERSINE_LONGITUDE"
 
 
 class DataType(StrEnum):

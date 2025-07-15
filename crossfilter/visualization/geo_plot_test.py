@@ -17,18 +17,7 @@ from crossfilter.visualization.geo_plot import (
     _calculate_zoom_level_from_radius,
     create_geo_plot,
 )
-
-
-class HTMLSnapshotExtension(SingleFileSnapshotExtension):
-    """Custom syrupy extension to save HTML files with .html extension."""
-
-    _file_extension = "html"
-
-    def serialize(self, data, **kwargs) -> bytes:
-        """Serialize string data to bytes for file storage."""
-        if isinstance(data, str):
-            return data.encode("utf-8")
-        return super().serialize(data, **kwargs)
+from tests.util.syrupy_html_snapshot import HTMLSnapshotExtension
 
 
 @pytest.fixture

@@ -6,7 +6,6 @@ This script only depends on the uv environment and does not import crossfilter c
 
 import logging
 import sys
-from pathlib import Path
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -15,39 +14,39 @@ logger = logging.getLogger(__name__)
 def main() -> None:
     """Download SIGLIP2 models from HuggingFace."""
     logger.info("Downloading SIGLIP2 models from HuggingFace...")
-    
+
     try:
         # Import HuggingFace transformers
-        from transformers import AutoModel, AutoTokenizer, AutoProcessor
-        
+        from transformers import AutoModel, AutoProcessor, AutoTokenizer
+
         # SIGLIP2 model actually used in crossfilter source code
         models = [
             "google/siglip-so400m-patch14-384",
         ]
-        
+
         for model_name in models:
             logger.info(f"Downloading model: {model_name}")
-            
+
             # Download model - fail completely if this fails
-            model = AutoModel.from_pretrained(model_name)
-             logger.info(f"Model {model_name} downloaded successfully")
-            
+            AutoModel.from_pretrained(model_name)
+            logger.info(f"Model {model_name} downloaded successfully")
+
             # Download tokenizer if available
             try:
-                tokenizer = AutoTokenizer.from_pretrained(model_name)
+                AutoTokenizer.from_pretrained(model_name)
                 logger.info(f"Tokenizer for {model_name} downloaded successfully")
             except Exception as e:
                 logger.warning(f"No tokenizer found for {model_name}: {e}")
-            
+
             # Download processor if available
             try:
-                processor = AutoProcessor.from_pretrained(model_name)
+                AutoProcessor.from_pretrained(model_name)
                 logger.info(f"Processor for {model_name} downloaded successfully")
             except Exception as e:
                 logger.warning(f"No processor found for {model_name}: {e}")
-                
+
         logger.info("SIGLIP2 model download completed")
-        
+
     except ImportError as e:
         logger.error(f"Failed to import required libraries: {e}")
         logger.error("Make sure transformers is installed in the environment")

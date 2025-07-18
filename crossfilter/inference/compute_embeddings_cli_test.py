@@ -83,7 +83,7 @@ def temp_input_dir(tmp_path: Path) -> Path:
 
 
 @pytest.fixture
-def mock_embeddings() -> List[np.ndarray]:
+def mock_embeddings() -> list[np.ndarray]:
     """Create mock embeddings for testing."""
     return [
         np.array([0.1, 0.2, 0.3, 0.4], dtype=np.float32),

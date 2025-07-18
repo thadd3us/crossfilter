@@ -27,6 +27,7 @@ How this works:
 * UMAP computation:
     * Once all embeddings are computed and written to the DB, if `--reproject_umap_embeddings` is set, the CLI will reproject all the available embeddings to the UMAP space.
     * The UMAP model is stored into the DB as BLOB in a table called SIGLIP2_UMAP_MODEL, with a single column called MODEL.
+    * The embeddings are are stored in a DB table called {embedding_type}_UMAP_HAVERSINE, with columns UUID (primary key), schema.LATITUDE, schema.LONGITUDE.
     * Nice-to-have: we seed the UMAP embedding with existing embeddings, so that they don't move "too much" when new UUIDs are added.
 """
 
@@ -42,6 +43,7 @@ import msgpack
 import msgpack_numpy
 import numpy as np
 import pandas as pd
+from sqlalchemy.engine import Engine
 import typer
 from sqlalchemy import Column, LargeBinary, MetaData, String, Table, create_engine, select
 from sqlalchemy.dialects.sqlite import insert
@@ -79,7 +81,7 @@ def _get_umap_model_table_name(embedding_type: EmbeddingType) -> str:
     return f"{embedding_type.value}_UMAP_MODEL"
 
 
-def _create_database_schema(engine, embedding_type: EmbeddingType) -> Tuple[Table, Table]:
+def _create_database_schema(engine: Engine, embedding_type: EmbeddingType) -> Tuple[Table, Table]:
     """Create database schema and return table objects."""
     metadata = MetaData()
     
@@ -104,31 +106,26 @@ def _create_database_schema(engine, embedding_type: EmbeddingType) -> Tuple[Tabl
     return embeddings_table, umap_model_table
 
 
-def _scan_image_files(input_dir: Path) -> Dict[str, Path]:
+def _scan_image_files(input_dir: Path) -> dict[str, Path]:
     """Scan input directory for UUID.jpg files and return mapping of UUID -> Path."""
     logger.info(f"Scanning for UUID.jpg files in {input_dir}")
     
     if not input_dir.exists():
         raise FileNotFoundError(f"Input directory not found: {input_dir}")
     
-    uuid_to_path = {}
+    uuid_to_path: dict[str, Path] = {}
     
     # Find all .jpg files recursively
     for jpg_path in input_dir.rglob("*.jpg"):
         # Extract UUID from filename (remove .jpg extension)
-        uuid_str = jpg_path.stem
-        
-        # Validate UUID format
-        if _validate_uuid(uuid_str):
-            if uuid_str in uuid_to_path:
-                logger.warning(f"Duplicate UUID found: {uuid_str} at {jpg_path} and {uuid_to_path[uuid_str]}")
-            uuid_to_path[uuid_str] = jpg_path
+        uuid_str = jpg_path.stem       
+        uuid_to_path[uuid_str] = jpg_path
     
-    logger.info(f"Found {len(uuid_to_path)} valid UUID.jpg files")
+    logger.info(f"Found {len(uuid_to_path)=} .jpg files")
     return uuid_to_path
 
 
-def _get_existing_embeddings(engine, embeddings_table: Table) -> Set[str]:
+def _get_existing_embeddings(engine, embeddings_table: Table) -> set[str]:
     """Get set of UUIDs that already have embeddings in the database."""
     with engine.connect() as conn:
         # Execute query to get all UUIDs
@@ -138,7 +135,7 @@ def _get_existing_embeddings(engine, embeddings_table: Table) -> Set[str]:
 
 def _write_embeddings_worker(
     write_queue: Queue,
-    engine,
+    engine: Engine,
     embeddings_table: Table,
     stop_event: threading.Event
 ) -> None:
@@ -180,8 +177,8 @@ def _write_embeddings_worker(
 
 
 def _compute_embeddings_batch(
-    batch_paths: List[Path],
-    batch_uuids: List[str],
+    batch_paths: list[Path],
+    batch_uuids: list[str],
     write_queue: Queue,
     batch_size: int
 ) -> None:
@@ -199,7 +196,7 @@ def _compute_embeddings_batch(
         raise
 
 
-def _load_embeddings_from_db(engine, embeddings_table: Table, embedding_type: EmbeddingType) -> pd.DataFrame:
+def _load_embeddings_from_db(engine: Engine, embeddings_table: Table, embedding_type: EmbeddingType) -> pd.DataFrame:
     """Load all embeddings from database into a DataFrame."""
     
     with engine.connect() as conn:
@@ -353,7 +350,7 @@ def main(
             
         finally:
             # Stop the writer thread
-            stop_event.set()
+            stop_event.set()  # THAD: Is this right?  Couldn't this stop the writer before it's flushed?
             write_queue.put(None)  # Sentinel value
             writer_thread.join()
     
@@ -374,6 +371,7 @@ def main(
                 output_lat_column=SchemaColumns.SIGLIP2_UMAP2D_HAVERSINE_LATITUDE,
                 output_lon_column=SchemaColumns.SIGLIP2_UMAP2D_HAVERSINE_LONGITUDE
             )
+            # THAD: Also upsert the UMAP embeddings for the images into a table called `{embedding_type}_UMAP_HAVERSINE`,  with columns UUID (primary key), schema.LATITUDE, schema.LONGITUDE.
             
             # Store UMAP model in database
             _store_umap_model(engine, umap_model_table, umap_model)

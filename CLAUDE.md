@@ -92,7 +92,7 @@ The application is built around a **projection-based architecture** where multip
 27. **Don't enumerate arguments in docstrings**: Just use good names and type hints to make it clear what things are.
 28. **Never Use @property Decorators**: Avoid using `@property` decorators for getters and setters. Use direct naked attribute access instead. Properties add unnecessary verbosity and complexity without meaningful benefit. Just access and modify attributes directly (e.g., `obj.max_rows = 100` instead of property-based access).
 29. **Read the docs in //docs/*.md**: And keep them up to date!
-30. **Use pytype hints**: Put them on member variables, function arguments, and return types.  If it improves readability, put them on local variables, too.
+30. **Use pytype hints**: Put them on ALL member variables, ALL function arguments, and return types.  If it improves readability, put them on local variables, too.  Use `list[str]` and `str | None, NOT `List[str]` and NOT `Optional[str]`.
 
 ### Project Structure
 ```

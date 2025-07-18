@@ -36,16 +36,18 @@ RUN uv sync --extra=dev
 # THIS TAKES ~2 minutes.
 USER root
 RUN .venv/bin/playwright install-deps
+COPY dev/warm_cache/01_playwright_install.py /tmp/warm_cache/01_playwright_install.py
+COPY dev/warm_cache/02_hf_model_download.py /tmp/warm_cache/02_hf_model_download.py
+RUN chown -R dev:dev /tmp/warm_cache/
 USER dev
 
 # Copy warm cache scripts to /tmp and run them
-COPY dev/warm_cache/ /tmp/warm_cache/
 
 # Pre-heat playwright using warm cache script
-RUN uv run /tmp/warm_cache/01_playwright_install.py
+RUN .venv/bin/python /tmp/warm_cache/01_playwright_install.py
 
 # Pre-heat HuggingFace models using warm cache script
-RUN uv run /tmp/warm_cache/02_hf_model_download.py
+RUN .venv/bin/python /tmp/warm_cache/02_hf_model_download.py
 
 # Clean up warm cache scripts
 RUN rm -rf /tmp/warm_cache/

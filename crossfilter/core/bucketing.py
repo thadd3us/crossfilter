@@ -28,8 +28,6 @@ the data structure while maintaining full filtering capability.
 """
 
 import logging
-import uuid
-from dataclasses import dataclass
 from typing import Optional
 
 import h3
@@ -38,8 +36,8 @@ import pandas as pd
 from crossfilter.core.schema import (
     SchemaColumns,
     TemporalLevel,
-    get_h3_column_name,
     get_clip_umap_h3_column_name,
+    get_h3_column_name,
     get_temporal_column_name,
 )
 

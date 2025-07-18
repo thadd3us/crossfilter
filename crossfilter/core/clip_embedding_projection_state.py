@@ -5,10 +5,6 @@ from typing import Optional
 
 import pandas as pd
 
-from crossfilter.core.backend_frontend_shared_schema import (
-    FilterEvent,
-    FilterOperatorType,
-)
 from crossfilter.core.bucketing import (
     bucket_by_target_column,
     get_clip_umap_h3_column_name,
@@ -56,7 +52,7 @@ class ClipEmbeddingProjectionState:
             or C.CLIP_UMAP_HAVERSINE_LONGITUDE not in filtered_rows.columns
         ):
             logger.info(
-                f"CLIP UMAP columns not found in data, skipping CLIP embedding projection update"
+                "CLIP UMAP columns not found in data, skipping CLIP embedding projection update"
             )
             # Set empty projection with no buckets
             self.projection_state.current_bucketing_column = None

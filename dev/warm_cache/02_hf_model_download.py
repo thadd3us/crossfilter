@@ -30,7 +30,7 @@ def main() -> None:
             
             # Download model - fail completely if this fails
             model = AutoModel.from_pretrained(model_name)
-            logger.info(f"Model {model_name} downloaded successfully")
+             logger.info(f"Model {model_name} downloaded successfully")
             
             # Download tokenizer if available
             try:

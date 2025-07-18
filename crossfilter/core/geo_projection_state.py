@@ -5,10 +5,6 @@ from typing import Optional
 
 import pandas as pd
 
-from crossfilter.core.backend_frontend_shared_schema import (
-    FilterEvent,
-    FilterOperatorType,
-)
 from crossfilter.core.bucketing import (
     bucket_by_target_column,
     get_h3_column_name,

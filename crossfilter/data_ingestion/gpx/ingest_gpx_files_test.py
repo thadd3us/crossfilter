@@ -1,22 +1,17 @@
 """Tests for GPX files ingestion CLI program."""
 
-import sqlite3
 from pathlib import Path
-from typing import List
 
-import pandas as pd
 import pytest
-from sqlalchemy import create_engine, inspect, text
 from syrupy.assertion import SnapshotAssertion
 
 from crossfilter.core.schema import DataType, SchemaColumns
 from crossfilter.data_ingestion.gpx.ingest_gpx_files import (
     find_gpx_files,
+    main,
     process_single_gpx_file,
 )
-from crossfilter.data_ingestion.gpx.ingest_gpx_files import main
 from crossfilter.data_ingestion.sqlite_utils import query_sqlite_to_dataframe
-
 
 gpx_content = """<?xml version="1.0" encoding="UTF-8"?>
 <gpx version="1.1" creator="test">

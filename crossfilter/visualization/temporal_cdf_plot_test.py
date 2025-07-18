@@ -7,7 +7,7 @@ import pytest
 from syrupy import SnapshotAssertion
 from syrupy.extensions.single_file import SingleFileSnapshotExtension
 
-from crossfilter.core.schema import SchemaColumns, load_jsonl_to_dataframe
+from crossfilter.core.schema import load_jsonl_to_dataframe
 from crossfilter.core.session_state import SessionState
 from crossfilter.core.temporal_projection_state import TemporalProjectionState
 from crossfilter.visualization.temporal_cdf_plot import create_temporal_cdf

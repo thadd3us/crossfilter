@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 def wait_for_server(url: str, max_attempts: int = 15) -> bool:
     """Wait for the server to be ready using exponential backoff."""
     delay_ms = 1
-    for attempt in range(max_attempts):
+    for _attempt in range(max_attempts):
         try:
             response = requests.get(url, timeout=5)
             if response.status_code == 200:
@@ -38,7 +38,7 @@ def server_with_data(source_tree_root: Path) -> Generator[str, None, None]:
     """
     # Path to the sample data
     sample_data_path = source_tree_root / "test_data" / "sample_100.jsonl"
-    
+
     # Path to the UUID preview images directory
     uuid_preview_images_path = source_tree_root / "test_data" / "uuid_preview_images"
 

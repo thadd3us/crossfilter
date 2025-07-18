@@ -10,7 +10,8 @@ from crossfilter.core.backend_frontend_shared_schema import (
     ProjectionType,
 )
 from crossfilter.core.bucketing import add_geo_h3_bucket_columns
-from crossfilter.core.schema import SchemaColumns as C, DataType
+from crossfilter.core.schema import DataType
+from crossfilter.core.schema import SchemaColumns as C
 from crossfilter.core.session_state import SessionState
 
 

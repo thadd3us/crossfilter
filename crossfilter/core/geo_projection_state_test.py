@@ -4,14 +4,10 @@ import pandas as pd
 import pytest
 from syrupy import SnapshotAssertion
 
-from crossfilter.core.backend_frontend_shared_schema import (
-    FilterEvent,
-    FilterOperatorType,
-    ProjectionType,
-)
 from crossfilter.core.bucketing import add_bucketed_columns
 from crossfilter.core.geo_projection_state import GeoProjectionState
-from crossfilter.core.schema import SchemaColumns as C, DataType
+from crossfilter.core.schema import DataType
+from crossfilter.core.schema import SchemaColumns as C
 
 
 @pytest.fixture

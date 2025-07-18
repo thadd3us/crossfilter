@@ -1,27 +1,22 @@
 """Tests for shared SQLite utility functions."""
 
+import logging
 import sqlite3
 from pathlib import Path
-from typing import List
 
 import pandas as pd
 import pytest
 import sqlalchemy.exc
-from sqlalchemy import create_engine, inspect, text
+from sqlalchemy import create_engine, text
 from syrupy.assertion import SnapshotAssertion
-
-import logging
-
 
 from crossfilter.core.schema import DataType, SchemaColumns
 from crossfilter.data_ingestion.sqlite_utils import (
     create_or_update_table_schema,
     get_pandas_to_sqlalchemy_dtype,
-    has_unique_constraint_on_uuid,
-    upsert_dataframe_to_sqlite,
     query_sqlite_to_dataframe,
+    upsert_dataframe_to_sqlite,
 )
-
 
 logger = logging.getLogger(__name__)
 

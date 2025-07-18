@@ -5,14 +5,13 @@ import logging
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import List, Optional
 
 import gpxpy
 import pandas as pd
-from gpxpy.gpx import GPXTrackPoint, GPXWaypoint
 
 from crossfilter.core.bucketing import add_geo_h3_bucket_columns
-from crossfilter.core.schema import DataType, SchemaColumns as C
+from crossfilter.core.schema import DataType
+from crossfilter.core.schema import SchemaColumns as C
 
 logger = logging.getLogger(__name__)
 
@@ -82,16 +81,16 @@ def load_gpx_file_to_df(gpx_file_path: Path) -> pd.DataFrame:
         raise FileNotFoundError(f"GPX file not found: {gpx_file_path}")
 
     try:
-        with open(gpx_file_path, "r", encoding="utf-8") as f:
+        with open(gpx_file_path, encoding="utf-8") as f:
             gpx = gpxpy.parse(f)
     except Exception as e:
         raise ValueError(f"Failed to parse GPX file {gpx_file_path}: {e}")
 
     # Get file size
-    file_size = gpx_file_path.stat().st_size
+    gpx_file_path.stat().st_size
 
     # Collect all points first (without UUIDs)
-    records: List[dict] = []
+    records: list[dict] = []
 
     # Process all trackpoints
     for track in gpx.tracks:

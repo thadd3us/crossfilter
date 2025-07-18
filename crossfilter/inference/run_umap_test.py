@@ -3,13 +3,11 @@ Tests for UMAP projection functions.
 """
 
 import logging
-from typing import List, Tuple
 
 import numpy as np
 import pandas as pd
-import pytest
-from syrupy import SnapshotAssertion
 import plotly.express as px
+from syrupy import SnapshotAssertion
 
 from crossfilter.inference.run_umap import run_umap_projection
 from tests.util.syrupy_html_snapshot import HTMLSnapshotExtension
@@ -25,36 +23,36 @@ def _generate_test_embeddings(
 ) -> pd.DataFrame:
     """Generate test data with 3 well-separated clusters."""
     rng = np.random.RandomState(random_state)
-    
+
     # 3 hardcoded, well-separated centroids
     centers = np.zeros((3, embedding_dim))
     centers[0, 0] = 10.0  # Cluster 0: strong signal in dimension 0
-    centers[1, 1] = 10.0  # Cluster 1: strong signal in dimension 1  
+    centers[1, 1] = 10.0  # Cluster 1: strong signal in dimension 1
     centers[2, 2] = 10.0  # Cluster 2: strong signal in dimension 2
     centers = centers / np.linalg.norm(centers, axis=1, keepdims=True)
-    
+
     # Generate class assignments
     classes = np.tile([0, 1, 2], n_samples // 3 + 1)[:n_samples]
-    
+
     # Generate embeddings with small noise around centroids
     noise = rng.normal(0, 0.05, (n_samples, embedding_dim))  # Small stddev for tight clusters
     embeddings = centers[classes] + noise
     embeddings = embeddings / np.linalg.norm(embeddings, axis=1, keepdims=True)
-    
+
     # Create DataFrame
     df = pd.DataFrame({
         "UMAP_STRING": [f"sample_{i:03d}" for i in range(n_samples)],
         "SIGLIP2_EMBEDDING": list(embeddings),
         "TRUE_CLASS": classes,
     })
-    
+
     # Set some embeddings to None for missing data
     n_missing = int(n_samples * missing_fraction)
     missing_indices = rng.choice(n_samples, size=n_missing, replace=False)
     df.loc[missing_indices, "SIGLIP2_EMBEDDING"] = None
-    
+
     logger.info(f"Generated {n_samples} samples with {n_missing} missing embeddings")
-    
+
     return df
 
 
@@ -67,12 +65,12 @@ def test_run_umap_projection_happy_path(snapshot: SnapshotAssertion) -> None:
         missing_fraction=0.05,
         random_state=42,
     )
-    
+
     # Run UMAP projection
-    sphere_mapper = run_umap_projection(df, random_state=42)
-    
+    run_umap_projection(df, random_state=42)
+
     # Plot the results
     fig = px.scatter(df, y="SIGLIP2_UMAP2D_HAVERSINE_LATITUDE", x="SIGLIP2_UMAP2D_HAVERSINE_LONGITUDE", color="TRUE_CLASS")
     html = fig.to_html(include_plotlyjs="cdn", div_id="test-plot-div")
     assert html == snapshot(extension_class=HTMLSnapshotExtension)
-    
+

@@ -4,10 +4,10 @@ import uuid
 from datetime import datetime
 from pathlib import Path
 
-from syrupy.assertion import SnapshotAssertion
 import pytest
+from syrupy.assertion import SnapshotAssertion
 
-from crossfilter.core.schema import DataType, SchemaColumns
+from crossfilter.core.schema import DataType
 from crossfilter.data_ingestion.gpx.gpx_parser import (
     generate_uuid_from_components,
     load_gpx_file_to_df,

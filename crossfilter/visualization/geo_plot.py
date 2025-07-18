@@ -4,17 +4,17 @@ Geographic scatter plot using Plotly tile scatter maps.
 """
 
 import math
-from typing import Optional, Tuple
+from typing import Optional
 
 import numpy as np
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 
+from crossfilter.core.bucketing import groupby_fillna
 from crossfilter.core.geo_projection_state import GeoProjectionState
 from crossfilter.core.schema import SchemaColumns as C
 from crossfilter.visualization.plot_common import CUSTOM_DATA_COLUMNS
-from crossfilter.core.bucketing import groupby_fillna
 
 
 def _haversine_distance_vectorized(
@@ -53,7 +53,7 @@ def _haversine_distance_vectorized(
 
 def _calculate_geographic_center_and_radius(
     latitudes: pd.Series, longitudes: pd.Series
-) -> Tuple[float, float, float]:
+) -> tuple[float, float, float]:
     """Calculate the geographic center and radius in meters using proper spherical geometry.
 
     Returns:
@@ -139,7 +139,7 @@ def _calculate_zoom_level_from_radius(
 
 def _calculate_map_view(
     latitudes: pd.Series, longitudes: pd.Series
-) -> Tuple[float, float, int]:
+) -> tuple[float, float, int]:
     """Calculate the optimal map center and zoom level for the given geographic points."""
     if len(latitudes) == 0:
         return 0.0, 0.0, 1
@@ -179,21 +179,21 @@ def create_geo_plot(
         )
         fig.update_layout(
             title=title,
-            map=dict(
-                style="open-street-map",
-                center=dict(lat=0, lon=0),  # Center on equator
-                zoom=1,  # World view
-            ),
+            map={
+                "style": "open-street-map",
+                "center": {"lat": 0, "lon": 0},  # Center on equator
+                "zoom": 1,  # World view
+            },
             annotations=[
-                dict(
-                    text="No data to display",
-                    x=0.5,
-                    y=0.95,
-                    xref="paper",
-                    yref="paper",
-                    showarrow=False,
-                    font=dict(size=16),
-                )
+                {
+                    "text": "No data to display",
+                    "x": 0.5,
+                    "y": 0.95,
+                    "xref": "paper",
+                    "yref": "paper",
+                    "showarrow": False,
+                    "font": {"size": 16},
+                }
             ],
         )
         return fig
@@ -258,10 +258,10 @@ def create_geo_plot(
     fig.update_layout(
         hovermode="closest",
         showlegend=True,
-        map=dict(
-            center=dict(lat=center_lat, lon=center_lon),
-            zoom=zoom,
-        ),
+        map={
+            "center": {"lat": center_lat, "lon": center_lon},
+            "zoom": zoom,
+        },
     )
 
     return fig

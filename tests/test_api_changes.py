@@ -1,8 +1,9 @@
 """Test API changes for row index support."""
 
+from pathlib import Path
+
 import pytest
 import requests
-from pathlib import Path
 
 from tests.fixtures_server import server_with_data
 

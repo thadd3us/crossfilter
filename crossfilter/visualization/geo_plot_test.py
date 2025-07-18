@@ -2,11 +2,9 @@
 
 from pathlib import Path
 
-import numpy as np
 import pandas as pd
 import pytest
 from syrupy import SnapshotAssertion
-from syrupy.extensions.single_file import SingleFileSnapshotExtension
 
 from crossfilter.core.geo_projection_state import GeoProjectionState
 from crossfilter.core.schema import SchemaColumns, load_jsonl_to_dataframe

@@ -9,7 +9,8 @@ from crossfilter.core.backend_frontend_shared_schema import (
     ProjectionType,
 )
 from crossfilter.core.projection_state import ProjectionState
-from crossfilter.core.schema import SchemaColumns as C, DataType
+from crossfilter.core.schema import DataType
+from crossfilter.core.schema import SchemaColumns as C
 
 
 @pytest.fixture

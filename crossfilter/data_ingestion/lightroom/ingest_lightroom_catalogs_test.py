@@ -1,13 +1,9 @@
 """Tests for Lightroom catalog ingestion CLI program."""
 
-import sqlite3
-import subprocess
 import sys
 import zipfile
 from pathlib import Path
-from typing import List
 
-import msgpack_numpy as msgpack
 import numpy as np
 import pandas as pd
 import pytest
@@ -15,10 +11,10 @@ from syrupy.assertion import SnapshotAssertion
 
 from crossfilter.core.schema import DataType, SchemaColumns
 from crossfilter.data_ingestion.lightroom.ingest_lightroom_catalogs import (
-    find_lightroom_catalogs,
-    main,
-    load_clip_embeddings_from_sqlite,
     compute_umap_projection,
+    find_lightroom_catalogs,
+    load_clip_embeddings_from_sqlite,
+    main,
 )
 from crossfilter.data_ingestion.lightroom.lightroom_parser import (
     LightroomParserConfig,
@@ -116,7 +112,7 @@ def test_load_lightroom_catalog_error_handling(tmp_path: Path) -> None:
 
     # Should return empty DataFrame with proper schema on error
     with pytest.raises(Exception):
-        df = load_lightroom_catalog_to_df(invalid_catalog, config)
+        load_lightroom_catalog_to_df(invalid_catalog, config)
 
 
 def test_load_lightroom_catalog_real_data(test_catalogs_dir: Path) -> None:
@@ -384,7 +380,7 @@ def test_compute_umap_projection(tmp_path: Path) -> None:
     ]
 
     # Test with output file
-    output_file = tmp_path / "umap_transformer.pkl"
+    tmp_path / "umap_transformer.pkl"
     result_df2, umap_transformer2 = compute_umap_projection(test_embeddings)
 
     import umap

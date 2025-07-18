@@ -4,21 +4,20 @@ import logging
 import pickle
 import sqlite3
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import Optional
 
+import dogpile.cache
 import msgpack_numpy as msgpack
 import numpy as np
 import pandas as pd
 import typer
 from tqdm import tqdm
 
-import dogpile.cache
-
-from crossfilter.core.schema import SchemaColumns
 from crossfilter.core.bucketing import (
-    add_geo_h3_bucket_columns,
     add_clip_umap_h3_bucket_columns,
+    add_geo_h3_bucket_columns,
 )
+from crossfilter.core.schema import SchemaColumns
 from crossfilter.data_ingestion.lightroom.lightroom_parser import (
     LightroomParserConfig,
     load_lightroom_catalog_to_df,
@@ -73,7 +72,7 @@ def load_clip_embeddings_from_sqlite(sqlite_db_path: Path) -> pd.DataFrame:
 
 
 # @cache_region.cache_on_arguments()
-def compute_umap_projection(embeddings_df: pd.DataFrame) -> Tuple[pd.DataFrame, object]:
+def compute_umap_projection(embeddings_df: pd.DataFrame) -> tuple[pd.DataFrame, object]:
     """Normalize embeddings and compute 2D UMAP projection with cosine metric.
 
     This function normalizes CLIP embeddings to unit length and computes a 2D UMAP projection
@@ -156,7 +155,7 @@ def compute_umap_projection(embeddings_df: pd.DataFrame) -> Tuple[pd.DataFrame, 
     return result_df, umap_transformer
 
 
-def find_lightroom_catalogs(base_dir: Path) -> List[Path]:
+def find_lightroom_catalogs(base_dir: Path) -> list[Path]:
     """Find all Lightroom catalog files recursively in the base directory."""
     if not base_dir.exists():
         raise FileNotFoundError(f"Base directory not found: {base_dir}")

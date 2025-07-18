@@ -101,28 +101,28 @@ def test_filter_df_ids_endpoint_direct(
 
     # Test subtraction operation as well
     logger.info("Testing subtraction filter operation...")
-    
+
     # Reset filters first by calling the reset endpoint
     reset_response = requests.post(f"{server_url}/api/filters/reset")
     assert reset_response.status_code == 200
-    
-    # Test subtraction filter with some df_ids  
+
+    # Test subtraction filter with some df_ids
     subtraction_request = {
         "df_ids": selected_df_ids[:5],  # Remove first 5 selected points
         "event_source": "temporal",
         "filter_operator": "subtraction",
     }
-    
+
     subtraction_response = requests.post(
         f"{server_url}/api/filters/df_ids",
         json=subtraction_request,
         headers={"Content-Type": "application/json"},
     )
-    
+
     assert subtraction_response.status_code == 200
     subtraction_result = subtraction_response.json()
     assert subtraction_result["success"] is True
-    
+
     # After subtraction, we should have 100 - 5 = 95 rows remaining
     assert subtraction_result["filter_state"]["filtered_count"] == 95
 

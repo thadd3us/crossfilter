@@ -2,12 +2,12 @@
 
 import logging
 import re
-from pathlib import Path
-from typing import List, Dict, Any, Union
 import uuid
-import tqdm
+from pathlib import Path
+from typing import Any, Union
 
 import pandas as pd
+import tqdm
 from sqlalchemy import (
     Engine,
     create_engine,
@@ -179,7 +179,7 @@ def upsert_dataframe_to_sqlite(
 
 
 def query_sqlite_to_dataframe(
-    sqlite_db_path: Path, query: str, params: Union[Dict[str, Any], None] = None
+    sqlite_db_path: Path, query: str, params: Union[dict[str, Any], None] = None
 ) -> pd.DataFrame:
     """Execute SQL query against SQLite database and return DataFrame."""
     engine = create_engine(f"sqlite:///{sqlite_db_path}")

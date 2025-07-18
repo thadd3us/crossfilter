@@ -5,18 +5,14 @@ from typing import Optional
 
 import pandas as pd
 
-from crossfilter.core.backend_frontend_shared_schema import (
-    FilterEvent,
-    FilterOperatorType,
-)
 from crossfilter.core.bucketing import (
     bucket_by_target_column,
     get_optimal_temporal_level,
     get_temporal_column_name,
 )
 from crossfilter.core.projection_state import ProjectionState
-from crossfilter.core.schema import TemporalLevel
 from crossfilter.core.schema import SchemaColumns as C
+from crossfilter.core.schema import TemporalLevel
 
 logger = logging.getLogger(__name__)
 

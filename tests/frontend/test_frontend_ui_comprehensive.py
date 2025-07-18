@@ -3,18 +3,17 @@
 import logging
 import re
 import sys
-from typing import Dict, Any, List, Tuple, Optional
 
 import pytest
 from playwright.sync_api import Page
 from syrupy import SnapshotAssertion
 from syrupy.extensions.image import PNGImageSnapshotExtension
 
-from crossfilter.core.schema import DataType
 from crossfilter.core.backend_frontend_shared_schema import (
-    ProjectionType,
     FilterOperatorType,
+    ProjectionType,
 )
+from crossfilter.core.schema import DataType
 from tests.fixtures_server import server_with_data
 
 assert server_with_data, "Don't remove this import!"
@@ -41,8 +40,8 @@ def wait_for_app_ready(page: Page) -> None:
         """
         () => {
             const plotContainers = document.querySelectorAll('.plot-container');
-            return plotContainers.length >= 2 && 
-                   Array.from(plotContainers).filter(container => 
+            return plotContainers.length >= 2 &&
+                   Array.from(plotContainers).filter(container =>
                        container.querySelector('.main-svg') !== null
                    ).length >= 2;
         }
@@ -57,12 +56,12 @@ def wait_for_app_ready(page: Page) -> None:
     )
 
 
-def get_status_info(page: Page) -> Dict[str, str]:
+def get_status_info(page: Page) -> dict[str, str]:
     """Extract status information from various status elements."""
     # Get selection info from Vue.js structure - spans that contain "Selected X rows"
     temporal_selection = ""
     geo_selection = ""
-    
+
     # Find selection spans in projection toolbars
     selection_spans = page.locator("span:has-text('Selected')")
     for i in range(selection_spans.count()):
@@ -81,7 +80,7 @@ def get_status_info(page: Page) -> Dict[str, str]:
                         elif j == 1:  # Second projection (Geo)
                             geo_selection = span_text
                         break
-    
+
     return {
         "main_status": page.locator(".status-info").text_content() or "",
         "temporal_status": "",  # Vue.js doesn't have separate status elements
@@ -137,11 +136,11 @@ def toggle_datatype_visibility(
                             updates[index] = {{"visible": {str(make_visible).lower()}}};
                         }}
                     }});
-                    
+
                     // Apply the updates
                     const traceIndices = Object.keys(updates).map(i => parseInt(i));
                     const visibilityValues = Object.values(updates).map(u => u.visible);
-                    
+
                     if (traceIndices.length > 0) {{
                         Plotly.restyle(plotDiv, 'visible', visibilityValues, traceIndices);
                     }}
@@ -179,7 +178,7 @@ def double_click_datatype_to_isolate(
                             updates.push(false); // Hide other traces
                         }}
                     }});
-                    
+
                     // Apply the updates to all traces
                     if (updates.length > 0) {{
                         const traceIndices = [...Array(updates.length).keys()];
@@ -195,15 +194,15 @@ def double_click_datatype_to_isolate(
     page.wait_for_timeout(500)
 
 
-def get_plot_bounds(page: Page, plot_type: ProjectionType) -> Dict[str, float]:
+def get_plot_bounds(page: Page, plot_type: ProjectionType) -> dict[str, float]:
     """Get the bounding box of a plot container."""
     # Find the plot container based on projection type (first or second)
     projection_index = 0 if plot_type == ProjectionType.TEMPORAL else 1
-    
+
     containers = page.locator(".plot-container")
     if containers.count() <= projection_index:
         raise RuntimeError(f"Could not find plot container for {plot_type} plot")
-    
+
     container = containers.nth(projection_index)
     bounds = container.bounding_box()
     if not bounds:
@@ -214,7 +213,7 @@ def get_plot_bounds(page: Page, plot_type: ProjectionType) -> Dict[str, float]:
 def drag_select_plot_region(
     page: Page,
     plot_type: ProjectionType,
-    region_fraction: Tuple[float, float, float, float],
+    region_fraction: tuple[float, float, float, float],
 ) -> None:
     """Select a rectangular region in a plot using box select.
 
@@ -230,7 +229,7 @@ def drag_select_plot_region(
     containers = page.locator(".plot-container")
     if containers.count() <= projection_index:
         raise RuntimeError(f"Could not find plot container for {plot_type} plot")
-    
+
     box_select_button = containers.nth(projection_index).locator(
         "[data-attr='dragmode'][data-val='select']"
     )
@@ -294,11 +293,11 @@ def click_filter_button(
     # Find the correct filter button in the Vue.js structure
     projection_index = 0 if plot_type == ProjectionType.TEMPORAL else 1
     operation_class = "intersection" if operation == FilterOperatorType.INTERSECTION else "subtraction"
-    
+
     projections = page.locator(".projection")
     if projections.count() <= projection_index:
         raise RuntimeError(f"Could not find projection for {plot_type}")
-    
+
     projection = projections.nth(projection_index)
     button = projection.locator(f".filter-button.{operation_class}")
 
@@ -798,7 +797,7 @@ def test_drag_select_helper_function(
             extension_class=PNGImageSnapshotExtension
         )
 
-    # Verify selection worked  
+    # Verify selection worked
     geo_selection = get_status_info(page)["geo_selection"]
     if geo_selection:
         # Use flexible assertion

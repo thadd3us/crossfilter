@@ -6,7 +6,7 @@ python -m crossfilter.inference.compute_embeddings_cli \
     --embedding_type SIGLIP2 \
     --input_dir /path/to/images_by_uuid \
     --output_embeddings_db /path/to/output.db \
-    --batch-size 10 \
+    --batch_size 10 \
     --recompute_existing_embeddings=false \
     --reproject_umap_embeddings=true
     

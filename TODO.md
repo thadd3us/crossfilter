@@ -1,6 +1,9 @@
 # TODO Items
 
+* CLI for a program to compute SigLIP2 embeddings on a directory full of images and write to sqlite DB, only doing what isn't in the DB already, with tqdm.
+
 * SQLite to Plotly treemap of size of each table and column.
+* AG Grid view of counted column values, selectable, with proper NA handling.
 * Handle bad data on ingestion and validate against the pandera schema before writing the to DB.
 * Make per-plot settings objects in the frontend/backend shared schema.
 * GPS loader for the Google Takeout data -- add schema fields?
@@ -10,8 +13,6 @@
 * Be able to add and remove projections, and configure them separately with a config button.
 * Folder projection.
 * Be able to shift the time stamps of all the images in a folder, and add a timezone to the lightroom catalog.
-
-
 
 * BUG: Selecting only photos on the CDF and intersecting shows too many rows on the Geo plot until you refresh the page.
 

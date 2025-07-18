@@ -1,3 +1,15 @@
+# Default tools configuration for imbue-cli
+# This file is bundled with the package and used when --use-internal-config flag is provided
+
 [[commands]]
 name="verify"
-action = { function = "verify", params = { disabled_identifiers = [] } }
+
+# Note that enabled_identifiers are set via the `is_scope_supported` function on each identifier.
+# When imbue_verify runs in imbue_cli context, the "commit" scope will be used to set the default
+# enabled identifiers.
+action = { function = "verify", params = { disabled_identifiers = ["agentic_issue_identifier"] } }
+
+# TODO: Update the list of enabled issue codes
+[[commands]]
+name="verify_slow"
+action = { function = "verify", params = { enabled_identifiers = ["agentic_issue_identifier"], enabled_issue_codes = ["incomplete_integration_with_existing_code"]} }

@@ -56,6 +56,9 @@ class DataType(StrEnum):
     GPX_WAYPOINT = "GPX_WAYPOINT"
 
 
+class EmbeddingType(StrEnum):
+    SIGLIP2 = "SIGLIP2"
+
 class DataSchema(pa.DataFrameModel):
     UUID_STRING: Series[str] = pa.Field(nullable=True)
     DATA_TYPE: Series[str] = pa.Field(

@@ -1,5 +1,5 @@
 """
-Tests for SigLIP2 embedding functions.
+Tests for fake embedding functions.
 """
 
 import logging
@@ -9,11 +9,7 @@ import numpy as np
 import pytest
 from syrupy import SnapshotAssertion
 
-# Skip all tests in this file to avoid downloading the SIGLIP2 model
-# Use fake_embedding_functions_test.py for fast testing instead
-pytestmark = pytest.mark.skip(reason="Skipping SIGLIP2 tests to avoid model download - use fake_embedding_functions_test.py instead")
-
-from crossfilter.inference.siglip2_embedding_functions import (
+from crossfilter.inference.fake_embedding_functions import (
     compute_image_embeddings,
     compute_text_embeddings,
     generate_captions_from_image_embeddings,
@@ -57,7 +53,7 @@ def test_captions() -> list[str]:
 
 
 def test_compute_image_embeddings_single_batch(test_image_paths: list[Path], snapshot: SnapshotAssertion) -> None:
-    """Test image embedding computation with all images in a single batch."""
+    """Test fake image embedding computation with all images in a single batch."""
     # Use a large batch size to process all images at once
     embeddings = compute_image_embeddings(test_image_paths, batch_size=16)
 
@@ -69,11 +65,15 @@ def test_compute_image_embeddings_single_batch(test_image_paths: list[Path], sna
         assert isinstance(embedding, np.ndarray), f"Embedding {i} is not a numpy array"
         assert embedding.ndim == 1, f"Embedding {i} is not 1D"
         assert embedding.dtype == np.float32, f"Embedding {i} has wrong dtype: {embedding.dtype}"
-        assert len(embedding) > 0, f"Embedding {i} is empty"
+        assert len(embedding) == 6, f"Embedding {i} should have 6 dimensions, got {len(embedding)}"
 
         # Check that embedding is normalized (should have norm close to 1.0)
         norm = np.linalg.norm(embedding)
         assert 0.95 <= norm <= 1.05, f"Embedding {i} norm {norm} is not close to 1.0"
+
+        # Check that values are reasonable (RGB stats should be in [0, 1] range before normalization)
+        # After normalization, values can be outside this range, but should be finite
+        assert np.all(np.isfinite(embedding)), f"Embedding {i} contains non-finite values"
 
     # Create snapshot data with metadata
     snapshot_data = {
@@ -82,8 +82,8 @@ def test_compute_image_embeddings_single_batch(test_image_paths: list[Path], sna
         "embedding_dtype": str(embeddings[0].dtype),
         "embedding_shapes": [embedding.shape for embedding in embeddings],
         "embedding_norms": [float(np.linalg.norm(embedding)) for embedding in embeddings],
-        # Store first few values of each embedding for regression testing
-        "embedding_samples": [embedding[:5].tolist() for embedding in embeddings],
+        # Store all values of each embedding for regression testing (since they're only 6-dimensional)
+        "embedding_values": [embedding.tolist() for embedding in embeddings],
         "image_filenames": [path.name for path in test_image_paths],
     }
 
@@ -91,7 +91,7 @@ def test_compute_image_embeddings_single_batch(test_image_paths: list[Path], sna
 
 
 def test_compute_image_embeddings_small_batches(test_image_paths: list[Path], snapshot: SnapshotAssertion) -> None:
-    """Test image embedding computation with small batch sizes."""
+    """Test fake image embedding computation with small batch sizes."""
     # Use small batch size to test batching logic
     embeddings = compute_image_embeddings(test_image_paths, batch_size=3)
 
@@ -102,22 +102,22 @@ def test_compute_image_embeddings_small_batches(test_image_paths: list[Path], sn
     for embedding in embeddings:
         assert isinstance(embedding, np.ndarray)
         assert embedding.ndim == 1
-        assert len(embedding) > 0
+        assert len(embedding) == 6
 
     # Create snapshot data
     snapshot_data = {
         "num_embeddings": len(embeddings),
         "embedding_dimension": len(embeddings[0]),
         "batch_size_used": 3,
-        # Store first few values for consistency check
-        "embedding_samples": [embedding[:3].tolist() for embedding in embeddings],
+        # Store all values for consistency check
+        "embedding_values": [embedding.tolist() for embedding in embeddings],
     }
 
     assert snapshot_data == snapshot
 
 
 def test_compute_text_embeddings(test_captions: list[str], snapshot: SnapshotAssertion) -> None:
-    """Test text embedding computation for captions."""
+    """Test fake text embedding computation for captions."""
     embeddings = compute_text_embeddings(test_captions, batch_size=4)
 
     # Verify we got the expected number of embeddings
@@ -128,11 +128,14 @@ def test_compute_text_embeddings(test_captions: list[str], snapshot: SnapshotAss
         assert isinstance(embedding, np.ndarray), f"Text embedding {i} is not a numpy array"
         assert embedding.ndim == 1, f"Text embedding {i} is not 1D"
         assert embedding.dtype == np.float32, f"Text embedding {i} has wrong dtype"
-        assert len(embedding) > 0, f"Text embedding {i} is empty"
+        assert len(embedding) == 6, f"Text embedding {i} should have 6 dimensions, got {len(embedding)}"
 
         # Check that embedding is normalized
         norm = np.linalg.norm(embedding)
         assert 0.95 <= norm <= 1.05, f"Text embedding {i} norm {norm} is not close to 1.0"
+
+        # Check for finite values
+        assert np.all(np.isfinite(embedding)), f"Text embedding {i} contains non-finite values"
 
     # Create snapshot data
     snapshot_data = {
@@ -140,8 +143,8 @@ def test_compute_text_embeddings(test_captions: list[str], snapshot: SnapshotAss
         "embedding_dimension": len(embeddings[0]),
         "embedding_dtype": str(embeddings[0].dtype),
         "embedding_norms": [float(np.linalg.norm(embedding)) for embedding in embeddings],
-        # Store first few values of each embedding
-        "embedding_samples": [embedding[:5].tolist() for embedding in embeddings],
+        # Store all values of each embedding
+        "embedding_values": [embedding.tolist() for embedding in embeddings],
         "input_captions": test_captions,
     }
 
@@ -149,8 +152,8 @@ def test_compute_text_embeddings(test_captions: list[str], snapshot: SnapshotAss
 
 
 def test_generate_captions_from_image_embeddings(test_image_paths: list[Path], snapshot: SnapshotAssertion) -> None:
-    """Test caption generation from image embeddings."""
-    # First compute image embeddings
+    """Test fake caption generation from fake image embeddings."""
+    # First compute fake image embeddings
     image_embeddings = compute_image_embeddings(test_image_paths, batch_size=8)
 
     # Generate captions from embeddings
@@ -176,7 +179,7 @@ def test_generate_captions_from_image_embeddings(test_image_paths: list[Path], s
 
 
 def test_embedding_consistency() -> None:
-    """Test that embeddings are consistent across multiple runs."""
+    """Test that fake embeddings are consistent across multiple runs."""
     # Use a subset of test images for faster testing
     test_photos_dir = Path(__file__).parent.parent.parent / "test_data" / "test_photos"
     test_paths = sorted(test_photos_dir.glob("*.jpg"))[:3]  # Use first 3 images
@@ -190,12 +193,12 @@ def test_embedding_consistency() -> None:
     for i, (emb1, emb2) in enumerate(zip(embeddings1, embeddings2)):
         np.testing.assert_array_almost_equal(
             emb1, emb2, decimal=5,
-            err_msg=f"Embeddings not consistent for image {i}"
+            err_msg=f"Fake embeddings not consistent for image {i}"
         )
 
 
 def test_text_embedding_consistency() -> None:
-    """Test that text embeddings are consistent across multiple runs."""
+    """Test that fake text embeddings are consistent across multiple runs."""
     test_texts = [
         "A beautiful sunset over the ocean",
         "A cat sitting on a windowsill",
@@ -211,12 +214,12 @@ def test_text_embedding_consistency() -> None:
     for i, (emb1, emb2) in enumerate(zip(embeddings1, embeddings2)):
         np.testing.assert_array_almost_equal(
             emb1, emb2, decimal=5,
-            err_msg=f"Text embeddings not consistent for text {i}"
+            err_msg=f"Fake text embeddings not consistent for text {i}"
         )
 
 
 def test_image_embeddings_different_batch_sizes(test_image_paths: list[Path]) -> None:
-    """Test that different batch sizes produce identical embeddings."""
+    """Test that different batch sizes produce identical fake embeddings."""
     # Take first 6 images for faster testing
     test_paths = test_image_paths[:6]
 
@@ -270,3 +273,23 @@ def test_empty_inputs() -> None:
     # Empty embeddings for caption generation
     captions = generate_captions_from_image_embeddings([])
     assert captions == []
+
+
+def test_embedding_structure() -> None:
+    """Test that fake embeddings have the expected structure."""
+    # Use a simple test case
+    test_photos_dir = Path(__file__).parent.parent.parent / "test_data" / "test_photos"
+    test_paths = sorted(test_photos_dir.glob("*.jpg"))[:1]  # Use just one image
+
+    embeddings = compute_image_embeddings(test_paths)
+    assert len(embeddings) == 1
+    
+    embedding = embeddings[0]
+    assert len(embedding) == 6, "Fake embeddings should have 6 dimensions (R_mean, G_mean, B_mean, R_std, G_std, B_std)"
+    
+    # All values should be finite and non-negative after normalization
+    assert np.all(np.isfinite(embedding))
+    
+    # The embedding should be normalized
+    norm = np.linalg.norm(embedding)
+    assert abs(norm - 1.0) < 0.01, f"Embedding norm should be close to 1.0, got {norm}"

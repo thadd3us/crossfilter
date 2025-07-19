@@ -10,6 +10,7 @@ import plotly.express as px
 from syrupy import SnapshotAssertion
 
 from crossfilter.inference.run_umap import run_umap_projection
+from crossfilter.core.schema import SchemaColumns
 from tests.util.syrupy_html_snapshot import HTMLSnapshotExtension
 
 logger = logging.getLogger(__name__)
@@ -17,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 def _generate_test_embeddings(
     n_samples: int = 100,
-    embedding_dim: int = 512,
+    embedding_dim: int = 6,
     missing_fraction: float = 0.05,
     random_state: int = 42,
 ) -> pd.DataFrame:
@@ -42,14 +43,14 @@ def _generate_test_embeddings(
     # Create DataFrame
     df = pd.DataFrame({
         "UMAP_STRING": [f"sample_{i:03d}" for i in range(n_samples)],
-        "SIGLIP2_EMBEDDING": list(embeddings),
+        "FAKE_EMBEDDING_FOR_TESTING_EMBEDDING": list(embeddings),
         "TRUE_CLASS": classes,
     })
 
     # Set some embeddings to None for missing data
     n_missing = int(n_samples * missing_fraction)
     missing_indices = rng.choice(n_samples, size=n_missing, replace=False)
-    df.loc[missing_indices, "SIGLIP2_EMBEDDING"] = None
+    df.loc[missing_indices, "FAKE_EMBEDDING_FOR_TESTING_EMBEDDING"] = None
 
     logger.info(f"Generated {n_samples} samples with {n_missing} missing embeddings")
 
@@ -61,16 +62,22 @@ def test_run_umap_projection_happy_path(snapshot: SnapshotAssertion) -> None:
     # Generate test data
     df = _generate_test_embeddings(
         n_samples=100,
-        embedding_dim=512,
+        embedding_dim=6,
         missing_fraction=0.05,
         random_state=42,
     )
 
     # Run UMAP projection
-    run_umap_projection(df, random_state=42)
+    run_umap_projection(
+        df, 
+        embedding_column="FAKE_EMBEDDING_FOR_TESTING_EMBEDDING",
+        output_lat_column=SchemaColumns.FAKE_EMBEDDING_FOR_TESTING_UMAP2D_HAVERSINE_LATITUDE,
+        output_lon_column=SchemaColumns.FAKE_EMBEDDING_FOR_TESTING_UMAP2D_HAVERSINE_LONGITUDE,
+        random_state=42
+    )
 
     # Plot the results
-    fig = px.scatter(df, y="SIGLIP2_UMAP2D_HAVERSINE_LATITUDE", x="SIGLIP2_UMAP2D_HAVERSINE_LONGITUDE", color="TRUE_CLASS")
+    fig = px.scatter(df, y=SchemaColumns.FAKE_EMBEDDING_FOR_TESTING_UMAP2D_HAVERSINE_LATITUDE, x=SchemaColumns.FAKE_EMBEDDING_FOR_TESTING_UMAP2D_HAVERSINE_LONGITUDE, color="TRUE_CLASS")
     html = fig.to_html(include_plotlyjs="cdn", div_id="test-plot-div")
     assert html == snapshot(extension_class=HTMLSnapshotExtension)
 

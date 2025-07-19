@@ -57,9 +57,21 @@ from tqdm import tqdm
 
 from crossfilter.core.schema import EmbeddingType, SchemaColumns
 from crossfilter.inference.run_umap import run_umap_projection
-from crossfilter.inference.siglip2_embedding_functions import compute_image_embeddings
 
 logger = logging.getLogger(__name__)
+
+
+def _get_compute_image_embeddings_function(embedding_type: EmbeddingType):
+    """Get the appropriate compute_image_embeddings function based on embedding type."""
+    if embedding_type == EmbeddingType.SIGLIP2:
+        from crossfilter.inference.siglip2_embedding_functions import compute_image_embeddings
+        return compute_image_embeddings
+    elif embedding_type == EmbeddingType.FAKE_EMBEDDING_FOR_TESTING:
+        from crossfilter.inference.fake_embedding_functions import compute_image_embeddings
+        return compute_image_embeddings
+    else:
+        raise ValueError(f"Unsupported embedding type: {embedding_type}")
+
 
 app = typer.Typer(help="Compute embeddings for images and store them in SQLite database")
 
@@ -185,10 +197,14 @@ def _compute_embeddings_batch(
     batch_paths: list[Path],
     batch_uuids: list[str],
     write_queue: Queue,
-    batch_size: int
+    batch_size: int,
+    embedding_type: EmbeddingType
 ) -> None:
     """Compute embeddings for a batch of images and enqueue them for writing."""
     try:
+        # Get the appropriate compute_image_embeddings function for the embedding type
+        compute_image_embeddings = _get_compute_image_embeddings_function(embedding_type)
+        
         # Compute embeddings for the batch
         embeddings = compute_image_embeddings(batch_paths, batch_size=batch_size)
 
@@ -248,7 +264,7 @@ def main(
     embedding_type: EmbeddingType = typer.Option(
         EmbeddingType.SIGLIP2,
         "--embedding_type",
-        help="Type of embedding to compute"
+        help="Type of embedding to compute (SIGLIP2 or FAKE_EMBEDDING_FOR_TESTING)"
     ),
     input_dir: Path = typer.Option(
         ...,
@@ -347,7 +363,7 @@ def main(
             logger.info(f"Computing embeddings in {len(batches)} batches")
 
             for batch_paths, batch_uuids in tqdm(batches, desc="Computing embeddings"):
-                _compute_embeddings_batch(batch_paths, batch_uuids, write_queue, batch_size)
+                _compute_embeddings_batch(batch_paths, batch_uuids, write_queue, batch_size, embedding_type)
 
             # Wait for all writes to complete
             logger.info("Waiting for all embeddings to be written to database...")

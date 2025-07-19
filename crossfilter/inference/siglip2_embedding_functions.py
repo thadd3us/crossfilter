@@ -12,7 +12,6 @@ from pathlib import Path
 import numpy as np
 import torch
 from PIL import Image
-from tqdm import tqdm
 from transformers import AutoModel, AutoProcessor
 
 logger = logging.getLogger(__name__)
@@ -86,7 +85,7 @@ def compute_image_embeddings(
     embeddings = []
 
     # Process images in batches
-    for i in tqdm(range(0, len(image_paths), batch_size), desc="Processing image batches"):
+    for i in range(0, len(image_paths), batch_size):
         batch_paths = image_paths[i:i + batch_size]
         batch_images = []
 
@@ -159,7 +158,7 @@ def compute_text_embeddings(
     embeddings = []
 
     # Process captions in batches
-    for i in tqdm(range(0, len(captions), batch_size), desc="Processing text batches"):
+    for i in range(0, len(captions), batch_size):
         batch_captions = captions[i:i + batch_size]
 
         # Process batch through model
@@ -215,7 +214,7 @@ def generate_captions_from_image_embeddings(
 
     captions = []
 
-    for i in tqdm(range(0, len(image_embeddings), batch_size), desc="Generating captions"):
+    for i in range(0, len(image_embeddings), batch_size):
         batch_embeddings = image_embeddings[i:i + batch_size]
 
         # Analyze embedding characteristics to generate descriptive captions

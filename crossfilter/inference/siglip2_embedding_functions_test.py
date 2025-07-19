@@ -9,9 +9,10 @@ import numpy as np
 import pytest
 from syrupy import SnapshotAssertion
 
-# Skip all tests in this file to avoid downloading the SIGLIP2 model
+# Mark all tests in this file as resource intensive to avoid downloading the SIGLIP2 model in regular test runs
 # Use fake_embedding_functions_test.py for fast testing instead
-pytestmark = pytest.mark.skip(reason="Skipping SIGLIP2 tests to avoid model download - use fake_embedding_functions_test.py instead")
+# To run these tests: pytest -m "resource_intensive"
+pytestmark = pytest.mark.resource_intensive
 
 from crossfilter.inference.siglip2_embedding_functions import (
     compute_image_embeddings,

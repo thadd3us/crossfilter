@@ -55,7 +55,7 @@ The application is built around a **projection-based architecture** where multip
 2. **Follow FastAPI Patterns**: Use async/await, proper response models, dependency injection
 3. **Preserve Performance Focus**: Remember this is designed for large datasets (millions of points)
 4. **Use Existing Dependencies**: Pandas, NumPy, H3, Plotly, FastAPI, Typer, Pydantic
-5. **Test Commands**: `uv run --extra dev pytest` for testing
+5. **Test Commands**: `uv run --extra dev pytest -m "not resource_intensive"` for fast testing (skips model downloads)
 6. **THAD TODOs**: If you see any lines marked with `THAD:`, please address the todo-item mentioned on the rest of the line!
 
 
@@ -124,12 +124,15 @@ crossfilter/
 - **Fixtures**: Automated server startup/teardown and browser management
 - **Test Markers**: Use `@pytest.mark.e2e` for frontend tests
 
-#### Running Frontend Tests
+#### Running Tests
 ```bash
 # Install Playwright browsers (first time only)
 uv run --extra dev playwright install
 
-# Run all tests including frontend
+# Run fast tests (skips resource intensive tests like model downloads)
+uv run --extra dev pytest -m "not resource_intensive"
+
+# Run all tests including resource intensive ones
 uv run --extra dev pytest
 
 # Run only frontend tests
@@ -140,6 +143,12 @@ uv run --extra dev pytest -m e2e --headed
 
 # Skip frontend tests
 uv run --extra dev pytest -m "not e2e"
+
+# Run only resource intensive tests (like SIGLIP2 model tests)
+uv run --extra dev pytest -m resource_intensive
+
+# Skip both frontend and resource intensive tests
+uv run --extra dev pytest -m "not e2e and not resource_intensive"
 ```
 
 #### Headless Browser Support
@@ -200,7 +209,10 @@ uv run python -m crossfilter.main serve
 # Or with custom port
 uv run python -m crossfilter.main serve --port 8080
 
-# Run tests
+# Run fast tests (skips resource intensive model downloads)
+uv run --extra dev pytest -m "not resource_intensive"
+
+# Run all tests including resource intensive ones
 uv run --extra dev pytest
 ```
 

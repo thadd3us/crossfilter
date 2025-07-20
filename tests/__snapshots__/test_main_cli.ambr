@@ -2,6 +2,15 @@
 # name: test_cli_server_with_preload_jsonl
   dict({
     'all_rows_count': 100,
+    'clip_embedding_projection': dict({
+      'current_bucketing_column': None,
+      'groupby_column': 'DATA_TYPE',
+      'h3_level': None,
+      'is_aggregated': False,
+      'max_rows': 10000,
+      'projection_rows': 0,
+      'target_column': None,
+    }),
     'columns': list([
       'UUID_STRING',
       'DATA_TYPE',

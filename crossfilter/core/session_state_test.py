@@ -355,19 +355,22 @@ def test_projection_max_rows_updates(sample_df: pd.DataFrame) -> None:
     assert session.temporal_projection.projection_state.max_rows == 5
 
 
-def test_unknown_projection_type(sample_df: pd.DataFrame) -> None:
-    """Test handling of unknown projection types."""
+def test_clip_embedding_projection_type(sample_df: pd.DataFrame) -> None:
+    """Test handling of CLIP embedding projection type."""
     session = SessionState()
     session.load_dataframe(sample_df)
 
-    # Try to apply filter with unknown projection type
+    # Apply filter with CLIP embedding projection type
+    initial_count = len(session.filtered_rows)
     filter_event = FilterEvent(
         ProjectionType.CLIP_EMBEDDING,
         set(range(0, 10)),
         FilterOperatorType.INTERSECTION,
     )
-    with pytest.raises(ValueError, match="Invalid projection type: clip_embedding"):
-        session.apply_filter_event(filter_event)
+    session.apply_filter_event(filter_event)
+    
+    # Should filter to the selected rows (even though CLIP projection has no data)
+    assert len(session.filtered_rows) == 10
 
 
 def test_filter_subtraction_operation(sample_df: pd.DataFrame) -> None:

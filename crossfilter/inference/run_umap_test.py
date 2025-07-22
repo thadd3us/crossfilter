@@ -71,13 +71,13 @@ def test_run_umap_projection_happy_path(snapshot: SnapshotAssertion) -> None:
     run_umap_projection(
         df, 
         embedding_column="FAKE_EMBEDDING_FOR_TESTING_EMBEDDING",
-        output_lat_column=SchemaColumns.FAKE_EMBEDDING_FOR_TESTING_UMAP2D_HAVERSINE_LATITUDE,
-        output_lon_column=SchemaColumns.FAKE_EMBEDDING_FOR_TESTING_UMAP2D_HAVERSINE_LONGITUDE,
+        output_lat_column=SchemaColumns.SEMANTIC_EMBEDDING_UMAP_LATITUDE,
+        output_lon_column=SchemaColumns.SEMANTIC_EMBEDDING_UMAP_LONGITUDE,
         random_state=42
     )
 
     # Plot the results
-    fig = px.scatter(df, y=SchemaColumns.FAKE_EMBEDDING_FOR_TESTING_UMAP2D_HAVERSINE_LATITUDE, x=SchemaColumns.FAKE_EMBEDDING_FOR_TESTING_UMAP2D_HAVERSINE_LONGITUDE, color="TRUE_CLASS")
+    fig = px.scatter(df, y=SchemaColumns.SEMANTIC_EMBEDDING_UMAP_LATITUDE, x=SchemaColumns.SEMANTIC_EMBEDDING_UMAP_LONGITUDE, color="TRUE_CLASS")
     html = fig.to_html(include_plotlyjs="cdn", div_id="test-plot-div")
     assert html == snapshot(extension_class=HTMLSnapshotExtension)
 

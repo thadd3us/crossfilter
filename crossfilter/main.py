@@ -257,8 +257,8 @@ async def get_clip_embedding_plot_data(
 
     # Check if CLIP columns are present in the data
     if (
-        C.CLIP_UMAP_HAVERSINE_LATITUDE not in session_state.all_rows.columns
-        or C.CLIP_UMAP_HAVERSINE_LONGITUDE not in session_state.all_rows.columns
+        C.SEMANTIC_EMBEDDING_UMAP_LATITUDE not in session_state.all_rows.columns
+        or C.SEMANTIC_EMBEDDING_UMAP_LONGITUDE not in session_state.all_rows.columns
     ):
         # Return empty plot when CLIP columns are missing
         import plotly.graph_objects as go

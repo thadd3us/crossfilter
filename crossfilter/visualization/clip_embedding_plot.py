@@ -39,10 +39,10 @@ def create_clip_embedding_plot(
     df_temp = df.copy()
 
     # Map CLIP UMAP coordinates to GPS columns for reuse of geo_plot logic
-    if C.CLIP_UMAP_HAVERSINE_LATITUDE in df_temp.columns:
-        df_temp[C.GPS_LATITUDE] = df_temp[C.CLIP_UMAP_HAVERSINE_LATITUDE]
-    if C.CLIP_UMAP_HAVERSINE_LONGITUDE in df_temp.columns:
-        df_temp[C.GPS_LONGITUDE] = df_temp[C.CLIP_UMAP_HAVERSINE_LONGITUDE]
+    if C.SEMANTIC_EMBEDDING_UMAP_LATITUDE in df_temp.columns:
+        df_temp[C.GPS_LATITUDE] = df_temp[C.SEMANTIC_EMBEDDING_UMAP_LATITUDE]
+    if C.SEMANTIC_EMBEDDING_UMAP_LONGITUDE in df_temp.columns:
+        df_temp[C.GPS_LONGITUDE] = df_temp[C.SEMANTIC_EMBEDDING_UMAP_LONGITUDE]
 
     # Create a temporary geo projection state that matches the clip embedding state
     from crossfilter.core.geo_projection_state import GeoProjectionState

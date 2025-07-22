@@ -146,8 +146,8 @@ def compute_umap_projection(embeddings_df: pd.DataFrame) -> tuple[pd.DataFrame, 
     # Create result DataFrame
     result_df = embeddings_df[[SchemaColumns.UUID_STRING]].copy()
     # Latitude should be -90 to 90, longitude should be -180 to 180.
-    result_df[SchemaColumns.CLIP_UMAP_HAVERSINE_LATITUDE] = umap_embedding[:, 1]
-    result_df[SchemaColumns.CLIP_UMAP_HAVERSINE_LONGITUDE] = umap_embedding[:, 0]
+    result_df[SchemaColumns.SEMANTIC_EMBEDDING_UMAP_LATITUDE] = umap_embedding[:, 1]
+    result_df[SchemaColumns.SEMANTIC_EMBEDDING_UMAP_LONGITUDE] = umap_embedding[:, 0]
 
     logger.info(
         f"UMAP projection completed successfully, {result_df.shape=}, {result_df.columns=}"
@@ -319,8 +319,8 @@ def ingest(
 
         # Add H3 columns for CLIP UMAP coordinates
         if (
-            SchemaColumns.CLIP_UMAP_HAVERSINE_LATITUDE in combined_df.columns
-            and SchemaColumns.CLIP_UMAP_HAVERSINE_LONGITUDE in combined_df.columns
+            SchemaColumns.SEMANTIC_EMBEDDING_UMAP_LATITUDE in combined_df.columns
+            and SchemaColumns.SEMANTIC_EMBEDDING_UMAP_LONGITUDE in combined_df.columns
         ):
             logger.info("Adding H3 spatial index columns for CLIP UMAP coordinates...")
             add_semantic_embedding_umap_h3_bucket_columns(combined_df)
@@ -328,7 +328,7 @@ def ingest(
 
         # Log statistics
         rows_with_clip_embeddings = (
-            combined_df[SchemaColumns.CLIP_UMAP_HAVERSINE_LATITUDE].notna().sum()
+            combined_df[SchemaColumns.SEMANTIC_EMBEDDING_UMAP_LATITUDE].notna().sum()
         )
         logger.info(
             f"Successfully processed {rows_with_clip_embeddings} rows with CLIP embeddings"

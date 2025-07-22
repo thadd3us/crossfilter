@@ -367,15 +367,15 @@ def test_compute_umap_projection(tmp_path: Path) -> None:
     # Check result structure
     assert len(result_df) == 4
     assert SchemaColumns.UUID_STRING in result_df.columns
-    assert SchemaColumns.CLIP_UMAP_HAVERSINE_LATITUDE in result_df.columns
-    assert SchemaColumns.CLIP_UMAP_HAVERSINE_LONGITUDE in result_df.columns
+    assert SchemaColumns.SEMANTIC_EMBEDDING_UMAP_LATITUDE in result_df.columns
+    assert SchemaColumns.SEMANTIC_EMBEDDING_UMAP_LONGITUDE in result_df.columns
 
     # Check that UMAP coordinates are numeric
-    assert result_df[SchemaColumns.CLIP_UMAP_HAVERSINE_LATITUDE].dtype in [
+    assert result_df[SchemaColumns.SEMANTIC_EMBEDDING_UMAP_LATITUDE].dtype in [
         np.float32,
         np.float64,
     ]
-    assert result_df[SchemaColumns.CLIP_UMAP_HAVERSINE_LONGITUDE].dtype in [
+    assert result_df[SchemaColumns.SEMANTIC_EMBEDDING_UMAP_LONGITUDE].dtype in [
         np.float32,
         np.float64,
     ]

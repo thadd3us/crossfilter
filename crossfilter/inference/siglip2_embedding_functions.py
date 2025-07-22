@@ -47,7 +47,7 @@ def _center_crop_to_square(image: Image.Image) -> Image.Image:
 def compute_image_embeddings(
     image_paths: list[Path],
     batch_size: int = 8,
-    model_name: str = "google/siglip-so400m-patch14-384"
+    model_name: str = "google/siglip-so400m-patch14-384",
 ) -> list[np.ndarray]:
     """
     Compute SigLIP2 embeddings for a list of image paths.
@@ -77,16 +77,20 @@ def compute_image_embeddings(
     logger.info(f"Using device: {device}")
 
     # Load model and processor
-    model = AutoModel.from_pretrained(model_name)
-    processor = AutoProcessor.from_pretrained(model_name)
+    model = AutoModel.from_pretrained(model_name, local_files_only=True)
+    # TODO: Use torchvision: SiglipImageProcessorFast requires the Torchvision library but it was not found in your environment.
+    processor = AutoProcessor.from_pretrained(
+        model_name, local_files_only=True, use_fast=False
+    )
     model = model.to(device)
     model.eval()
 
     embeddings = []
 
     # Process images in batches
+    # THAD: TODO: remove the looping logic here -- make this function just for a single batch.
     for i in range(0, len(image_paths), batch_size):
-        batch_paths = image_paths[i:i + batch_size]
+        batch_paths = image_paths[i : i + batch_size]
         batch_images = []
 
         # Load and preprocess images in the batch
@@ -128,7 +132,7 @@ def compute_image_embeddings(
 def compute_text_embeddings(
     captions: list[str],
     batch_size: int = 32,
-    model_name: str = "google/siglip-so400m-patch14-384"
+    model_name: str = "google/siglip-so400m-patch14-384",
 ) -> list[np.ndarray]:
     """
     Compute SigLIP2 embeddings for a list of text captions.
@@ -150,20 +154,23 @@ def compute_text_embeddings(
     logger.info(f"Using device: {device}")
 
     # Load model and processor
-    model = AutoModel.from_pretrained(model_name)
-    processor = AutoProcessor.from_pretrained(model_name)
+    model = AutoModel.from_pretrained(model_name, local_files_only=True)
+    processor = AutoProcessor.from_pretrained(model_name, local_files_only=True)
     model = model.to(device)
     model.eval()
 
     embeddings = []
 
     # Process captions in batches
+    # TODO: THAD: Remove the looping logic here -- make this function just be for one batch.
     for i in range(0, len(captions), batch_size):
-        batch_captions = captions[i:i + batch_size]
+        batch_captions = captions[i : i + batch_size]
 
         # Process batch through model
         with torch.no_grad():
-            inputs = processor(text=batch_captions, return_tensors="pt", padding=True, truncation=True).to(device)
+            inputs = processor(
+                text=batch_captions, return_tensors="pt", padding=True, truncation=True
+            ).to(device)
 
             # Get text embeddings
             outputs = model.get_text_features(**inputs)
@@ -181,9 +188,7 @@ def compute_text_embeddings(
 
 
 def generate_captions_from_image_embeddings(
-    image_embeddings: list[np.ndarray],
-    batch_size: int = 8,
-    max_length: int = 50
+    image_embeddings: list[np.ndarray], batch_size: int = 8, max_length: int = 50
 ) -> list[str]:
     """
     Generate captions from image embeddings.
@@ -215,7 +220,7 @@ def generate_captions_from_image_embeddings(
     captions = []
 
     for i in range(0, len(image_embeddings), batch_size):
-        batch_embeddings = image_embeddings[i:i + batch_size]
+        batch_embeddings = image_embeddings[i : i + batch_size]
 
         # Analyze embedding characteristics to generate descriptive captions
         for embedding in batch_embeddings:
@@ -228,11 +233,15 @@ def generate_captions_from_image_embeddings(
 
             # Generate captions based on embedding characteristics
             if norm > 0.95 and std_val > 0.08:
-                captions.append("A complex image with rich visual details and varied features")
+                captions.append(
+                    "A complex image with rich visual details and varied features"
+                )
             elif norm > 0.9 and mean_val > 0.01:
                 captions.append("A detailed image with prominent visual elements")
             elif std_val > 0.1:
-                captions.append("An image with high contrast and diverse visual content")
+                captions.append(
+                    "An image with high contrast and diverse visual content"
+                )
             elif abs(mean_val) < 0.005 and std_val < 0.05:
                 captions.append("A balanced image with subtle visual features")
             elif max_val > 0.2 or min_val < -0.2:
@@ -242,10 +251,12 @@ def generate_captions_from_image_embeddings(
             else:
                 captions.append("A simple image with basic visual elements")
 
-    logger.warning("Caption generation from embeddings uses heuristic analysis. "
-                  "For production use, consider using original images with a "
-                  "dedicated image-to-text model like BLIP2 or training a "
-                  "specific decoder for SigLIP2 embeddings.")
+    logger.warning(
+        "Caption generation from embeddings uses heuristic analysis. "
+        "For production use, consider using original images with a "
+        "dedicated image-to-text model like BLIP2 or training a "
+        "specific decoder for SigLIP2 embeddings."
+    )
 
     logger.info(f"Generated {len(captions)} captions")
     return captions

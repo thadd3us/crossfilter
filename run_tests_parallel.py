@@ -15,7 +15,7 @@ def main():
     
     # Run the fast tests (excluding resource-intensive and e2e tests)
     cmd = [
-        sys.executable, "-m", "pytest",
+        "uv", "run", "--extra", "dev", "pytest",
         "-m", "not (resource_intensive or e2e)",
         "--tb=short",
         "-v"

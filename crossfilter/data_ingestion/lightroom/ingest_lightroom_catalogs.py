@@ -14,7 +14,7 @@ import typer
 from tqdm import tqdm
 
 from crossfilter.core.bucketing import (
-    add_clip_umap_h3_bucket_columns,
+    add_semantic_embedding_umap_h3_bucket_columns,
     add_geo_h3_bucket_columns,
 )
 from crossfilter.core.schema import SchemaColumns
@@ -323,7 +323,7 @@ def ingest(
             and SchemaColumns.CLIP_UMAP_HAVERSINE_LONGITUDE in combined_df.columns
         ):
             logger.info("Adding H3 spatial index columns for CLIP UMAP coordinates...")
-            add_clip_umap_h3_bucket_columns(combined_df)
+            add_semantic_embedding_umap_h3_bucket_columns(combined_df)
             logger.info(f"Added CLIP UMAP H3 columns to {len(combined_df)} rows")
 
         # Log statistics

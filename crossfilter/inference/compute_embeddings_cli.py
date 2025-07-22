@@ -56,7 +56,8 @@ from sqlalchemy.engine import Engine
 from tqdm import tqdm
 
 from crossfilter.core.schema import (
-    EmbeddingType, 
+    EmbeddingType,
+    EmbeddingsTables,
     SchemaColumns,
 )
 from crossfilter.inference.run_umap import run_umap_projection
@@ -90,27 +91,6 @@ app = typer.Typer(
 msgpack_numpy.patch()
 
 
-def _validate_uuid(uuid_str: str) -> bool:
-    """Validate that a string is a valid UUID."""
-    try:
-        UUID(uuid_str)
-        return True
-    except ValueError:
-        return False
-
-
-def _get_embedding_table_name(embedding_type: EmbeddingType) -> str:
-    """Get the table name for storing embeddings of a specific type."""
-    from crossfilter.core.schema import EmbeddingsTables
-    return EmbeddingsTables.EMBEDDINGS
-
-
-def _get_umap_model_table_name(embedding_type: EmbeddingType) -> str:
-    """Get the table name for storing UMAP model of a specific type."""
-    from crossfilter.core.schema import EmbeddingsTables
-    return EmbeddingsTables.UMAP_MODEL
-
-
 def _create_database_schema(
     engine: Engine, embedding_type: EmbeddingType
 ) -> tuple[Table, Table]:
@@ -119,7 +99,7 @@ def _create_database_schema(
 
     # Create embeddings table
     embeddings_table = Table(
-        _get_embedding_table_name(embedding_type),
+        EmbeddingsTables.EMBEDDINGS,
         metadata,
         Column(SchemaColumns.UUID_STRING, String, primary_key=True),
         Column(SchemaColumns.SEMANTIC_EMBEDDING, LargeBinary, nullable=False),
@@ -127,7 +107,7 @@ def _create_database_schema(
 
     # Create UMAP model table
     umap_model_table = Table(
-        _get_umap_model_table_name(embedding_type),
+        EmbeddingsTables.UMAP_MODEL,
         metadata,
         Column("MODEL", LargeBinary, nullable=False),
     )
@@ -140,7 +120,7 @@ def _create_database_schema(
 
 def _scan_image_files(input_dir: Path) -> dict[str, Path]:
     """Scan input directory for UUID.jpg files and return mapping of UUID -> Path."""
-    logger.info(f"Scanning for UUID.jpg files in {input_dir}")
+    logger.info(f"Scanning for <uuid>.jpg files in {input_dir}")
 
     if not input_dir.exists():
         raise FileNotFoundError(f"Input directory not found: {input_dir}")
@@ -151,6 +131,9 @@ def _scan_image_files(input_dir: Path) -> dict[str, Path]:
     for jpg_path in input_dir.rglob("*.jpg"):
         # Extract UUID from filename (remove .jpg extension)
         uuid_str = jpg_path.stem
+        if uuid_str in uuid_to_path:
+            logger.warning(f"Duplicate UUID found in {input_dir}: {uuid_str=}")
+            continue
         uuid_to_path[uuid_str] = jpg_path
 
     logger.info(f"Found {len(uuid_to_path)=} .jpg files")
@@ -188,13 +171,19 @@ def _write_embeddings_worker(
                 embedding_blob = msgpack.packb(embedding)
 
                 # Use SQLAlchemy upsert for SQLite
-                stmt = insert(embeddings_table).values({
-                    SchemaColumns.UUID_STRING: uuid_str, 
-                    SchemaColumns.SEMANTIC_EMBEDDING: embedding_blob
-                })
+                stmt = insert(embeddings_table).values(
+                    {
+                        SchemaColumns.UUID_STRING: uuid_str,
+                        SchemaColumns.SEMANTIC_EMBEDDING: embedding_blob,
+                    }
+                )
                 stmt = stmt.on_conflict_do_update(
                     index_elements=[embeddings_table.c[SchemaColumns.UUID_STRING]],
-                    set_={embeddings_table.c[SchemaColumns.SEMANTIC_EMBEDDING]: stmt.excluded[SchemaColumns.SEMANTIC_EMBEDDING]},
+                    set_={
+                        embeddings_table.c[
+                            SchemaColumns.SEMANTIC_EMBEDDING
+                        ]: stmt.excluded[SchemaColumns.SEMANTIC_EMBEDDING]
+                    },
                 )
 
                 conn.execute(stmt)
@@ -234,14 +223,15 @@ def _compute_embeddings_batch(
         raise
 
 
-def _load_embeddings_from_db(
-    engine: Engine, embeddings_table: Table
-) -> pd.DataFrame:
+def _load_embeddings_from_db(engine: Engine, embeddings_table: Table) -> pd.DataFrame:
     """Load all embeddings from database into a DataFrame."""
 
     with engine.connect() as conn:
         result = conn.execute(
-            select(embeddings_table.c[SchemaColumns.UUID_STRING], embeddings_table.c[SchemaColumns.SEMANTIC_EMBEDDING])
+            select(
+                embeddings_table.c[SchemaColumns.UUID_STRING],
+                embeddings_table.c[SchemaColumns.SEMANTIC_EMBEDDING],
+            )
         )
         rows = result.fetchall()
 

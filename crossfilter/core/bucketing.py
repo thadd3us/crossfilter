@@ -36,8 +36,8 @@ import pandas as pd
 from crossfilter.core.schema import (
     SchemaColumns,
     TemporalLevel,
-    get_clip_umap_h3_column_name,
     get_h3_column_name,
+    get_semantic_embedding_umap_h3_column_name,
     get_temporal_column_name,
 )
 
@@ -89,7 +89,9 @@ def add_geo_h3_bucket_columns(df: pd.DataFrame) -> None:
 
 def add_semantic_embedding_umap_h3_bucket_columns(df: pd.DataFrame) -> None:
     """Add H3 hexagon columns at multiple resolutions for semantic embedding UMAP coordinates."""
-    logger.info(f"Adding semantic embedding UMAP H3 columns to DataFrame with {len(df)=} rows")
+    logger.info(
+        f"Adding semantic embedding UMAP H3 columns to DataFrame with {len(df)=} rows"
+    )
     for level in H3_LEVELS:
         col_name = get_semantic_embedding_umap_h3_column_name(level)
         df[col_name] = df.apply(
@@ -182,7 +184,9 @@ def get_optimal_h3_level(df: pd.DataFrame, max_rows: int) -> Optional[int]:
     return max(H3_LEVELS)
 
 
-def get_optimal_semantic_embedding_umap_h3_level(df: pd.DataFrame, max_rows: int) -> Optional[int]:
+def get_optimal_semantic_embedding_umap_h3_level(
+    df: pd.DataFrame, max_rows: int
+) -> Optional[int]:
     """
     Returns:
         Optimal semantic embedding UMAP H3 aggregation level, or None if no aggregation is required.
@@ -193,8 +197,9 @@ def get_optimal_semantic_embedding_umap_h3_level(df: pd.DataFrame, max_rows: int
         )
         return None
 
-    # Check if semantic embedding UMAP H3 columns are available  
+    # Check if semantic embedding UMAP H3 columns are available
     from crossfilter.core.schema import get_semantic_embedding_umap_h3_column_name
+
     first_semantic_h3_column = get_semantic_embedding_umap_h3_column_name(H3_LEVELS[0])
     if first_semantic_h3_column not in df.columns:
         logger.warning(

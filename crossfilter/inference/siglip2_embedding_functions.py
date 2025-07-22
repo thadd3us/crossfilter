@@ -4,6 +4,14 @@ SigLIP2 embedding functions for images and text.
 References:
 - SigLIP2 Blog Post: https://huggingface.co/blog/siglip2
 - SigLIP2 Model: https://huggingface.co/google/siglip-so400m-patch14-384
+
+    logger.warning(
+        "Caption generation from embeddings uses heuristic analysis. "
+        "For production use, consider using original images with a "
+        "dedicated image-to-text model like BLIP2 or training a "
+        "specific decoder for SigLIP2 embeddings."
+    )
+
 """
 
 import logging
@@ -46,6 +54,7 @@ def _center_crop_to_square(image: Image.Image) -> Image.Image:
 
 def compute_image_embeddings(
     image_paths: list[Path],
+    # THAD: TODO: remove the looping logic here -- make this function just for a single batch.
     batch_size: int = 8,
     model_name: str = "google/siglip-so400m-patch14-384",
 ) -> list[np.ndarray]:
@@ -88,7 +97,6 @@ def compute_image_embeddings(
     embeddings = []
 
     # Process images in batches
-    # THAD: TODO: remove the looping logic here -- make this function just for a single batch.
     for i in range(0, len(image_paths), batch_size):
         batch_paths = image_paths[i : i + batch_size]
         batch_images = []
@@ -185,78 +193,3 @@ def compute_text_embeddings(
 
     logger.info(f"Computed embeddings for {len(embeddings)} captions")
     return embeddings
-
-
-def generate_captions_from_image_embeddings(
-    image_embeddings: list[np.ndarray], batch_size: int = 8, max_length: int = 50
-) -> list[str]:
-    """
-    Generate captions from image embeddings.
-
-    Note: SigLIP2 is primarily designed for contrastive learning rather than
-    generative captioning. This function provides a placeholder implementation
-    that analyzes embedding characteristics to generate descriptive captions.
-
-    For production use, consider:
-    1. Using the original images with a dedicated image-to-text model (e.g., BLIP2)
-    2. Training a decoder specifically for SigLIP2 embeddings
-    3. Using a multimodal model that supports both embedding and generation
-
-    Args:
-        image_embeddings: List of image embedding vectors from SigLIP2
-        batch_size: Number of embeddings to process in each batch (for consistency)
-        max_length: Maximum length of generated captions (for future use)
-
-    Returns:
-        List of generated caption strings
-    """
-    # Handle empty input
-    if not image_embeddings:
-        logger.info("No embeddings provided, returning empty list")
-        return []
-
-    logger.info(f"Generating captions for {len(image_embeddings)} embeddings")
-
-    captions = []
-
-    for i in range(0, len(image_embeddings), batch_size):
-        batch_embeddings = image_embeddings[i : i + batch_size]
-
-        # Analyze embedding characteristics to generate descriptive captions
-        for embedding in batch_embeddings:
-            # Calculate various embedding statistics
-            norm = np.linalg.norm(embedding)
-            mean_val = np.mean(embedding)
-            std_val = np.std(embedding)
-            max_val = np.max(embedding)
-            min_val = np.min(embedding)
-
-            # Generate captions based on embedding characteristics
-            if norm > 0.95 and std_val > 0.08:
-                captions.append(
-                    "A complex image with rich visual details and varied features"
-                )
-            elif norm > 0.9 and mean_val > 0.01:
-                captions.append("A detailed image with prominent visual elements")
-            elif std_val > 0.1:
-                captions.append(
-                    "An image with high contrast and diverse visual content"
-                )
-            elif abs(mean_val) < 0.005 and std_val < 0.05:
-                captions.append("A balanced image with subtle visual features")
-            elif max_val > 0.2 or min_val < -0.2:
-                captions.append("An image with distinctive visual characteristics")
-            elif norm > 0.8:
-                captions.append("An image with moderate visual complexity")
-            else:
-                captions.append("A simple image with basic visual elements")
-
-    logger.warning(
-        "Caption generation from embeddings uses heuristic analysis. "
-        "For production use, consider using original images with a "
-        "dedicated image-to-text model like BLIP2 or training a "
-        "specific decoder for SigLIP2 embeddings."
-    )
-
-    logger.info(f"Generated {len(captions)} captions")
-    return captions

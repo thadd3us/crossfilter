@@ -66,7 +66,7 @@ def run_and_stream_output(command: list[str], timeout: float) -> subprocess.Pope
 
 
 @pytest.mark.resource_intensive
-def test_compute_embeddings_cli_siglip2_full_workflow(
+def test_compute_embeddings_cli_fake_embeddings(
     source_tree_root: Path, tmp_path: Path, snapshot: SnapshotAssertion
 ) -> None:
     test_photos_dir = source_tree_root / "test_data" / "test_photos"

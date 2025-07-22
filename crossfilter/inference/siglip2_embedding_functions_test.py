@@ -18,7 +18,6 @@ import plotly.express as px
 from crossfilter.inference.siglip2_embedding_functions import (
     compute_image_embeddings,
     compute_text_embeddings,
-    generate_captions_from_image_embeddings,
 )
 from tests.util.syrupy_html_snapshot import HTMLSnapshotExtension
 
@@ -99,35 +98,6 @@ def test_compute_image_and_text_embeddings_match(
     )
 
 
-def test_generate_captions_from_image_embeddings(
-    test_image_paths: list[Path], snapshot: SnapshotAssertion
-) -> None:
-    """Test caption generation from image embeddings."""
-    # First compute image embeddings
-    image_embeddings = compute_image_embeddings(test_image_paths, batch_size=8)
-
-    # Generate captions from embeddings
-    captions = generate_captions_from_image_embeddings(image_embeddings, batch_size=4)
-
-    # Verify we got the expected number of captions
-    assert len(captions) == len(image_embeddings)
-
-    # Verify all captions are strings
-    for i, caption in enumerate(captions):
-        assert isinstance(caption, str), f"Caption {i} is not a string"
-        assert len(caption) > 0, f"Caption {i} is empty"
-
-    # Create snapshot data
-    snapshot_data = {
-        "num_captions": len(captions),
-        "captions": captions,
-        "image_filenames": [path.name for path in test_image_paths],
-        "caption_lengths": [len(caption) for caption in captions],
-    }
-
-    assert snapshot_data == snapshot
-
-
 def test_error_handling_missing_image() -> None:
     """Test error handling for missing image files."""
     missing_path = Path("/nonexistent/image.jpg")
@@ -156,6 +126,20 @@ def test_empty_inputs() -> None:
     text_embeddings = compute_text_embeddings([])
     assert text_embeddings == []
 
-    # Empty embeddings for caption generation
-    captions = generate_captions_from_image_embeddings([])
-    assert captions == []
+    # # Empty embeddings for caption generation
+    # captions = generate_captions_from_image_embeddings([])
+    # assert captions == []
+
+
+# def test_generate_captions_from_image_embeddings(
+#     test_df: pd.DataFrame, snapshot: SnapshotAssertion
+# ) -> None:
+#     """Test caption generation from image embeddings."""
+#     df = test_df
+#     image_embeddings = compute_image_embeddings(
+#         df[C.SOURCE_FILE].to_list(), batch_size=8
+#     )
+#     df["generated_caption"] = generate_captions_from_image_embeddings(
+#         image_embeddings, batch_size=4
+#     )
+#     assert df[["filename", "generated_caption"]].to_dict(orient="records") == snapshot

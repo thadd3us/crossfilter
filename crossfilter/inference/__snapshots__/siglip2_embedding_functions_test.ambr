@@ -289,40 +289,46 @@
   })
 # ---
 # name: test_generate_captions_from_image_embeddings
-  dict({
-    'caption_lengths': list([
-      49,
-      49,
-      53,
-      54,
-      48,
-      49,
-      32,
-      53,
-      48,
-    ]),
-    'captions': list([
-      'An image with varied blue tones like sky or water',
-      'An image with varied blue tones like sky or water',
-      'An image with varied green tones and natural elements',
-      'A colorful image with balanced tones and high contrast',
-      'An image with varied red tones and high contrast',
-      'An image with varied blue tones like sky or water',
-      'An image dominated by red colors',
-      'An image with varied green tones and natural elements',
-      'An image with varied red tones and high contrast',
-    ]),
-    'image_filenames': list([
-      '01_golden_gate_bridge.jpg',
-      '02_earth_from_space.jpg',
-      '03_forest_path.jpg',
-      '04_mountain_view.jpg',
-      '05_city_skyline.jpg',
-      '06_nature_close_up.jpg',
-      '07_street_scene.jpg',
-      '08_abstract_pattern.jpg',
-      '09_urban_details.jpg',
-    ]),
-    'num_captions': 9,
-  })
+  list([
+    dict({
+      'filename': '00_munich_rathaus.jpg',
+      'generated_caption': 'A balanced image with subtle visual features',
+    }),
+    dict({
+      'filename': '01_golden_gate_bridge.jpg',
+      'generated_caption': 'A balanced image with subtle visual features',
+    }),
+    dict({
+      'filename': '02_earth_from_space.jpg',
+      'generated_caption': 'A balanced image with subtle visual features',
+    }),
+    dict({
+      'filename': '03_backlit_man_looking_out.jpg',
+      'generated_caption': 'A balanced image with subtle visual features',
+    }),
+    dict({
+      'filename': '04_mountain_view.jpg',
+      'generated_caption': 'A balanced image with subtle visual features',
+    }),
+    dict({
+      'filename': '05_astronaut_on_moon.jpg',
+      'generated_caption': 'A balanced image with subtle visual features',
+    }),
+    dict({
+      'filename': '06_fireworks_on_blue_sunset.jpg',
+      'generated_caption': 'A balanced image with subtle visual features',
+    }),
+    dict({
+      'filename': '07_paper_bundle_and_pen.jpg',
+      'generated_caption': 'A balanced image with subtle visual features',
+    }),
+    dict({
+      'filename': '08_herman_hesse.jpg',
+      'generated_caption': 'A balanced image with subtle visual features',
+    }),
+    dict({
+      'filename': '09_martin_luther_king_jr.jpg',
+      'generated_caption': 'A balanced image with subtle visual features',
+    }),
+  ])
 # ---

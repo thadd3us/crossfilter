@@ -1,6 +1,7 @@
 """Tests for schema module."""
 
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -262,7 +263,7 @@ def test_df_id_stability(tmp_path: Path) -> None:
     assert list(filtered.index) == [0, 2]
 
 
-@pytest.mark.skipif(sys.platform != "darwin", reason="Data is only on Thad's laptop")
+@pytest.mark.skipif(os.environ.get("THAD_DATA_AVAILAVLE") != "true", reason="Data is only on Thad's laptop")
 def test_thad_load_real_data() -> None:
     df = load_sqlite_to_dataframe(Path("~/data.sqlite").expanduser(), "data")
     assert df[C.UUID_STRING].isna().sum() == 0

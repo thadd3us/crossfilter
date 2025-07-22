@@ -19,6 +19,11 @@ from crossfilter.core.backend_frontend_shared_schema import (
 logger = logging.getLogger(__name__)
 
 
+class EmbeddingsTables(StrEnum):
+    EMBEDDINGS = "EMBEDDINGS"
+    UMAP_MODEL = "UMAP_MODEL"
+
+
 class SchemaColumns(StrEnum):
     """Column names from the DataSchema."""
 
@@ -48,8 +53,12 @@ class SchemaColumns(StrEnum):
     SIGLIP2_UMAP2D_HAVERSINE_LONGITUDE = "SIGLIP2_UMAP2D_HAVERSINE_LONGITUDE"
 
     # Fake embedding UMAP projection coordinates (on a sphere like lat/lon)
-    FAKE_EMBEDDING_FOR_TESTING_UMAP2D_HAVERSINE_LATITUDE = "FAKE_EMBEDDING_FOR_TESTING_UMAP2D_HAVERSINE_LATITUDE"
-    FAKE_EMBEDDING_FOR_TESTING_UMAP2D_HAVERSINE_LONGITUDE = "FAKE_EMBEDDING_FOR_TESTING_UMAP2D_HAVERSINE_LONGITUDE"
+    FAKE_EMBEDDING_FOR_TESTING_UMAP2D_HAVERSINE_LATITUDE = (
+        "FAKE_EMBEDDING_FOR_TESTING_UMAP2D_HAVERSINE_LATITUDE"
+    )
+    FAKE_EMBEDDING_FOR_TESTING_UMAP2D_HAVERSINE_LONGITUDE = (
+        "FAKE_EMBEDDING_FOR_TESTING_UMAP2D_HAVERSINE_LONGITUDE"
+    )
 
 
 class DataType(StrEnum):
@@ -62,6 +71,7 @@ class DataType(StrEnum):
 class EmbeddingType(StrEnum):
     SIGLIP2 = "SIGLIP2"
     FAKE_EMBEDDING_FOR_TESTING = "FAKE_EMBEDDING_FOR_TESTING"
+
 
 class DataSchema(pa.DataFrameModel):
     UUID_STRING: Series[str] = pa.Field(nullable=True)

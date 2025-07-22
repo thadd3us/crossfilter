@@ -15,7 +15,7 @@ python -m crossfilter.inference.compute_embeddings_cli \
 
 How this works:
 * Images are expected to be named as "<uuid>.jpg" in any subdirectory of the input directory.
-* There's a table per embedding type in the output DB.  For example, there's a table called "SIGLIP2_EMBEDDINGS" for the SigLIP2 embeddings.
+* There's a table per embedding type in the output DB.  For example, there's a table called "EMBEDDINGS" for the embeddings.
   * The table's primary key column is the UUID.
   * There's a second column called "EMBEDDING" with a msgpack_numpy encoded 1D numpy array.
 * When the CLI starts, it figures out which "<uuid>.jpg" files are missing embeddings in the table (unless `--recompute_existing_embeddings` is set to `true`).
@@ -26,8 +26,8 @@ How this works:
     * When that finishes, we join the DB write queue and wait for all the embeddings to be written to the DB.
 * UMAP computation:
     * Once all embeddings are computed and written to the DB, if `--reproject_umap_embeddings` is set, the CLI will reproject all the available embeddings to the UMAP space.
-    * The UMAP model is stored into the DB as BLOB in a table called SIGLIP2_UMAP_MODEL, with a single column called MODEL.
-    * The embeddings are are stored in a DB table called {embedding_type}_UMAP_HAVERSINE, with columns UUID (primary key), schema.LATITUDE, schema.LONGITUDE.
+    * The UMAP model is stored into the DB as BLOB in a table called UMAP_MODEL, with a single column called MODEL.
+    * The embeddings are are stored in a DB table called UMAP_HAVERSINE, with columns UUID (primary key), schema.LATITUDE, schema.LONGITUDE.
     * Nice-to-have: we seed the UMAP embedding with existing embeddings, so that they don't move "too much" when new UUIDs are added.
 """
 
@@ -64,16 +64,24 @@ logger = logging.getLogger(__name__)
 def _get_compute_image_embeddings_function(embedding_type: EmbeddingType):
     """Get the appropriate compute_image_embeddings function based on embedding type."""
     if embedding_type == EmbeddingType.SIGLIP2:
-        from crossfilter.inference.siglip2_embedding_functions import compute_image_embeddings
+        from crossfilter.inference.siglip2_embedding_functions import (
+            compute_image_embeddings,
+        )
+
         return compute_image_embeddings
     elif embedding_type == EmbeddingType.FAKE_EMBEDDING_FOR_TESTING:
-        from crossfilter.inference.fake_embedding_functions import compute_image_embeddings
+        from crossfilter.inference.fake_embedding_functions import (
+            compute_image_embeddings,
+        )
+
         return compute_image_embeddings
     else:
         raise ValueError(f"Unsupported embedding type: {embedding_type}")
 
 
-app = typer.Typer(help="Compute embeddings for images and store them in SQLite database")
+app = typer.Typer(
+    help="Compute embeddings for images and store them in SQLite database"
+)
 
 # Enable msgpack_numpy for serialization/deserialization
 msgpack_numpy.patch()
@@ -98,7 +106,9 @@ def _get_umap_model_table_name(embedding_type: EmbeddingType) -> str:
     return f"{embedding_type.value}_UMAP_MODEL"
 
 
-def _create_database_schema(engine: Engine, embedding_type: EmbeddingType) -> tuple[Table, Table]:
+def _create_database_schema(
+    engine: Engine, embedding_type: EmbeddingType
+) -> tuple[Table, Table]:
     """Create database schema and return table objects."""
     metadata = MetaData()
 
@@ -154,7 +164,7 @@ def _write_embeddings_worker(
     write_queue: Queue,
     engine: Engine,
     embeddings_table: Table,
-    stop_event: threading.Event
+    stop_event: threading.Event,
 ) -> None:
     """Worker thread that writes embeddings to database using SQLAlchemy."""
 
@@ -174,12 +184,11 @@ def _write_embeddings_worker(
 
                 # Use SQLAlchemy upsert for SQLite
                 stmt = insert(embeddings_table).values(
-                    UUID=uuid_str,
-                    EMBEDDING=embedding_blob
+                    UUID=uuid_str, EMBEDDING=embedding_blob
                 )
                 stmt = stmt.on_conflict_do_update(
                     index_elements=[embeddings_table.c.UUID],
-                    set_={embeddings_table.c.EMBEDDING: stmt.excluded.EMBEDDING}
+                    set_={embeddings_table.c.EMBEDDING: stmt.excluded.EMBEDDING},
                 )
 
                 conn.execute(stmt)
@@ -189,7 +198,7 @@ def _write_embeddings_worker(
 
             except Exception as e:
                 if not stop_event.is_set():
-                    logger.error(f"Error writing embedding to database: {e}")
+                    logger.exception(f"Error writing embedding to database.")
                 break
 
 
@@ -198,13 +207,15 @@ def _compute_embeddings_batch(
     batch_uuids: list[str],
     write_queue: Queue,
     batch_size: int,
-    embedding_type: EmbeddingType
+    embedding_type: EmbeddingType,
 ) -> None:
     """Compute embeddings for a batch of images and enqueue them for writing."""
     try:
         # Get the appropriate compute_image_embeddings function for the embedding type
-        compute_image_embeddings = _get_compute_image_embeddings_function(embedding_type)
-        
+        compute_image_embeddings = _get_compute_image_embeddings_function(
+            embedding_type
+        )
+
         # Compute embeddings for the batch
         embeddings = compute_image_embeddings(batch_paths, batch_size=batch_size)
 
@@ -217,15 +228,21 @@ def _compute_embeddings_batch(
         raise
 
 
-def _load_embeddings_from_db(engine: Engine, embeddings_table: Table, embedding_type: EmbeddingType) -> pd.DataFrame:
+def _load_embeddings_from_db(
+    engine: Engine, embeddings_table: Table, embedding_type: EmbeddingType
+) -> pd.DataFrame:
     """Load all embeddings from database into a DataFrame."""
 
     with engine.connect() as conn:
-        result = conn.execute(select(embeddings_table.c.UUID, embeddings_table.c.EMBEDDING))
+        result = conn.execute(
+            select(embeddings_table.c.UUID, embeddings_table.c.EMBEDDING)
+        )
         rows = result.fetchall()
 
     if not rows:
-        return pd.DataFrame(columns=[SchemaColumns.UUID_STRING, f"{embedding_type.value}_EMBEDDING"])
+        return pd.DataFrame(
+            columns=[SchemaColumns.UUID_STRING, f"{embedding_type.value}_EMBEDDING"]
+        )
 
     # Deserialize embeddings
     uuids = []
@@ -236,10 +253,12 @@ def _load_embeddings_from_db(engine: Engine, embeddings_table: Table, embedding_
         uuids.append(uuid_str)
         embeddings.append(embedding)
 
-    df = pd.DataFrame({
-        SchemaColumns.UUID_STRING: uuids,
-        f"{embedding_type.value}_EMBEDDING": embeddings
-    })
+    df = pd.DataFrame(
+        {
+            SchemaColumns.UUID_STRING: uuids,
+            f"{embedding_type.value}_EMBEDDING": embeddings,
+        }
+    )
 
     return df
 
@@ -264,33 +283,29 @@ def main(
     embedding_type: EmbeddingType = typer.Option(
         EmbeddingType.SIGLIP2,
         "--embedding_type",
-        help="Type of embedding to compute (SIGLIP2 or FAKE_EMBEDDING_FOR_TESTING)"
+        help="Type of embedding to compute (SIGLIP2 or FAKE_EMBEDDING_FOR_TESTING)",
     ),
     input_dir: Path = typer.Option(
-        ...,
-        "--input_dir",
-        help="Directory containing images named as <uuid>.jpg"
+        ..., "--input_dir", help="Directory containing images named as <uuid>.jpg"
     ),
     output_embeddings_db: Path = typer.Option(
         ...,
         "--output_embeddings_db",
-        help="Path to SQLite database for storing embeddings"
+        help="Path to SQLite database for storing embeddings",
     ),
     batch_size: int = typer.Option(
-        10,
-        "--batch_size",
-        help="Batch size for embedding computation"
+        10, "--batch_size", help="Batch size for embedding computation"
     ),
     recompute_existing_embeddings: bool = typer.Option(
         False,
         "--recompute_existing_embeddings/--no-recompute_existing_embeddings",
-        help="Whether to recompute embeddings that already exist in the database"
+        help="Whether to recompute embeddings that already exist in the database",
     ),
     reproject_umap_embeddings: bool = typer.Option(
         True,
         "--reproject_umap_embeddings/--no-reproject_umap_embeddings",
-        help="Whether to reproject embeddings to UMAP space after computation"
-    )
+        help="Whether to reproject embeddings to UMAP space after computation",
+    ),
 ) -> None:
     """Compute embeddings for images and store them in SQLite database."""
 
@@ -343,7 +358,7 @@ def main(
         batches = []
 
         for i in range(0, len(missing_uuids_list), batch_size):
-            batch_uuids = missing_uuids_list[i:i + batch_size]
+            batch_uuids = missing_uuids_list[i : i + batch_size]
             batch_paths = [uuid_to_path[uuid_str] for uuid_str in batch_uuids]
             batches.append((batch_paths, batch_uuids))
 
@@ -354,7 +369,7 @@ def main(
         # Start database writer thread
         writer_thread = threading.Thread(
             target=_write_embeddings_worker,
-            args=(write_queue, engine, embeddings_table, stop_event)
+            args=(write_queue, engine, embeddings_table, stop_event),
         )
         writer_thread.start()
 
@@ -363,7 +378,9 @@ def main(
             logger.info(f"Computing embeddings in {len(batches)} batches")
 
             for batch_paths, batch_uuids in tqdm(batches, desc="Computing embeddings"):
-                _compute_embeddings_batch(batch_paths, batch_uuids, write_queue, batch_size, embedding_type)
+                _compute_embeddings_batch(
+                    batch_paths, batch_uuids, write_queue, batch_size, embedding_type
+                )
 
             # Wait for all writes to complete
             logger.info("Waiting for all embeddings to be written to database...")
@@ -390,7 +407,7 @@ def main(
                 df,
                 embedding_column=f"{embedding_type.value}_EMBEDDING",
                 output_lat_column=SchemaColumns.SIGLIP2_UMAP2D_HAVERSINE_LATITUDE,
-                output_lon_column=SchemaColumns.SIGLIP2_UMAP2D_HAVERSINE_LONGITUDE
+                output_lon_column=SchemaColumns.SIGLIP2_UMAP2D_HAVERSINE_LONGITUDE,
             )
             # THAD: Also upsert the UMAP embeddings for the images into a table called `{embedding_type}_UMAP_HAVERSINE`,  with columns UUID (primary key), schema.LATITUDE, schema.LONGITUDE.
 

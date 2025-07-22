@@ -99,15 +99,19 @@ def test_compute_embeddings_cli_siglip2_full_workflow(
 
         # Load embeddings table
         embeddings_df = pd.read_sql(f"SELECT * FROM {T.EMBEDDINGS}", conn)
-        assert embeddings_df.columns.tolist() == [C.UUID_STRING, C.SIGLIP2_EMBEDDING]
+        # The database now uses schema constant column names directly
+        assert embeddings_df.columns.tolist() == [C.UUID_STRING, C.SEMANTIC_EMBEDDING]
 
         umap_model_df = pd.read_sql(f"SELECT * FROM {T.UMAP_MODEL}", conn)
         assert len(umap_model_df) == 1, "Should have exactly one UMAP model"
 
-    embeddings_df[C.SIGLIP2_EMBEDDING] = embeddings_df[C.SIGLIP2_EMBEDDING].apply(
+    # Deserialize and round embeddings for consistent testing
+    embeddings_df[C.SEMANTIC_EMBEDDING] = embeddings_df[C.SEMANTIC_EMBEDDING].apply(
         msgpack_numpy.loads
     )
-    embeddings_df[C.SIGLIP2_EMBEDDING] = embeddings_df[C.SIGLIP2_EMBEDDING].apply(
+    embeddings_df[C.SEMANTIC_EMBEDDING] = embeddings_df[C.SEMANTIC_EMBEDDING].apply(
         lambda x: np.round(x, 3)
     )
+    # Sort by UUID for consistent test results
+    embeddings_df = embeddings_df.sort_values(C.UUID_STRING).reset_index(drop=True)
     assert embeddings_df.to_dict(orient="records") == snapshot

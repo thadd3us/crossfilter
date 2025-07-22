@@ -15,8 +15,8 @@ python -m crossfilter.inference.compute_embeddings_cli \
 
 How this works:
 * Images are expected to be named as "<uuid>.jpg" in any subdirectory of the input directory.
-* There's a table per embedding type in the output DB.  For example, there's a table called "EMBEDDINGS" for the embeddings.
-  * The table's primary key column is the UUID.
+* There's a generic "EMBEDDINGS" table in the output DB for all embedding types.
+  * The table's primary key column is "UUID".
   * There's a second column called "EMBEDDING" with a msgpack_numpy encoded 1D numpy array.
 * When the CLI starts, it figures out which "<uuid>.jpg" files are missing embeddings in the table (unless `--recompute_existing_embeddings` is set to `true`).
 * Embedding computation loop:
@@ -55,7 +55,10 @@ from sqlalchemy.dialects.sqlite import insert
 from sqlalchemy.engine import Engine
 from tqdm import tqdm
 
-from crossfilter.core.schema import EmbeddingType, SchemaColumns
+from crossfilter.core.schema import (
+    EmbeddingType, 
+    SchemaColumns,
+)
 from crossfilter.inference.run_umap import run_umap_projection
 
 logger = logging.getLogger(__name__)
@@ -98,12 +101,14 @@ def _validate_uuid(uuid_str: str) -> bool:
 
 def _get_embedding_table_name(embedding_type: EmbeddingType) -> str:
     """Get the table name for storing embeddings of a specific type."""
-    return f"{embedding_type.value}_EMBEDDINGS"
+    from crossfilter.core.schema import EmbeddingsTables
+    return EmbeddingsTables.EMBEDDINGS
 
 
 def _get_umap_model_table_name(embedding_type: EmbeddingType) -> str:
     """Get the table name for storing UMAP model of a specific type."""
-    return f"{embedding_type.value}_UMAP_MODEL"
+    from crossfilter.core.schema import EmbeddingsTables
+    return EmbeddingsTables.UMAP_MODEL
 
 
 def _create_database_schema(
@@ -116,8 +121,8 @@ def _create_database_schema(
     embeddings_table = Table(
         _get_embedding_table_name(embedding_type),
         metadata,
-        Column("UUID", String, primary_key=True),
-        Column("EMBEDDING", LargeBinary, nullable=False),
+        Column(SchemaColumns.UUID_STRING, String, primary_key=True),
+        Column(SchemaColumns.SEMANTIC_EMBEDDING, LargeBinary, nullable=False),
     )
 
     # Create UMAP model table
@@ -156,7 +161,7 @@ def _get_existing_embeddings(engine, embeddings_table: Table) -> set[str]:
     """Get set of UUIDs that already have embeddings in the database."""
     with engine.connect() as conn:
         # Execute query to get all UUIDs
-        result = conn.execute(select(embeddings_table.c.UUID))
+        result = conn.execute(select(embeddings_table.c[SchemaColumns.UUID_STRING]))
         return {row[0] for row in result}
 
 
@@ -183,12 +188,13 @@ def _write_embeddings_worker(
                 embedding_blob = msgpack.packb(embedding)
 
                 # Use SQLAlchemy upsert for SQLite
-                stmt = insert(embeddings_table).values(
-                    UUID=uuid_str, EMBEDDING=embedding_blob
-                )
+                stmt = insert(embeddings_table).values({
+                    SchemaColumns.UUID_STRING: uuid_str, 
+                    SchemaColumns.SEMANTIC_EMBEDDING: embedding_blob
+                })
                 stmt = stmt.on_conflict_do_update(
-                    index_elements=[embeddings_table.c.UUID],
-                    set_={embeddings_table.c.EMBEDDING: stmt.excluded.EMBEDDING},
+                    index_elements=[embeddings_table.c[SchemaColumns.UUID_STRING]],
+                    set_={embeddings_table.c[SchemaColumns.SEMANTIC_EMBEDDING]: stmt.excluded[SchemaColumns.SEMANTIC_EMBEDDING]},
                 )
 
                 conn.execute(stmt)
@@ -229,19 +235,19 @@ def _compute_embeddings_batch(
 
 
 def _load_embeddings_from_db(
-    engine: Engine, embeddings_table: Table, embedding_type: EmbeddingType
+    engine: Engine, embeddings_table: Table
 ) -> pd.DataFrame:
     """Load all embeddings from database into a DataFrame."""
 
     with engine.connect() as conn:
         result = conn.execute(
-            select(embeddings_table.c.UUID, embeddings_table.c.EMBEDDING)
+            select(embeddings_table.c[SchemaColumns.UUID_STRING], embeddings_table.c[SchemaColumns.SEMANTIC_EMBEDDING])
         )
         rows = result.fetchall()
 
     if not rows:
         return pd.DataFrame(
-            columns=[SchemaColumns.UUID_STRING, f"{embedding_type.value}_EMBEDDING"]
+            columns=[SchemaColumns.UUID_STRING, SchemaColumns.SEMANTIC_EMBEDDING]
         )
 
     # Deserialize embeddings
@@ -256,7 +262,7 @@ def _load_embeddings_from_db(
     df = pd.DataFrame(
         {
             SchemaColumns.UUID_STRING: uuids,
-            f"{embedding_type.value}_EMBEDDING": embeddings,
+            SchemaColumns.SEMANTIC_EMBEDDING: embeddings,
         }
     )
 
@@ -395,7 +401,7 @@ def main(
     # Run UMAP projection if requested
     if reproject_umap_embeddings:
         logger.info("Loading embeddings for UMAP projection...")
-        df = _load_embeddings_from_db(engine, embeddings_table, embedding_type)
+        df = _load_embeddings_from_db(engine, embeddings_table)
 
         if len(df) == 0:
             logger.warning("No embeddings found for UMAP projection")
@@ -405,9 +411,9 @@ def main(
             # Run UMAP projection
             umap_model = run_umap_projection(
                 df,
-                embedding_column=f"{embedding_type.value}_EMBEDDING",
-                output_lat_column=SchemaColumns.SIGLIP2_UMAP2D_HAVERSINE_LATITUDE,
-                output_lon_column=SchemaColumns.SIGLIP2_UMAP2D_HAVERSINE_LONGITUDE,
+                embedding_column=SchemaColumns.SEMANTIC_EMBEDDING,
+                output_lat_column=SchemaColumns.SEMANTIC_EMBEDDING_UMAP_LATITUDE,
+                output_lon_column=SchemaColumns.SEMANTIC_EMBEDDING_UMAP_LONGITUDE,
             )
             # THAD: Also upsert the UMAP embeddings for the images into a table called `{embedding_type}_UMAP_HAVERSINE`,  with columns UUID (primary key), schema.LATITUDE, schema.LONGITUDE.
 

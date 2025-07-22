@@ -43,22 +43,12 @@ class SchemaColumns(StrEnum):
     SIZE_IN_BYTES = "SIZE_IN_BYTES"
     COUNT = "COUNT"
 
-    # CLIP embedding UMAP projection coordinates (on a sphere like lat/lon)
-    CLIP_UMAP_HAVERSINE_LATITUDE = "CLIP_UMAP_HAVERSINE_LATITUDE"
-    CLIP_UMAP_HAVERSINE_LONGITUDE = "CLIP_UMAP_HAVERSINE_LONGITUDE"
-
-    # SigLIP2 embedding UMAP projection coordinates (on a sphere like lat/lon)
-    SIGLIP2_EMBEDDING = "SIGLIP2_EMBEDDING"
-    SIGLIP2_UMAP2D_HAVERSINE_LATITUDE = "SIGLIP2_UMAP2D_HAVERSINE_LATITUDE"
-    SIGLIP2_UMAP2D_HAVERSINE_LONGITUDE = "SIGLIP2_UMAP2D_HAVERSINE_LONGITUDE"
-
-    # Fake embedding UMAP projection coordinates (on a sphere like lat/lon)
-    FAKE_EMBEDDING_FOR_TESTING_UMAP2D_HAVERSINE_LATITUDE = (
-        "FAKE_EMBEDDING_FOR_TESTING_UMAP2D_HAVERSINE_LATITUDE"
-    )
-    FAKE_EMBEDDING_FOR_TESTING_UMAP2D_HAVERSINE_LONGITUDE = (
-        "FAKE_EMBEDDING_FOR_TESTING_UMAP2D_HAVERSINE_LONGITUDE"
-    )
+    # Generic semantic embedding column
+    SEMANTIC_EMBEDDING = "SEMANTIC_EMBEDDING"
+    
+    # Generic semantic embedding UMAP projection coordinates (on a sphere like lat/lon)
+    SEMANTIC_EMBEDDING_UMAP_LATITUDE = "SEMANTIC_EMBEDDING_UMAP_LATITUDE"
+    SEMANTIC_EMBEDDING_UMAP_LONGITUDE = "SEMANTIC_EMBEDDING_UMAP_LONGITUDE"
 
 
 class DataType(StrEnum):
@@ -107,16 +97,17 @@ def get_h3_column_name(level: int) -> str:
     return f"BUCKETED_H3_L{level}"
 
 
-def get_clip_umap_h3_column_name(level: int) -> str:
-    """Get the CLIP UMAP H3 column name for a specific level (0-15)."""
+def get_semantic_embedding_umap_h3_column_name(level: int) -> str:
+    """Get the semantic embedding UMAP H3 column name for a specific level (0-15)."""
     if not 0 <= level <= 15:
         raise ValueError(f"H3 level must be between 0 and 15, got {level}")
-    return f"BUCKETED_CLIP_HAVERSINE_UMAP_H3_L{level}"
+    return f"BUCKETED_SEMANTIC_EMBEDDING_UMAP_H3_L{level}"
 
 
 def get_temporal_column_name(level: TemporalLevel) -> str:
     """Get the temporal column name for a specific temporal level."""
     return f"BUCKETED_TIMESTAMP_{level}"
+
 
 
 required_columns = [
@@ -221,12 +212,15 @@ def load_sqlite_to_dataframe(sqlite_db_path: Path, table_name: str) -> pd.DataFr
     df[SchemaColumns.GPS_LATITUDE] = df[SchemaColumns.GPS_LATITUDE].clip(-90, 90)
     df[SchemaColumns.GPS_LONGITUDE] = df[SchemaColumns.GPS_LONGITUDE].clip(-180, 180)
 
-    df[SchemaColumns.CLIP_UMAP_HAVERSINE_LATITUDE] = df[
-        SchemaColumns.CLIP_UMAP_HAVERSINE_LATITUDE
-    ].clip(-90, 90)
-    df[SchemaColumns.CLIP_UMAP_HAVERSINE_LONGITUDE] = df[
-        SchemaColumns.CLIP_UMAP_HAVERSINE_LONGITUDE
-    ].clip(-180, 180)
+    # Clip semantic embedding UMAP coordinates if present
+    if SchemaColumns.SEMANTIC_EMBEDDING_UMAP_LATITUDE in df.columns:
+        df[SchemaColumns.SEMANTIC_EMBEDDING_UMAP_LATITUDE] = df[
+            SchemaColumns.SEMANTIC_EMBEDDING_UMAP_LATITUDE
+        ].clip(-90, 90)
+    if SchemaColumns.SEMANTIC_EMBEDDING_UMAP_LONGITUDE in df.columns:
+        df[SchemaColumns.SEMANTIC_EMBEDDING_UMAP_LONGITUDE] = df[
+            SchemaColumns.SEMANTIC_EMBEDDING_UMAP_LONGITUDE
+        ].clip(-180, 180)
 
     # Validate and coerce only the schema columns
     schema_df = df[required_columns].copy()

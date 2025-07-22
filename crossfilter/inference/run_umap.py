@@ -1,7 +1,7 @@
 """
-UMAP projection functions for SigLIP2 embeddings with spherical output space.
+UMAP projection functions for semantic embeddings with spherical output space.
 
-This module provides functions to run 2D UMAP projections on SigLIP2 embeddings
+This module provides functions to run 2D UMAP projections on semantic embeddings
 using spherical embedding space with Haversine distance in the output metric.
 This produces coordinates that naturally lie on a sphere, perfect for geographic-style
 visualization and analysis.
@@ -21,15 +21,15 @@ logger = logging.getLogger(__name__)
 
 def run_umap_projection(
     df: pd.DataFrame,
-    embedding_column: str = "SIGLIP2_EMBEDDING",
-    output_lat_column: str = SchemaColumns.SIGLIP2_UMAP2D_HAVERSINE_LATITUDE,
-    output_lon_column: str = SchemaColumns.SIGLIP2_UMAP2D_HAVERSINE_LONGITUDE,
+    embedding_column: str = SchemaColumns.SEMANTIC_EMBEDDING,
+    output_lat_column: str = SchemaColumns.SEMANTIC_EMBEDDING_UMAP_LATITUDE,
+    output_lon_column: str = SchemaColumns.SEMANTIC_EMBEDDING_UMAP_LONGITUDE,
     random_state: int = 42,
     n_neighbors: int = 15,
     min_dist: float = 0.1,
 ) -> "umap.UMAP":
     """
-    Run 2D UMAP projection on SigLIP2 embeddings with spherical embedding space.
+    Run 2D UMAP projection on semantic embeddings with spherical embedding space.
 
     This function takes a DataFrame with embedding vectors and applies UMAP
     dimensionality reduction to project them into 2D coordinates on a sphere

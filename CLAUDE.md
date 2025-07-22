@@ -122,33 +122,17 @@ crossfilter/
 - **Headless Support**: Built-in headless browser support for CI/CD environments
 - **Test Location**: End-to-end tests in `tests/test_frontend_e2e.py`
 - **Fixtures**: Automated server startup/teardown and browser management
-- **Test Markers**: Use `@pytest.mark.e2e` for frontend tests
+- **Test Markers**:
+  * Use `@pytest.mark.e2e` for frontend tests
+  * Don't ever run `@pytest.mark.resource_intensive` tests.
 
 #### Running Tests
 ```bash
-# Install Playwright browsers (first time only)
-uv run --extra dev playwright install
+# Run fast tests (skips frontend and resource intensive tests like model downloads)
+uv run --extra dev pytest -m "not (resource_intensive or e2e)"
 
-# Run fast tests (skips resource intensive tests like model downloads)
-uv run --extra dev pytest -m "not resource_intensive"
-
-# Run all tests including resource intensive ones
-uv run --extra dev pytest
-
-# Run only frontend tests
-uv run --extra dev pytest -m e2e
-
-# Run frontend tests with visible browser (for debugging)
-uv run --extra dev pytest -m e2e --headed
-
-# Skip frontend tests
-uv run --extra dev pytest -m "not e2e"
-
-# Run only resource intensive tests (like SIGLIP2 model tests)
-uv run --extra dev pytest -m resource_intensive
-
-# Skip both frontend and resource intensive tests
-uv run --extra dev pytest -m "not e2e and not resource_intensive"
+# Run all reasonable tests, including frontend.
+uv run --extra dev pytest -m "not (resource_intensive)"
 ```
 
 #### Headless Browser Support

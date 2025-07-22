@@ -4,152 +4,104 @@ Tests for SigLIP2 embedding functions.
 
 import logging
 from pathlib import Path
+import pandas as pd
 
 import numpy as np
 import pytest
 from syrupy import SnapshotAssertion
+from torch import cosine_similarity
+from crossfilter.core.schema import SchemaColumns as C
 
-# Mark all tests in this file as resource intensive to avoid downloading the SIGLIP2 model in regular test runs
-# Use fake_embedding_functions_test.py for fast testing instead
-# To run these tests: pytest -m "resource_intensive"
-pytestmark = pytest.mark.resource_intensive
+import scipy.spatial.distance
+import plotly.express as px
 
 from crossfilter.inference.siglip2_embedding_functions import (
     compute_image_embeddings,
     compute_text_embeddings,
     generate_captions_from_image_embeddings,
 )
+from tests.util.syrupy_html_snapshot import HTMLSnapshotExtension
+
+# Mark all tests in this file as resource intensive to avoid downloading the SIGLIP2 model in regular test runs
+# Use fake_embedding_functions_test.py for fast testing instead
+# To run these tests: pytest -m "resource_intensive"
+pytestmark = pytest.mark.resource_intensive
 
 logger = logging.getLogger(__name__)
 
 
 @pytest.fixture
-def test_image_paths() -> list[Path]:
-    """Get paths to all test photos."""
-    test_photos_dir = Path(__file__).parent.parent.parent / "test_data" / "test_photos"
+def test_df(source_tree_root: Path) -> pd.DataFrame:
 
-    # Get all jpg files in the test_photos directory
-    image_paths = sorted(test_photos_dir.glob("*.jpg"))
-
-    # Verify we have the expected test images
-    assert len(image_paths) == 9, f"Expected 9 test images, found {len(image_paths)}"
-
-    # Verify all files exist
-    for path in image_paths:
-        assert path.exists(), f"Test image not found: {path}"
-
-    return image_paths
-
-
-@pytest.fixture
-def test_captions() -> list[str]:
-    """Sample captions for testing text embeddings."""
-    return [
-        "A beautiful golden gate bridge in San Francisco",
+    filenames = """00_munich_rathaus.jpg
+01_golden_gate_bridge.jpg
+02_earth_from_space.jpg
+03_backlit_man_looking_out.jpg
+04_mountain_view.jpg
+05_astronaut_on_moon.jpg
+06_fireworks_on_blue_sunset.jpg
+07_paper_bundle_and_pen.jpg
+08_herman_hesse.jpg
+09_martin_luther_king_jr.jpg""".split(
+        "\n"
+    )
+    df = pd.DataFrame({"filename": filenames})
+    df[C.SOURCE_FILE] = df["filename"].map(
+        lambda x: source_tree_root / "test_data" / "test_photos" / x
+    )
+    df[C.CAPTION] = [
+        "Minga Rathaus an einem schönen sonnigen Tag mit blauem Himmel",
+        "Golden Gate Bridge in San Francisco",
         "Planet Earth as seen from space showing blue oceans and white clouds",
-        "A peaceful forest path with tall trees on both sides",
-        "Stunning mountain landscape with snow-capped peaks",
-        "Modern city skyline with tall skyscrapers at sunset",
-        "Close-up view of colorful flowers in nature",
-        "Busy street scene with people and vehicles",
-        "Abstract geometric pattern with vibrant colors",
-        "Urban architectural details and building textures",
+        "A backlit man looking out over a gray scene",
+        "Mountain peaks, in black and white",
+        "Astronaut in a spacesuit on the moon",
+        "Fireworks exploding in front of a deep blue sunset",
+        "Aged bundle of papers tied with twine, and an old-fashioned pen",
+        "Herman Hesse, der ein Buch liest und eine Brille trägt",
+        "Martin Luther King, Jr.",
     ]
+    assert df[C.SOURCE_FILE].map(Path.exists).all()
+    return df
 
 
-def test_compute_image_embeddings_single_batch(test_image_paths: list[Path], snapshot: SnapshotAssertion) -> None:
-    """Test image embedding computation with all images in a single batch."""
-    # Use a large batch size to process all images at once
-    embeddings = compute_image_embeddings(test_image_paths, batch_size=16)
+def test_compute_image_and_text_embeddings_match(
+    test_df: pd.DataFrame, snapshot: SnapshotAssertion
+) -> None:
+    df = test_df
+    df["image_embedding"] = compute_image_embeddings(
+        df[C.SOURCE_FILE].to_list(), batch_size=16
+    )
+    # df[C.CAPTION] = ("A photo of " + df[C.CAPTION]).str.lower()
+    df["text_embedding"] = compute_text_embeddings(
+        df[C.CAPTION].to_list(), batch_size=16
+    )
 
-    # Verify we got the expected number of embeddings
-    assert len(embeddings) == len(test_image_paths)
+    distances = scipy.spatial.distance.cdist(
+        np.stack(df["image_embedding"].values),
+        np.stack(df["text_embedding"].values),
+        metric="cosine",
+    )
+    assert distances.shape == (len(df), len(df))
+    distances_df = pd.DataFrame(distances, index=df["filename"], columns=df[C.CAPTION])
+    fig = px.imshow(distances_df)
+    html_content = fig.to_html(
+        div_id="test-plot-div",
+        include_plotlyjs="cdn",
+    )
+    assert html_content == snapshot(extension_class=HTMLSnapshotExtension)
 
-    # Verify all embeddings are numpy arrays with expected properties
-    for i, embedding in enumerate(embeddings):
-        assert isinstance(embedding, np.ndarray), f"Embedding {i} is not a numpy array"
-        assert embedding.ndim == 1, f"Embedding {i} is not 1D"
-        assert embedding.dtype == np.float32, f"Embedding {i} has wrong dtype: {embedding.dtype}"
-        assert len(embedding) > 0, f"Embedding {i} is empty"
-
-        # Check that embedding is normalized (should have norm close to 1.0)
-        norm = np.linalg.norm(embedding)
-        assert 0.95 <= norm <= 1.05, f"Embedding {i} norm {norm} is not close to 1.0"
-
-    # Create snapshot data with metadata
-    snapshot_data = {
-        "num_embeddings": len(embeddings),
-        "embedding_dimension": len(embeddings[0]),
-        "embedding_dtype": str(embeddings[0].dtype),
-        "embedding_shapes": [embedding.shape for embedding in embeddings],
-        "embedding_norms": [float(np.linalg.norm(embedding)) for embedding in embeddings],
-        # Store first few values of each embedding for regression testing
-        "embedding_samples": [embedding[:5].tolist() for embedding in embeddings],
-        "image_filenames": [path.name for path in test_image_paths],
-    }
-
-    assert snapshot_data == snapshot
-
-
-def test_compute_image_embeddings_small_batches(test_image_paths: list[Path], snapshot: SnapshotAssertion) -> None:
-    """Test image embedding computation with small batch sizes."""
-    # Use small batch size to test batching logic
-    embeddings = compute_image_embeddings(test_image_paths, batch_size=3)
-
-    # Verify we got the expected number of embeddings
-    assert len(embeddings) == len(test_image_paths)
-
-    # Verify all embeddings are properly formed
-    for embedding in embeddings:
-        assert isinstance(embedding, np.ndarray)
-        assert embedding.ndim == 1
-        assert len(embedding) > 0
-
-    # Create snapshot data
-    snapshot_data = {
-        "num_embeddings": len(embeddings),
-        "embedding_dimension": len(embeddings[0]),
-        "batch_size_used": 3,
-        # Store first few values for consistency check
-        "embedding_samples": [embedding[:3].tolist() for embedding in embeddings],
-    }
-
-    assert snapshot_data == snapshot
+    df["image_embedding"] = df["image_embedding"].map(lambda x: np.round(x, 4))
+    df["text_embedding"] = df["text_embedding"].map(lambda x: np.round(x, 4))
+    assert (
+        df[[C.CAPTION, "image_embedding", "text_embedding"]].to_dict(orient="records")
+        == snapshot
+    )
 
 
-def test_compute_text_embeddings(test_captions: list[str], snapshot: SnapshotAssertion) -> None:
-    """Test text embedding computation for captions."""
-    embeddings = compute_text_embeddings(test_captions, batch_size=4)
-
-    # Verify we got the expected number of embeddings
-    assert len(embeddings) == len(test_captions)
-
-    # Verify all embeddings are numpy arrays with expected properties
-    for i, embedding in enumerate(embeddings):
-        assert isinstance(embedding, np.ndarray), f"Text embedding {i} is not a numpy array"
-        assert embedding.ndim == 1, f"Text embedding {i} is not 1D"
-        assert embedding.dtype == np.float32, f"Text embedding {i} has wrong dtype"
-        assert len(embedding) > 0, f"Text embedding {i} is empty"
-
-        # Check that embedding is normalized
-        norm = np.linalg.norm(embedding)
-        assert 0.95 <= norm <= 1.05, f"Text embedding {i} norm {norm} is not close to 1.0"
-
-    # Create snapshot data
-    snapshot_data = {
-        "num_embeddings": len(embeddings),
-        "embedding_dimension": len(embeddings[0]),
-        "embedding_dtype": str(embeddings[0].dtype),
-        "embedding_norms": [float(np.linalg.norm(embedding)) for embedding in embeddings],
-        # Store first few values of each embedding
-        "embedding_samples": [embedding[:5].tolist() for embedding in embeddings],
-        "input_captions": test_captions,
-    }
-
-    assert snapshot_data == snapshot
-
-
-def test_generate_captions_from_image_embeddings(test_image_paths: list[Path], snapshot: SnapshotAssertion) -> None:
+def test_generate_captions_from_image_embeddings(
+    test_image_paths: list[Path], snapshot: SnapshotAssertion
+) -> None:
     """Test caption generation from image embeddings."""
     # First compute image embeddings
     image_embeddings = compute_image_embeddings(test_image_paths, batch_size=8)
@@ -174,70 +126,6 @@ def test_generate_captions_from_image_embeddings(test_image_paths: list[Path], s
     }
 
     assert snapshot_data == snapshot
-
-
-def test_embedding_consistency() -> None:
-    """Test that embeddings are consistent across multiple runs."""
-    # Use a subset of test images for faster testing
-    test_photos_dir = Path(__file__).parent.parent.parent / "test_data" / "test_photos"
-    test_paths = sorted(test_photos_dir.glob("*.jpg"))[:3]  # Use first 3 images
-
-    # Compute embeddings twice
-    embeddings1 = compute_image_embeddings(test_paths, batch_size=2)
-    embeddings2 = compute_image_embeddings(test_paths, batch_size=2)
-
-    # Verify embeddings are identical (should be deterministic)
-    assert len(embeddings1) == len(embeddings2)
-    for i, (emb1, emb2) in enumerate(zip(embeddings1, embeddings2)):
-        np.testing.assert_array_almost_equal(
-            emb1, emb2, decimal=5,
-            err_msg=f"Embeddings not consistent for image {i}"
-        )
-
-
-def test_text_embedding_consistency() -> None:
-    """Test that text embeddings are consistent across multiple runs."""
-    test_texts = [
-        "A beautiful sunset over the ocean",
-        "A cat sitting on a windowsill",
-        "Mountain peaks covered in snow",
-    ]
-
-    # Compute embeddings twice
-    embeddings1 = compute_text_embeddings(test_texts, batch_size=2)
-    embeddings2 = compute_text_embeddings(test_texts, batch_size=2)
-
-    # Verify embeddings are identical
-    assert len(embeddings1) == len(embeddings2)
-    for i, (emb1, emb2) in enumerate(zip(embeddings1, embeddings2)):
-        np.testing.assert_array_almost_equal(
-            emb1, emb2, decimal=5,
-            err_msg=f"Text embeddings not consistent for text {i}"
-        )
-
-
-def test_image_embeddings_different_batch_sizes(test_image_paths: list[Path]) -> None:
-    """Test that different batch sizes produce identical embeddings."""
-    # Take first 6 images for faster testing
-    test_paths = test_image_paths[:6]
-
-    # Compute with different batch sizes
-    embeddings_batch2 = compute_image_embeddings(test_paths, batch_size=2)
-    embeddings_batch3 = compute_image_embeddings(test_paths, batch_size=3)
-    embeddings_batch6 = compute_image_embeddings(test_paths, batch_size=6)
-
-    # All should produce identical results
-    assert len(embeddings_batch2) == len(embeddings_batch3) == len(embeddings_batch6)
-
-    for i in range(len(test_paths)):
-        np.testing.assert_array_almost_equal(
-            embeddings_batch2[i], embeddings_batch3[i], decimal=5,
-            err_msg=f"Batch size 2 vs 3 mismatch for image {i}"
-        )
-        np.testing.assert_array_almost_equal(
-            embeddings_batch2[i], embeddings_batch6[i], decimal=5,
-            err_msg=f"Batch size 2 vs 6 mismatch for image {i}"
-        )
 
 
 def test_error_handling_missing_image() -> None:

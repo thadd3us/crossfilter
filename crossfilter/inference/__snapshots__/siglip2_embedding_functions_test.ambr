@@ -1,135 +1,108 @@
 # serializer version: 1
+# name: test_compute_image_and_text_embeddings_match.1
+  list([
+    dict({
+      <SchemaColumns.CAPTION: 'CAPTION'>: 'Minga Rathaus an einem schönen sonnigen Tag mit blauem Himmel',
+      'image_embedding': array([-0.0121,  0.0323, -0.0009, ...,  0.0044, -0.0188,  0.0263],
+        dtype=float32),
+      'text_embedding': array([ 0.003 , -0.0031, -0.0023, ..., -0.0297,  0.0304,  0.0128],
+        dtype=float32),
+    }),
+    dict({
+      <SchemaColumns.CAPTION: 'CAPTION'>: 'Golden Gate Bridge in San Francisco',
+      'image_embedding': array([ 0.001 , -0.0249, -0.0043, ...,  0.024 , -0.0127, -0.0014],
+        dtype=float32),
+      'text_embedding': array([-0.0067, -0.0037,  0.0067, ..., -0.008 , -0.0235,  0.022 ],
+        dtype=float32),
+    }),
+    dict({
+      <SchemaColumns.CAPTION: 'CAPTION'>: 'Planet Earth as seen from space showing blue oceans and white clouds',
+      'image_embedding': array([-0.0145, -0.0149,  0.0209, ..., -0.0083,  0.005 , -0.0224],
+        dtype=float32),
+      'text_embedding': array([-0.0181, -0.0192, -0.0018, ..., -0.0317,  0.0031, -0.0114],
+        dtype=float32),
+    }),
+    dict({
+      <SchemaColumns.CAPTION: 'CAPTION'>: 'A backlit man looking out over a gray scene',
+      'image_embedding': array([-0.0219, -0.0269,  0.0191, ..., -0.0164, -0.0151,  0.0034],
+        dtype=float32),
+      'text_embedding': array([-0.0072, -0.0607,  0.0358, ..., -0.0119, -0.0135,  0.0187],
+        dtype=float32),
+    }),
+    dict({
+      <SchemaColumns.CAPTION: 'CAPTION'>: 'Mountain peaks, in black and white',
+      'image_embedding': array([ 0.0061, -0.03  ,  0.0011, ...,  0.0109, -0.0487, -0.0346],
+        dtype=float32),
+      'text_embedding': array([ 0.0044, -0.0075, -0.0011, ...,  0.0058, -0.0168, -0.0021],
+        dtype=float32),
+    }),
+    dict({
+      <SchemaColumns.CAPTION: 'CAPTION'>: 'Astronaut in a spacesuit on the moon',
+      'image_embedding': array([-0.0074,  0.0027, -0.0176, ...,  0.0016,  0.0028, -0.0297],
+        dtype=float32),
+      'text_embedding': array([-0.004 , -0.0229, -0.0037, ..., -0.0109, -0.0165, -0.0003],
+        dtype=float32),
+    }),
+    dict({
+      <SchemaColumns.CAPTION: 'CAPTION'>: 'Fireworks exploding in front of a deep blue sunset',
+      'image_embedding': array([-0.0121, -0.0068, -0.0186, ...,  0.0178, -0.009 , -0.0087],
+        dtype=float32),
+      'text_embedding': array([ 0.0014, -0.018 , -0.01  , ..., -0.0322, -0.0252,  0.0019],
+        dtype=float32),
+    }),
+    dict({
+      <SchemaColumns.CAPTION: 'CAPTION'>: 'Aged bundle of papers tied with twine, and an old-fashioned pen',
+      'image_embedding': array([-0.0144, -0.0071,  0.0233, ...,  0.0262, -0.0058, -0.0424],
+        dtype=float32),
+      'text_embedding': array([-0.0315, -0.0204,  0.0013, ...,  0.0281,  0.0148,  0.019 ],
+        dtype=float32),
+    }),
+    dict({
+      <SchemaColumns.CAPTION: 'CAPTION'>: 'Herman Hesse, der ein Buch liest und eine Brille trägt',
+      'image_embedding': array([-0.0176, -0.0071,  0.002 , ..., -0.0142, -0.0079,  0.0242],
+        dtype=float32),
+      'text_embedding': array([-0.0087, -0.0194,  0.0345, ..., -0.0407, -0.0272, -0.0082],
+        dtype=float32),
+    }),
+    dict({
+      <SchemaColumns.CAPTION: 'CAPTION'>: 'Martin Luther King, Jr.',
+      'image_embedding': array([-0.0188, -0.0077, -0.0097, ...,  0.0225, -0.0199,  0.0203],
+        dtype=float32),
+      'text_embedding': array([-0.0082, -0.0016,  0.0017, ...,  0.0162, -0.0115,  0.0213],
+        dtype=float32),
+    }),
+  ])
+# ---
 # name: test_compute_image_embeddings_single_batch
-  dict({
-    'embedding_dimension': 6,
-    'embedding_dtype': 'float32',
-    'embedding_norms': list([
-      0.9999999403953552,
-      1.0,
-      1.0,
-      1.0,
-      1.0,
-      0.9999999403953552,
-      1.0,
-      1.0,
-      1.0,
-    ]),
-    'embedding_shapes': list([
-      tuple(
-        6,
-      ),
-      tuple(
-        6,
-      ),
-      tuple(
-        6,
-      ),
-      tuple(
-        6,
-      ),
-      tuple(
-        6,
-      ),
-      tuple(
-        6,
-      ),
-      tuple(
-        6,
-      ),
-      tuple(
-        6,
-      ),
-      tuple(
-        6,
-      ),
-    ]),
-    'embedding_values': list([
-      list([
-        0.4825541377067566,
-        0.5013473033905029,
-        0.5116933584213257,
-        0.2700468599796295,
-        0.2948189675807953,
-        0.3067876696586609,
-      ]),
-      list([
-        0.3979630470275879,
-        0.4076855182647705,
-        0.4672101140022278,
-        0.3788158595561981,
-        0.38035187125205994,
-        0.411051869392395,
-      ]),
-      list([
-        0.40621417760849,
-        0.4237518608570099,
-        0.42235177755355835,
-        0.39890703558921814,
-        0.39906004071235657,
-        0.39833104610443115,
-      ]),
-      list([
-        0.4694303870201111,
-        0.4694303870201111,
-        0.4694303870201111,
-        0.3361077904701233,
-        0.3361077904701233,
-        0.3361077904701233,
-      ]),
-      list([
-        0.520820140838623,
-        0.5110766887664795,
-        0.43892204761505127,
-        0.31178703904151917,
-        0.31369560956954956,
-        0.28156420588493347,
-      ]),
-      list([
-        0.3058488965034485,
-        0.25643190741539,
-        0.5879448056221008,
-        0.45111361145973206,
-        0.3998323082923889,
-        0.36283689737319946,
-      ]),
-      list([
-        0.6005426645278931,
-        0.5368449091911316,
-        0.40097934007644653,
-        0.27653586864471436,
-        0.24665617942810059,
-        0.2303265631198883,
-      ]),
-      list([
-        0.4417613744735718,
-        0.44894421100616455,
-        0.4267692267894745,
-        0.4033930003643036,
-        0.38190412521362305,
-        0.3355403542518616,
-      ]),
-      list([
-        0.5120797157287598,
-        0.4622848331928253,
-        0.4283306300640106,
-        0.3522045314311981,
-        0.3466721475124359,
-        0.31043586134910583,
-      ]),
-    ]),
-    'image_filenames': list([
-      '01_golden_gate_bridge.jpg',
-      '02_earth_from_space.jpg',
-      '03_forest_path.jpg',
-      '04_mountain_view.jpg',
-      '05_city_skyline.jpg',
-      '06_nature_close_up.jpg',
-      '07_street_scene.jpg',
-      '08_abstract_pattern.jpg',
-      '09_urban_details.jpg',
-    ]),
-    'num_embeddings': 9,
-  })
+  list([
+    dict({
+      <SchemaColumns.SEMANTIC_EMBEDDING: 'SEMANTIC_EMBEDDING'>: array([ 0.001, -0.025, -0.004, ...,  0.024, -0.013, -0.001], dtype=float32),
+    }),
+    dict({
+      <SchemaColumns.SEMANTIC_EMBEDDING: 'SEMANTIC_EMBEDDING'>: array([-0.014, -0.015,  0.021, ..., -0.008,  0.005, -0.022], dtype=float32),
+    }),
+    dict({
+      <SchemaColumns.SEMANTIC_EMBEDDING: 'SEMANTIC_EMBEDDING'>: array([-0.022, -0.027,  0.019, ..., -0.016, -0.015,  0.003], dtype=float32),
+    }),
+    dict({
+      <SchemaColumns.SEMANTIC_EMBEDDING: 'SEMANTIC_EMBEDDING'>: array([ 0.006, -0.03 ,  0.001, ...,  0.011, -0.049, -0.035], dtype=float32),
+    }),
+    dict({
+      <SchemaColumns.SEMANTIC_EMBEDDING: 'SEMANTIC_EMBEDDING'>: array([ 0.021, -0.005,  0.009, ...,  0.009,  0.002, -0.018], dtype=float32),
+    }),
+    dict({
+      <SchemaColumns.SEMANTIC_EMBEDDING: 'SEMANTIC_EMBEDDING'>: array([-0.012, -0.007, -0.019, ...,  0.018, -0.009, -0.009], dtype=float32),
+    }),
+    dict({
+      <SchemaColumns.SEMANTIC_EMBEDDING: 'SEMANTIC_EMBEDDING'>: array([-0.014, -0.007,  0.023, ...,  0.026, -0.006, -0.042], dtype=float32),
+    }),
+    dict({
+      <SchemaColumns.SEMANTIC_EMBEDDING: 'SEMANTIC_EMBEDDING'>: array([ 0.038,  0.019, -0.008, ..., -0.024, -0.013, -0.004], dtype=float32),
+    }),
+    dict({
+      <SchemaColumns.SEMANTIC_EMBEDDING: 'SEMANTIC_EMBEDDING'>: array([-0.019,  0.022,  0.025, ...,  0.016, -0.001,  0.013], dtype=float32),
+    }),
+  ])
 # ---
 # name: test_compute_image_embeddings_small_batches
   dict({

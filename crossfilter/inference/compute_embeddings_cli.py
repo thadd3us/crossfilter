@@ -201,7 +201,6 @@ def _compute_embeddings_batch(
     batch_paths: list[Path],
     batch_uuids: list[str],
     write_queue: Queue,
-    batch_size: int,
     embedding_type: EmbeddingType,
 ) -> None:
     """Compute embeddings for a batch of images and enqueue them for writing."""
@@ -212,7 +211,7 @@ def _compute_embeddings_batch(
         )
 
         # Compute embeddings for the batch
-        embeddings = compute_image_embeddings(batch_paths, batch_size=batch_size)
+        embeddings = compute_image_embeddings(batch_paths)
 
         # Enqueue each embedding for writing
         for uuid_str, embedding in zip(batch_uuids, embeddings):
@@ -375,7 +374,7 @@ def main(
 
             for batch_paths, batch_uuids in tqdm(batches, desc="Computing embeddings"):
                 _compute_embeddings_batch(
-                    batch_paths, batch_uuids, write_queue, batch_size, embedding_type
+                    batch_paths, batch_uuids, write_queue, embedding_type
                 )
 
             # Wait for all writes to complete

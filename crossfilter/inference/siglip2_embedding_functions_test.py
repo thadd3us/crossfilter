@@ -69,11 +69,11 @@ def test_compute_image_and_text_embeddings_match(
 ) -> None:
     df = test_df
     df["image_embedding"] = compute_image_embeddings(
-        df[C.SOURCE_FILE].to_list(), batch_size=16
+        df[C.SOURCE_FILE].to_list()
     )
     # df[C.CAPTION] = ("A photo of " + df[C.CAPTION]).str.lower()
     df["text_embedding"] = compute_text_embeddings(
-        df[C.CAPTION].to_list(), batch_size=16
+        df[C.CAPTION].to_list()
     )
 
     distances = scipy.spatial.distance.cdist(

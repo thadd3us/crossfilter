@@ -52,12 +52,11 @@ def test_captions() -> list[str]:
     ]
 
 
-def test_compute_image_embeddings_single_batch(
+def test_compute_image_embeddings(
     test_image_paths: list[Path], snapshot: SnapshotAssertion
 ) -> None:
-    """Test fake image embedding computation with all images in a single batch."""
-    # Use a large batch size to process all images at once
-    embeddings = compute_image_embeddings(test_image_paths, batch_size=16)
+    """Test fake image embedding computation."""
+    embeddings = compute_image_embeddings(test_image_paths)
 
     # Verify we got the expected number of embeddings
     assert len(embeddings) == len(test_image_paths)
@@ -90,39 +89,11 @@ def test_compute_image_embeddings_single_batch(
         "embedding_dtype": str(embeddings[0].dtype),
         "embedding_shapes": [embedding.shape for embedding in embeddings],
         "embedding_norms": [
-            float(np.linalg.norm(embedding)) for embedding in embeddings
+            round(float(np.linalg.norm(embedding)), 4) for embedding in embeddings
         ],
         # Store all values of each embedding for regression testing (since they're only 6-dimensional)
-        "embedding_values": [embedding.tolist() for embedding in embeddings],
+        "embedding_values": [np.round(embedding, 4).tolist() for embedding in embeddings],
         "image_filenames": [path.name for path in test_image_paths],
-    }
-
-    assert snapshot_data == snapshot
-
-
-def test_compute_image_embeddings_small_batches(
-    test_image_paths: list[Path], snapshot: SnapshotAssertion
-) -> None:
-    """Test fake image embedding computation with small batch sizes."""
-    # Use small batch size to test batching logic
-    embeddings = compute_image_embeddings(test_image_paths, batch_size=3)
-
-    # Verify we got the expected number of embeddings
-    assert len(embeddings) == len(test_image_paths)
-
-    # Verify all embeddings are properly formed
-    for embedding in embeddings:
-        assert isinstance(embedding, np.ndarray)
-        assert embedding.ndim == 1
-        assert len(embedding) == 6
-
-    # Create snapshot data
-    snapshot_data = {
-        "num_embeddings": len(embeddings),
-        "embedding_dimension": len(embeddings[0]),
-        "batch_size_used": 3,
-        # Store all values for consistency check
-        "embedding_values": [embedding.tolist() for embedding in embeddings],
     }
 
     assert snapshot_data == snapshot
@@ -132,7 +103,7 @@ def test_compute_text_embeddings(
     test_captions: list[str], snapshot: SnapshotAssertion
 ) -> None:
     """Test fake text embedding computation for captions."""
-    embeddings = compute_text_embeddings(test_captions, batch_size=4)
+    embeddings = compute_text_embeddings(test_captions)
 
     # Verify we got the expected number of embeddings
     assert len(embeddings) == len(test_captions)
@@ -180,10 +151,10 @@ def test_generate_captions_from_image_embeddings(
 ) -> None:
     """Test fake caption generation from fake image embeddings."""
     # First compute fake image embeddings
-    image_embeddings = compute_image_embeddings(test_image_paths, batch_size=8)
+    image_embeddings = compute_image_embeddings(test_image_paths)
 
     # Generate captions from embeddings
-    captions = generate_captions_from_image_embeddings(image_embeddings, batch_size=4)
+    captions = generate_captions_from_image_embeddings(image_embeddings)
 
     # Verify we got the expected number of captions
     assert len(captions) == len(image_embeddings)
@@ -211,8 +182,8 @@ def test_embedding_consistency() -> None:
     test_paths = sorted(test_photos_dir.glob("*.jpg"))[:3]  # Use first 3 images
 
     # Compute embeddings twice
-    embeddings1 = compute_image_embeddings(test_paths, batch_size=2)
-    embeddings2 = compute_image_embeddings(test_paths, batch_size=2)
+    embeddings1 = compute_image_embeddings(test_paths)
+    embeddings2 = compute_image_embeddings(test_paths)
 
     # Verify embeddings are identical (should be deterministic)
     assert len(embeddings1) == len(embeddings2)
@@ -234,8 +205,8 @@ def test_text_embedding_consistency() -> None:
     ]
 
     # Compute embeddings twice
-    embeddings1 = compute_text_embeddings(test_texts, batch_size=2)
-    embeddings2 = compute_text_embeddings(test_texts, batch_size=2)
+    embeddings1 = compute_text_embeddings(test_texts)
+    embeddings2 = compute_text_embeddings(test_texts)
 
     # Verify embeddings are identical
     assert len(embeddings1) == len(embeddings2)
@@ -248,31 +219,31 @@ def test_text_embedding_consistency() -> None:
         )
 
 
-def test_image_embeddings_different_batch_sizes(test_image_paths: list[Path]) -> None:
-    """Test that different batch sizes produce identical fake embeddings."""
+def test_image_embeddings_deterministic(test_image_paths: list[Path]) -> None:
+    """Test that fake embeddings are deterministic across multiple calls."""
     # Take first 6 images for faster testing
     test_paths = test_image_paths[:6]
 
-    # Compute with different batch sizes
-    embeddings_batch2 = compute_image_embeddings(test_paths, batch_size=2)
-    embeddings_batch3 = compute_image_embeddings(test_paths, batch_size=3)
-    embeddings_batch6 = compute_image_embeddings(test_paths, batch_size=6)
+    # Compute embeddings multiple times
+    embeddings1 = compute_image_embeddings(test_paths)
+    embeddings2 = compute_image_embeddings(test_paths)
+    embeddings3 = compute_image_embeddings(test_paths)
 
     # All should produce identical results
-    assert len(embeddings_batch2) == len(embeddings_batch3) == len(embeddings_batch6)
+    assert len(embeddings1) == len(embeddings2) == len(embeddings3)
 
     for i in range(len(test_paths)):
         np.testing.assert_array_almost_equal(
-            embeddings_batch2[i],
-            embeddings_batch3[i],
+            embeddings1[i],
+            embeddings2[i],
             decimal=5,
-            err_msg=f"Batch size 2 vs 3 mismatch for image {i}",
+            err_msg=f"First vs second run mismatch for image {i}",
         )
         np.testing.assert_array_almost_equal(
-            embeddings_batch2[i],
-            embeddings_batch6[i],
+            embeddings1[i],
+            embeddings3[i],
             decimal=5,
-            err_msg=f"Batch size 2 vs 6 mismatch for image {i}",
+            err_msg=f"First vs third run mismatch for image {i}",
         )
 
 

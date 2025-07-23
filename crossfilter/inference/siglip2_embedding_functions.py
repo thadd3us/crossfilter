@@ -54,8 +54,6 @@ def _center_crop_to_square(image: Image.Image) -> Image.Image:
 
 def compute_image_embeddings(
     image_paths: list[Path],
-    # THAD: TODO: remove the looping logic here -- make this function just for a single batch.
-    batch_size: int = 8,
     model_name: str = "google/siglip-so400m-patch14-384",
 ) -> list[np.ndarray]:
     """
@@ -67,7 +65,6 @@ def compute_image_embeddings(
 
     Args:
         image_paths: List of paths to image files
-        batch_size: Number of images to process in each batch
         model_name: HuggingFace model identifier for SigLIP2
 
     Returns:
@@ -94,44 +91,38 @@ def compute_image_embeddings(
     model = model.to(device)
     model.eval()
 
-    embeddings = []
+    batch_images = []
 
-    # Process images in batches
-    for i in range(0, len(image_paths), batch_size):
-        batch_paths = image_paths[i : i + batch_size]
-        batch_images = []
+    # Load and preprocess all images
+    for image_path in image_paths:
+        if not image_path.exists():
+            raise FileNotFoundError(f"Image not found: {image_path}")
 
-        # Load and preprocess images in the batch
-        for image_path in batch_paths:
-            if not image_path.exists():
-                raise FileNotFoundError(f"Image not found: {image_path}")
+        try:
+            # Load image and convert to RGB if necessary
+            image = Image.open(image_path).convert("RGB")
 
-            try:
-                # Load image and convert to RGB if necessary
-                image = Image.open(image_path).convert("RGB")
+            # Center crop to square to avoid distortion
+            image = _center_crop_to_square(image)
 
-                # Center crop to square to avoid distortion
-                image = _center_crop_to_square(image)
+            batch_images.append(image)
 
-                batch_images.append(image)
+        except Exception as e:
+            raise ValueError(f"Failed to load image {image_path}: {e}")
 
-            except Exception as e:
-                raise ValueError(f"Failed to load image {image_path}: {e}")
+    # Process all images through model
+    with torch.no_grad():
+        inputs = processor(images=batch_images, return_tensors="pt").to(device)
 
-        # Process batch through model
-        with torch.no_grad():
-            inputs = processor(images=batch_images, return_tensors="pt").to(device)
+        # Get image embeddings
+        outputs = model.get_image_features(**inputs)
 
-            # Get image embeddings
-            outputs = model.get_image_features(**inputs)
+        # Normalize embeddings (SigLIP2 typically uses L2 normalization)
+        embeddings_normalized = torch.nn.functional.normalize(outputs, p=2, dim=1)
 
-            # Normalize embeddings (SigLIP2 typically uses L2 normalization)
-            embeddings_normalized = torch.nn.functional.normalize(outputs, p=2, dim=1)
-
-            # Convert to numpy and add to results
-            batch_embeddings = embeddings_normalized.cpu().numpy()
-            for j in range(len(batch_images)):
-                embeddings.append(batch_embeddings[j])
+        # Convert to numpy and create list of embeddings
+        batch_embeddings = embeddings_normalized.cpu().numpy()
+        embeddings = [batch_embeddings[i] for i in range(len(batch_images))]
 
     logger.info(f"Computed embeddings for {len(embeddings)} images")
     return embeddings
@@ -139,7 +130,6 @@ def compute_image_embeddings(
 
 def compute_text_embeddings(
     captions: list[str],
-    batch_size: int = 32,
     model_name: str = "google/siglip-so400m-patch14-384",
 ) -> list[np.ndarray]:
     """
@@ -147,7 +137,6 @@ def compute_text_embeddings(
 
     Args:
         captions: List of text strings to encode
-        batch_size: Number of captions to process in each batch
         model_name: HuggingFace model identifier for SigLIP2
 
     Returns:
@@ -167,29 +156,21 @@ def compute_text_embeddings(
     model = model.to(device)
     model.eval()
 
-    embeddings = []
+    # Process all captions through model
+    with torch.no_grad():
+        inputs = processor(
+            text=captions, return_tensors="pt", padding=True, truncation=True
+        ).to(device)
 
-    # Process captions in batches
-    # TODO: THAD: Remove the looping logic here -- make this function just be for one batch.
-    for i in range(0, len(captions), batch_size):
-        batch_captions = captions[i : i + batch_size]
+        # Get text embeddings
+        outputs = model.get_text_features(**inputs)
 
-        # Process batch through model
-        with torch.no_grad():
-            inputs = processor(
-                text=batch_captions, return_tensors="pt", padding=True, truncation=True
-            ).to(device)
+        # Normalize embeddings (SigLIP2 typically uses L2 normalization)
+        embeddings_normalized = torch.nn.functional.normalize(outputs, p=2, dim=1)
 
-            # Get text embeddings
-            outputs = model.get_text_features(**inputs)
-
-            # Normalize embeddings (SigLIP2 typically uses L2 normalization)
-            embeddings_normalized = torch.nn.functional.normalize(outputs, p=2, dim=1)
-
-            # Convert to numpy and add to results
-            batch_embeddings = embeddings_normalized.cpu().numpy()
-            for j in range(len(batch_captions)):
-                embeddings.append(batch_embeddings[j])
+        # Convert to numpy and create list of embeddings
+        batch_embeddings = embeddings_normalized.cpu().numpy()
+        embeddings = [batch_embeddings[i] for i in range(len(captions))]
 
     logger.info(f"Computed embeddings for {len(embeddings)} captions")
     return embeddings

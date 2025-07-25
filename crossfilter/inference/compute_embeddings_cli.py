@@ -65,20 +65,20 @@ from crossfilter.inference.run_umap import run_umap_projection
 logger = logging.getLogger(__name__)
 
 
-def _get_compute_image_embeddings_function(embedding_type: EmbeddingType):
-    """Get the appropriate compute_image_embeddings function based on embedding type."""
+def _get_embedder_instance(embedding_type: EmbeddingType):
+    """Get the appropriate embedder instance based on embedding type."""
     if embedding_type == EmbeddingType.SIGLIP2:
         from crossfilter.inference.siglip2_embedding_functions import (
-            compute_image_embeddings,
+            SigLIP2Embedder,
         )
 
-        return compute_image_embeddings
+        return SigLIP2Embedder()
     elif embedding_type == EmbeddingType.FAKE_EMBEDDING_FOR_TESTING:
         from crossfilter.inference.fake_embedding_functions import (
-            compute_image_embeddings,
+            FakeEmbedder,
         )
 
-        return compute_image_embeddings
+        return FakeEmbedder()
     else:
         raise ValueError(f"Unsupported embedding type: {embedding_type}")
 
@@ -201,17 +201,12 @@ def _compute_embeddings_batch(
     batch_paths: list[Path],
     batch_uuids: list[str],
     write_queue: Queue,
-    embedding_type: EmbeddingType,
+    embedder,
 ) -> None:
     """Compute embeddings for a batch of images and enqueue them for writing."""
     try:
-        # Get the appropriate compute_image_embeddings function for the embedding type
-        compute_image_embeddings = _get_compute_image_embeddings_function(
-            embedding_type
-        )
-
-        # Compute embeddings for the batch
-        embeddings = compute_image_embeddings(batch_paths)
+        # Compute embeddings for the batch using the embedder instance
+        embeddings = embedder.compute_image_embeddings(batch_paths)
 
         # Enqueue each embedding for writing
         for uuid_str, embedding in zip(batch_uuids, embeddings):
@@ -348,6 +343,10 @@ def main(
     if not missing_uuids:
         logger.info("No embeddings need to be computed")
     else:
+        # Create embedder instance once (efficient model loading)
+        logger.info(f"Initializing embedder for {embedding_type}")
+        embedder = _get_embedder_instance(embedding_type)
+
         # Prepare batches for computation
         missing_uuids_list = list(missing_uuids)
         batches = []
@@ -374,7 +373,7 @@ def main(
 
             for batch_paths, batch_uuids in tqdm(batches, desc="Computing embeddings"):
                 _compute_embeddings_batch(
-                    batch_paths, batch_uuids, write_queue, embedding_type
+                    batch_paths, batch_uuids, write_queue, embedder
                 )
 
             # Wait for all writes to complete

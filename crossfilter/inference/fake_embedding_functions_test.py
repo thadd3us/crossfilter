@@ -136,10 +136,13 @@ def test_compute_text_embeddings(
         "embedding_dimension": len(embeddings[0]),
         "embedding_dtype": str(embeddings[0].dtype),
         "embedding_norms": [
-            float(np.linalg.norm(embedding)) for embedding in embeddings
+            round(float(np.linalg.norm(embedding)), 4) for embedding in embeddings
         ],
         # Store all values of each embedding
-        "embedding_values": [embedding.tolist() for embedding in embeddings],
+        "embedding_values": [
+            [round(float(val), 4) for val in embedding.tolist()]
+            for embedding in embeddings
+        ],
         "input_captions": test_captions,
     }
 

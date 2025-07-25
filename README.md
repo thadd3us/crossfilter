@@ -106,11 +106,9 @@ uv run --extra dev pytest -m resource_intensive
 # Skip frontend tests (useful for CI without browser dependencies)
 uv run --extra dev pytest -m "not e2e"
 
-# Profile tests with py-spy (generates HTML flame graph)
-uv run --extra dev py-spy record -o profile.html -- pytest -m "not resource_intensive"
 
 # Disable pytest-xdist for more focused profiling (if needed)
-uv run --extra dev py-spy record -o profile.html -- pytest -m "not resource_intensive" -n0
+uv run --extra dev py-spy record -o profile.html -- pytest -m "not (resource_intensive or e2e)" -n0
 ```
 
 ### Project Structure

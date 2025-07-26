@@ -140,10 +140,11 @@ def _scan_image_files(input_dir: Path) -> dict[str, Path]:
     return uuid_to_path
 
 
-def _get_existing_embeddings(engine, embeddings_table: Table) -> set[str]:
+def _get_existing_embeddings(engine: Engine, embeddings_table: Table) -> set[str]:
     """Get set of UUIDs that already have embeddings in the database."""
     with engine.connect() as conn:
         # Execute query to get all UUIDs
+        # THAD: TODO: Use pd.read_sql here.
         result = conn.execute(select(embeddings_table.c[SchemaColumns.UUID_STRING]))
         return {row[0] for row in result}
 
@@ -160,6 +161,8 @@ def _write_embeddings_worker(
         while not stop_event.is_set() or not write_queue.empty():
             try:
                 # Get item from queue with timeout
+                # THAD: TODO: Pull everything out of the queue, insert in batch.
+                # THAD: TODO: There's a bug here -- if this times out, the writer thread will stop.
                 item = write_queue.get(timeout=0.1)
 
                 if item is None:  # Sentinel value to stop
@@ -221,6 +224,7 @@ def _load_embeddings_from_db(engine: Engine, embeddings_table: Table) -> pd.Data
     """Load all embeddings from database into a DataFrame."""
 
     with engine.connect() as conn:
+        # THAD: TODO: Use pd.read_sql here, and map operations on the columns to unpack.
         result = conn.execute(
             select(
                 embeddings_table.c[SchemaColumns.UUID_STRING],
@@ -391,8 +395,8 @@ def main(
         logger.info("Loading embeddings for UMAP projection...")
         df = _load_embeddings_from_db(engine, embeddings_table)
 
-        if len(df) == 0:
-            logger.warning("No embeddings found for UMAP projection")
+        if len(df) < 20:
+            logger.warning("Two few embeddings found for UMAP projection.")
         else:
             logger.info(f"Running UMAP projection on {len(df)} embeddings...")
 

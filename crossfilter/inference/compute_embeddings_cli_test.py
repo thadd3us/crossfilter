@@ -65,7 +65,6 @@ def run_and_stream_output(command: list[str], timeout: float) -> subprocess.Pope
     return process
 
 
-@pytest.mark.resource_intensive
 def test_compute_embeddings_cli_fake_embeddings(
     source_tree_root: Path, tmp_path: Path, snapshot: SnapshotAssertion
 ) -> None:

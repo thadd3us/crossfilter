@@ -22,6 +22,8 @@ import torch
 from PIL import Image
 from transformers import AutoModel, AutoProcessor
 
+from crossfilter.inference.embedding_interface import EmbeddingInterface
+
 logger = logging.getLogger(__name__)
 
 
@@ -52,80 +54,138 @@ def _center_crop_to_square(image: Image.Image) -> Image.Image:
     return image.crop((left, top, right, bottom))
 
 
+class SigLIP2Embedder(EmbeddingInterface):
+    """SigLIP2-based embedding computation class."""
+
+    def __init__(self, model_name: str = "google/siglip-so400m-patch14-384"):
+        """
+        Initialize the SigLIP2 embedder with model loading.
+
+        Args:
+            model_name: HuggingFace model identifier for SigLIP2
+        """
+        self.model_name = model_name
+        self.device = _get_device()
+        logger.info(f"Initializing SigLIP2Embedder with model {model_name} on device: {self.device}")
+
+        # Load model and processor
+        self.model = AutoModel.from_pretrained(model_name, local_files_only=True)
+        # TODO: Use torchvision: SiglipImageProcessorFast requires the Torchvision library but it was not found in your environment.
+        self.processor = AutoProcessor.from_pretrained(
+            model_name, local_files_only=True, use_fast=False
+        )
+        self.model = self.model.to(self.device)
+        self.model.eval()
+
+        logger.info("SigLIP2Embedder initialized successfully")
+
+    def compute_image_embeddings(self, image_paths: list[Path]) -> list[np.ndarray]:
+        """
+        Compute SigLIP2 embeddings for a list of image paths.
+
+        The function handles images of any size or aspect ratio by finding the largest
+        square region that can be extracted without distortion, then resizing that
+        region to the model's expected input size.
+
+        Args:
+            image_paths: List of paths to image files
+
+        Returns:
+            List of 1D numpy arrays, one embedding vector per input image
+
+        Raises:
+            FileNotFoundError: If any image path doesn't exist
+            ValueError: If any image cannot be loaded
+        """
+        # Handle empty input
+        if not image_paths:
+            logger.info("No images provided, returning empty list")
+            return []
+
+        batch_images = []
+
+        # Load and preprocess all images
+        for image_path in image_paths:
+            if not image_path.exists():
+                raise FileNotFoundError(f"Image not found: {image_path}")
+
+            try:
+                # Load image and convert to RGB if necessary
+                image = Image.open(image_path).convert("RGB")
+
+                # Center crop to square to avoid distortion
+                image = _center_crop_to_square(image)
+
+                batch_images.append(image)
+
+            except Exception as e:
+                raise ValueError(f"Failed to load image {image_path}: {e}")
+
+        # Process all images through model
+        with torch.no_grad():
+            inputs = self.processor(images=batch_images, return_tensors="pt").to(self.device)
+
+            # Get image embeddings
+            outputs = self.model.get_image_features(**inputs)
+
+            # Normalize embeddings (SigLIP2 typically uses L2 normalization)
+            embeddings_normalized = torch.nn.functional.normalize(outputs, p=2, dim=1)
+
+            # Convert to numpy and create list of embeddings
+            batch_embeddings = embeddings_normalized.cpu().numpy()
+            embeddings = [batch_embeddings[i] for i in range(len(batch_images))]
+
+        logger.info(f"Computed embeddings for {len(embeddings)} images")
+        return embeddings
+
+    def compute_text_embeddings(self, captions: list[str]) -> list[np.ndarray]:
+        """
+        Compute SigLIP2 embeddings for a list of text captions.
+
+        Args:
+            captions: List of text strings to encode
+
+        Returns:
+            List of 1D numpy arrays, one embedding vector per input caption
+        """
+        # Handle empty input
+        if not captions:
+            logger.info("No captions provided, returning empty list")
+            return []
+
+        # Process all captions through model
+        with torch.no_grad():
+            inputs = self.processor(
+                text=captions, return_tensors="pt", padding=True, truncation=True
+            ).to(self.device)
+
+            # Get text embeddings
+            outputs = self.model.get_text_features(**inputs)
+
+            # Normalize embeddings (SigLIP2 typically uses L2 normalization)
+            embeddings_normalized = torch.nn.functional.normalize(outputs, p=2, dim=1)
+
+            # Convert to numpy and create list of embeddings
+            batch_embeddings = embeddings_normalized.cpu().numpy()
+            embeddings = [batch_embeddings[i] for i in range(len(captions))]
+
+        logger.info(f"Computed embeddings for {len(embeddings)} captions")
+        return embeddings
+
+
+# Backward compatibility functions that delegate to the class
 def compute_image_embeddings(
     image_paths: list[Path],
     model_name: str = "google/siglip-so400m-patch14-384",
 ) -> list[np.ndarray]:
     """
-    Compute SigLIP2 embeddings for a list of image paths.
-
-    The function handles images of any size or aspect ratio by finding the largest
-    square region that can be extracted without distortion, then resizing that
-    region to the model's expected input size.
-
-    Args:
-        image_paths: List of paths to image files
-        model_name: HuggingFace model identifier for SigLIP2
-
-    Returns:
-        List of 1D numpy arrays, one embedding vector per input image
-
-    Raises:
-        FileNotFoundError: If any image path doesn't exist
-        ValueError: If any image cannot be loaded
+    Backward compatibility function for compute_image_embeddings.
+    
+    Note: This function creates a new embedder instance each time, which is inefficient.
+    Consider using SigLIP2Embedder class directly for better performance.
     """
-    # Handle empty input
-    if not image_paths:
-        logger.info("No images provided, returning empty list")
-        return []
-
-    device = _get_device()
-    logger.info(f"Using device: {device}")
-
-    # Load model and processor
-    model = AutoModel.from_pretrained(model_name, local_files_only=True)
-    # TODO: Use torchvision: SiglipImageProcessorFast requires the Torchvision library but it was not found in your environment.
-    processor = AutoProcessor.from_pretrained(
-        model_name, local_files_only=True, use_fast=False
-    )
-    model = model.to(device)
-    model.eval()
-
-    batch_images = []
-
-    # Load and preprocess all images
-    for image_path in image_paths:
-        if not image_path.exists():
-            raise FileNotFoundError(f"Image not found: {image_path}")
-
-        try:
-            # Load image and convert to RGB if necessary
-            image = Image.open(image_path).convert("RGB")
-
-            # Center crop to square to avoid distortion
-            image = _center_crop_to_square(image)
-
-            batch_images.append(image)
-
-        except Exception as e:
-            raise ValueError(f"Failed to load image {image_path}: {e}")
-
-    # Process all images through model
-    with torch.no_grad():
-        inputs = processor(images=batch_images, return_tensors="pt").to(device)
-
-        # Get image embeddings
-        outputs = model.get_image_features(**inputs)
-
-        # Normalize embeddings (SigLIP2 typically uses L2 normalization)
-        embeddings_normalized = torch.nn.functional.normalize(outputs, p=2, dim=1)
-
-        # Convert to numpy and create list of embeddings
-        batch_embeddings = embeddings_normalized.cpu().numpy()
-        embeddings = [batch_embeddings[i] for i in range(len(batch_images))]
-
-    logger.info(f"Computed embeddings for {len(embeddings)} images")
-    return embeddings
+    embedder = SigLIP2Embedder(model_name)
+    return embedder.compute_image_embeddings(image_paths)
 
 
 def compute_text_embeddings(
@@ -133,44 +193,10 @@ def compute_text_embeddings(
     model_name: str = "google/siglip-so400m-patch14-384",
 ) -> list[np.ndarray]:
     """
-    Compute SigLIP2 embeddings for a list of text captions.
-
-    Args:
-        captions: List of text strings to encode
-        model_name: HuggingFace model identifier for SigLIP2
-
-    Returns:
-        List of 1D numpy arrays, one embedding vector per input caption
+    Backward compatibility function for compute_text_embeddings.
+    
+    Note: This function creates a new embedder instance each time, which is inefficient.
+    Consider using SigLIP2Embedder class directly for better performance.
     """
-    # Handle empty input
-    if not captions:
-        logger.info("No captions provided, returning empty list")
-        return []
-
-    device = _get_device()
-    logger.info(f"Using device: {device}")
-
-    # Load model and processor
-    model = AutoModel.from_pretrained(model_name, local_files_only=True)
-    processor = AutoProcessor.from_pretrained(model_name, local_files_only=True)
-    model = model.to(device)
-    model.eval()
-
-    # Process all captions through model
-    with torch.no_grad():
-        inputs = processor(
-            text=captions, return_tensors="pt", padding=True, truncation=True
-        ).to(device)
-
-        # Get text embeddings
-        outputs = model.get_text_features(**inputs)
-
-        # Normalize embeddings (SigLIP2 typically uses L2 normalization)
-        embeddings_normalized = torch.nn.functional.normalize(outputs, p=2, dim=1)
-
-        # Convert to numpy and create list of embeddings
-        batch_embeddings = embeddings_normalized.cpu().numpy()
-        embeddings = [batch_embeddings[i] for i in range(len(captions))]
-
-    logger.info(f"Computed embeddings for {len(embeddings)} captions")
-    return embeddings
+    embedder = SigLIP2Embedder(model_name)
+    return embedder.compute_text_embeddings(captions)

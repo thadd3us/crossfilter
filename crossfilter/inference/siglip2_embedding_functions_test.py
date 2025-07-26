@@ -54,7 +54,7 @@ def test_df(source_tree_root: Path) -> pd.DataFrame:
         "Planet Earth as seen from space showing blue oceans and white clouds",
         "A backlit man looking out over a gray scene",
         "Mountain peaks, in black and white",
-        "Astronaut in a spacesuit on the moon",
+        "Astronaut in a spacesuit on the gray lunar surface",
         "Fireworks exploding in front of a deep blue sunset",
         "Aged bundle of papers tied with twine, and an old-fashioned pen",
         "Herman Hesse, der ein Buch liest und eine Brille trägt",
@@ -68,13 +68,9 @@ def test_compute_image_and_text_embeddings_match(
     test_df: pd.DataFrame, snapshot: SnapshotAssertion
 ) -> None:
     df = test_df
-    df["image_embedding"] = compute_image_embeddings(
-        df[C.SOURCE_FILE].to_list()
-    )
+    df["image_embedding"] = compute_image_embeddings(df[C.SOURCE_FILE].to_list())
     # df[C.CAPTION] = ("A photo of " + df[C.CAPTION]).str.lower()
-    df["text_embedding"] = compute_text_embeddings(
-        df[C.CAPTION].to_list()
-    )
+    df["text_embedding"] = compute_text_embeddings(df[C.CAPTION].to_list())
 
     distances = scipy.spatial.distance.cdist(
         np.stack(df["image_embedding"].values),

@@ -37,10 +37,10 @@
         dtype=float32),
     }),
     dict({
-      <SchemaColumns.CAPTION: 'CAPTION'>: 'Astronaut in a spacesuit on the moon',
+      <SchemaColumns.CAPTION: 'CAPTION'>: 'Astronaut in a spacesuit on the gray lunar surface',
       'image_embedding': array([-0.0074,  0.0027, -0.0176, ...,  0.0016,  0.0028, -0.0297],
         dtype=float32),
-      'text_embedding': array([-0.004 , -0.0229, -0.0037, ..., -0.0109, -0.0165, -0.0003],
+      'text_embedding': array([ 0.0067, -0.0282,  0.0049, ..., -0.0154, -0.0058,  0.0058],
         dtype=float32),
     }),
     dict({

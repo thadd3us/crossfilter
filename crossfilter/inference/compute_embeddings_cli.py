@@ -99,7 +99,7 @@ def _create_database_schema(
 
     # Create embeddings table
     embeddings_table = Table(
-        EmbeddingsTables.EMBEDDINGS,
+        EmbeddingsTables.IMAGE_EMBEDDINGS,
         metadata,
         Column(SchemaColumns.UUID_STRING, String, primary_key=True),
         Column(SchemaColumns.SEMANTIC_EMBEDDING, LargeBinary, nullable=False),

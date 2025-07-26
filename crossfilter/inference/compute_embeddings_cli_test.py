@@ -94,11 +94,11 @@ def test_compute_embeddings_cli_fake_embeddings(
         tables = pd.read_sql("SELECT name FROM sqlite_master WHERE type='table'", conn)
         actual_tables = sorted(tables["name"])
         T = schema.EmbeddingsTables
-        expected_tables = sorted({T.EMBEDDINGS, T.UMAP_MODEL})
+        expected_tables = sorted({T.IMAGE_EMBEDDINGS, T.UMAP_MODEL})
         assert actual_tables == expected_tables
 
         # Load embeddings table
-        embeddings_df = pd.read_sql(f"SELECT * FROM {T.EMBEDDINGS}", conn)
+        embeddings_df = pd.read_sql(f"SELECT * FROM {T.IMAGE_EMBEDDINGS}", conn)
         # The database now uses schema constant column names directly
         assert embeddings_df.columns.tolist() == [C.UUID_STRING, C.SEMANTIC_EMBEDDING]
 

@@ -20,8 +20,9 @@ logger = logging.getLogger(__name__)
 
 
 class EmbeddingsTables(StrEnum):
-    EMBEDDINGS = "EMBEDDINGS"
+    IMAGE_EMBEDDINGS = "IMAGE_EMBEDDINGS"
     UMAP_MODEL = "UMAP_MODEL"
+    # TODO: text emeddings
 
 
 class SchemaColumns(StrEnum):
@@ -45,7 +46,7 @@ class SchemaColumns(StrEnum):
 
     # Generic semantic embedding column
     SEMANTIC_EMBEDDING = "SEMANTIC_EMBEDDING"
-    
+
     # Generic semantic embedding UMAP projection coordinates (on a sphere like lat/lon)
     SEMANTIC_EMBEDDING_UMAP_LATITUDE = "SEMANTIC_EMBEDDING_UMAP_LATITUDE"
     SEMANTIC_EMBEDDING_UMAP_LONGITUDE = "SEMANTIC_EMBEDDING_UMAP_LONGITUDE"
@@ -107,7 +108,6 @@ def get_semantic_embedding_umap_h3_column_name(level: int) -> str:
 def get_temporal_column_name(level: TemporalLevel) -> str:
     """Get the temporal column name for a specific temporal level."""
     return f"BUCKETED_TIMESTAMP_{level}"
-
 
 
 required_columns = [

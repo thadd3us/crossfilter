@@ -10,6 +10,7 @@ import logging
 from pathlib import Path
 
 import numpy as np
+import pandas as pd
 from PIL import Image
 
 from crossfilter.inference.embedding_interface import EmbeddingInterface
@@ -20,7 +21,7 @@ logger = logging.getLogger(__name__)
 class FakeEmbedder(EmbeddingInterface):
     """Fake embedding class for testing purposes."""
 
-    def __init__(self, model_name: str = "fake-embedding-for-testing"):
+    def __init__(self, model_name: str = "fake-embedding-for-testing") -> None:
         """
         Initialize the fake embedder.
 
@@ -30,29 +31,18 @@ class FakeEmbedder(EmbeddingInterface):
         self.model_name = model_name
         logger.info(f"Initializing FakeEmbedder with model {model_name}")
 
-    def compute_image_embeddings(self, image_paths: list[Path]) -> list[np.ndarray]:
-        """
-        Compute fake embeddings for a list of image paths by calculating mean and stddev of RGB channels.
+    def compute_image_embeddings(self, df: pd.DataFrame, image_path_column: str, output_embedding_column: str) -> None:
+        """Compute fake embeddings for images specified in DataFrame and add them as a new column."""
+        logger.info(f"Computing fake embeddings for {len(df)} images")
 
-        This function provides a fast, deterministic alternative to real embedding models for testing.
-        It computes 6-dimensional embeddings: [R_mean, G_mean, B_mean, R_std, G_std, B_std].
-
-        Args:
-            image_paths: List of paths to image files
-
-        Returns:
-            List of 1D numpy arrays, one embedding vector per input image
-
-        Raises:
-            FileNotFoundError: If any image path doesn't exist
-            ValueError: If any image cannot be loaded
-        """
-        logger.info(f"Computing fake embeddings for {len(image_paths)} images")
-
-        embeddings = []
+        # Get image paths, converting to Path objects if needed
+        image_paths = df[image_path_column].apply(lambda x: Path(x) if not isinstance(x, Path) else x)
+        
+        # Initialize output column
+        df[output_embedding_column] = None
 
         # Process each image
-        for image_path in image_paths:
+        for idx, image_path in image_paths.items():
             if not image_path.exists():
                 raise FileNotFoundError(f"Image not found: {image_path}")
 
@@ -86,38 +76,25 @@ class FakeEmbedder(EmbeddingInterface):
                 if embedding_norm > 0:
                     embedding = embedding / embedding_norm
 
-                embeddings.append(embedding)
+                df.at[idx, output_embedding_column] = embedding
 
             except Exception as e:
                 raise ValueError(f"Failed to load image {image_path}: {e}")
 
-        logger.info(f"Computed fake embeddings for {len(embeddings)} images")
-        return embeddings
+        logger.info(f"Computed fake embeddings for {len(df)} images")
 
-    def compute_text_embeddings(self, captions: list[str]) -> list[np.ndarray]:
-        """
-        Compute fake embeddings for a list of text captions.
+    def compute_text_embeddings(self, df: pd.DataFrame, text_column: str, output_embedding_column: str) -> None:
+        """Compute fake embeddings for text specified in DataFrame and add them as a new column."""
+        # Get text data, filtering out null values
+        text_data = df[text_column].dropna()
 
-        This function provides a fast, deterministic alternative to real text embedding models for testing.
-        It computes 6-dimensional embeddings based on simple text statistics.
+        logger.info(f"Computing fake text embeddings for {len(text_data)} captions")
 
-        Args:
-            captions: List of text strings to encode
-
-        Returns:
-            List of 1D numpy arrays, one embedding vector per input caption
-        """
-        # Handle empty input
-        if not captions:
-            logger.info("No captions provided, returning empty list")
-            return []
-
-        logger.info(f"Computing fake text embeddings for {len(captions)} captions")
-
-        embeddings = []
+        # Initialize output column
+        df[output_embedding_column] = None
 
         # Process each caption
-        for caption in captions:
+        for idx, caption in text_data.items():
             # Calculate simple text statistics
             text_length = len(caption)
             word_count = len(caption.split())
@@ -146,10 +123,9 @@ class FakeEmbedder(EmbeddingInterface):
             if embedding_norm > 0:
                 embedding = embedding / embedding_norm
 
-            embeddings.append(embedding)
+            df.at[idx, output_embedding_column] = embedding
 
-        logger.info(f"Computed fake text embeddings for {len(embeddings)} captions")
-        return embeddings
+        logger.info(f"Computed fake text embeddings for {len(text_data)} captions")
 
     def generate_captions_from_image_embeddings(
         self, image_embeddings: list[np.ndarray], max_length: int = 50

@@ -18,6 +18,7 @@ import logging
 from pathlib import Path
 
 import numpy as np
+import pandas as pd
 import torch
 from PIL import Image
 from transformers import AutoModel, AutoProcessor
@@ -57,7 +58,7 @@ def _center_crop_to_square(image: Image.Image) -> Image.Image:
 class SigLIP2Embedder(EmbeddingInterface):
     """SigLIP2-based embedding computation class."""
 
-    def __init__(self, model_name: str = "google/siglip-so400m-patch14-384"):
+    def __init__(self, model_name: str = "google/siglip-so400m-patch14-384") -> None:
         """
         Initialize the SigLIP2 embedder with model loading.
 
@@ -79,33 +80,15 @@ class SigLIP2Embedder(EmbeddingInterface):
 
         logger.info("SigLIP2Embedder initialized successfully")
 
-    def compute_image_embeddings(self, image_paths: list[Path]) -> list[np.ndarray]:
-        """
-        Compute SigLIP2 embeddings for a list of image paths.
-
-        The function handles images of any size or aspect ratio by finding the largest
-        square region that can be extracted without distortion, then resizing that
-        region to the model's expected input size.
-
-        Args:
-            image_paths: List of paths to image files
-
-        Returns:
-            List of 1D numpy arrays, one embedding vector per input image
-
-        Raises:
-            FileNotFoundError: If any image path doesn't exist
-            ValueError: If any image cannot be loaded
-        """
-        # Handle empty input
-        if not image_paths:
-            logger.info("No images provided, returning empty list")
-            return []
-
+    def compute_image_embeddings(self, df: pd.DataFrame, image_path_column: str, output_embedding_column: str) -> None:
+        """Compute SigLIP2 embeddings for images specified in DataFrame and add them as a new column."""
+        # Get image paths, converting to Path objects if needed
+        image_paths = df[image_path_column].apply(lambda x: Path(x) if not isinstance(x, Path) else x)
         batch_images = []
+        valid_indices = []
 
         # Load and preprocess all images
-        for image_path in image_paths:
+        for idx, image_path in image_paths.items():
             if not image_path.exists():
                 raise FileNotFoundError(f"Image not found: {image_path}")
 
@@ -117,6 +100,7 @@ class SigLIP2Embedder(EmbeddingInterface):
                 image = _center_crop_to_square(image)
 
                 batch_images.append(image)
+                valid_indices.append(idx)
 
             except Exception as e:
                 raise ValueError(f"Failed to load image {image_path}: {e}")
@@ -131,27 +115,25 @@ class SigLIP2Embedder(EmbeddingInterface):
             # Normalize embeddings (SigLIP2 typically uses L2 normalization)
             embeddings_normalized = torch.nn.functional.normalize(outputs, p=2, dim=1)
 
-            # Convert to numpy and create list of embeddings
+            # Convert to numpy
             batch_embeddings = embeddings_normalized.cpu().numpy()
-            embeddings = [batch_embeddings[i] for i in range(len(batch_images))]
 
-        logger.info(f"Computed embeddings for {len(embeddings)} images")
-        return embeddings
+        # Initialize output column with None
+        df[output_embedding_column] = None
+        
+        # Assign embeddings to the correct rows
+        for i, idx in enumerate(valid_indices):
+            df.at[idx, output_embedding_column] = batch_embeddings[i]
 
-    def compute_text_embeddings(self, captions: list[str]) -> list[np.ndarray]:
-        """
-        Compute SigLIP2 embeddings for a list of text captions.
+        logger.info(f"Computed embeddings for {len(batch_images)} images")
 
-        Args:
-            captions: List of text strings to encode
+    def compute_text_embeddings(self, df: pd.DataFrame, text_column: str, output_embedding_column: str) -> None:
+        """Compute SigLIP2 embeddings for text specified in DataFrame and add them as a new column."""
+        # Get text data, filtering out null values
+        text_data = df[text_column].dropna()
 
-        Returns:
-            List of 1D numpy arrays, one embedding vector per input caption
-        """
-        # Handle empty input
-        if not captions:
-            logger.info("No captions provided, returning empty list")
-            return []
+        captions = text_data.tolist()
+        valid_indices = text_data.index.tolist()
 
         # Process all captions through model
         with torch.no_grad():
@@ -165,11 +147,16 @@ class SigLIP2Embedder(EmbeddingInterface):
             # Normalize embeddings (SigLIP2 typically uses L2 normalization)
             embeddings_normalized = torch.nn.functional.normalize(outputs, p=2, dim=1)
 
-            # Convert to numpy and create list of embeddings
+            # Convert to numpy
             batch_embeddings = embeddings_normalized.cpu().numpy()
-            embeddings = [batch_embeddings[i] for i in range(len(captions))]
 
-        logger.info(f"Computed embeddings for {len(embeddings)} captions")
-        return embeddings
+        # Initialize output column with None
+        df[output_embedding_column] = None
+        
+        # Assign embeddings to the correct rows
+        for i, idx in enumerate(valid_indices):
+            df.at[idx, output_embedding_column] = batch_embeddings[i]
+
+        logger.info(f"Computed embeddings for {len(captions)} captions")
 
 

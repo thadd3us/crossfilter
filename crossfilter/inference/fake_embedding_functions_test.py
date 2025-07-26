@@ -6,6 +6,7 @@ import logging
 from pathlib import Path
 
 import numpy as np
+import pandas as pd
 import pytest
 from syrupy import SnapshotAssertion
 
@@ -60,7 +61,14 @@ def test_compute_image_embeddings(
     test_image_paths: list[Path], embedder: FakeEmbedder, snapshot: SnapshotAssertion
 ) -> None:
     """Test fake image embedding computation."""
-    embeddings = embedder.compute_image_embeddings(test_image_paths)
+    # Create DataFrame with image paths
+    df = pd.DataFrame({"image_path": test_image_paths})
+    
+    # Compute embeddings using the new DataFrame interface
+    embedder.compute_image_embeddings(df, "image_path", "embedding")
+    
+    # Get the embeddings from the DataFrame
+    embeddings = df["embedding"].tolist()
 
     # Verify we got the expected number of embeddings
     assert len(embeddings) == len(test_image_paths)
@@ -107,7 +115,14 @@ def test_compute_text_embeddings(
     test_captions: list[str], embedder: FakeEmbedder, snapshot: SnapshotAssertion
 ) -> None:
     """Test fake text embedding computation for captions."""
-    embeddings = embedder.compute_text_embeddings(test_captions)
+    # Create DataFrame with captions
+    df = pd.DataFrame({"caption": test_captions})
+    
+    # Compute embeddings using the new DataFrame interface
+    embedder.compute_text_embeddings(df, "caption", "embedding")
+    
+    # Get the embeddings from the DataFrame
+    embeddings = df["embedding"].tolist()
 
     # Verify we got the expected number of embeddings
     assert len(embeddings) == len(test_captions)
@@ -157,8 +172,10 @@ def test_generate_captions_from_image_embeddings(
     test_image_paths: list[Path], embedder: FakeEmbedder, snapshot: SnapshotAssertion
 ) -> None:
     """Test fake caption generation from fake image embeddings."""
-    # First compute fake image embeddings
-    image_embeddings = embedder.compute_image_embeddings(test_image_paths)
+    # First compute fake image embeddings using DataFrame interface
+    df = pd.DataFrame({"image_path": test_image_paths})
+    embedder.compute_image_embeddings(df, "image_path", "embedding")
+    image_embeddings = df["embedding"].tolist()
 
     # Generate captions from embeddings
     captions = embedder.generate_captions_from_image_embeddings(image_embeddings)
@@ -188,9 +205,10 @@ def test_error_handling_missing_image() -> None:
     """Test error handling for missing image files."""
     missing_path = Path("/nonexistent/image.jpg")
     embedder = FakeEmbedder()
+    df = pd.DataFrame({"image_path": [missing_path]})
 
     with pytest.raises(FileNotFoundError, match="Image not found"):
-        embedder.compute_image_embeddings([missing_path])
+        embedder.compute_image_embeddings(df, "image_path", "embedding")
 
 
 def test_error_handling_invalid_image(tmp_path: Path) -> None:
@@ -199,22 +217,25 @@ def test_error_handling_invalid_image(tmp_path: Path) -> None:
     invalid_file = tmp_path / "not_an_image.jpg"
     invalid_file.write_text("This is not an image")
     embedder = FakeEmbedder()
+    df = pd.DataFrame({"image_path": [invalid_file]})
 
     with pytest.raises(ValueError, match="Failed to load image"):
-        embedder.compute_image_embeddings([invalid_file])
+        embedder.compute_image_embeddings(df, "image_path", "embedding")
 
 
 def test_empty_inputs() -> None:
-    """Test handling of empty input lists."""
+    """Test handling of empty input DataFrames."""
     embedder = FakeEmbedder()
     
-    # Empty image list
-    image_embeddings = embedder.compute_image_embeddings([])
-    assert image_embeddings == []
+    # Empty image DataFrame
+    empty_df = pd.DataFrame({"image_path": []})
+    embedder.compute_image_embeddings(empty_df, "image_path", "embedding")
+    assert empty_df.empty  # DataFrame should still be empty
 
-    # Empty text list
-    text_embeddings = embedder.compute_text_embeddings([])
-    assert text_embeddings == []
+    # Empty text DataFrame
+    empty_df = pd.DataFrame({"caption": []})
+    embedder.compute_text_embeddings(empty_df, "caption", "embedding")
+    assert empty_df.empty  # DataFrame should still be empty
 
     # Empty embeddings for caption generation
     captions = embedder.generate_captions_from_image_embeddings([])

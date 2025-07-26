@@ -9,33 +9,18 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 
 import numpy as np
+import pandas as pd
 
 
 class EmbeddingInterface(ABC):
     """Abstract base class for embedding computation."""
 
     @abstractmethod
-    def compute_image_embeddings(self, image_paths: list[Path]) -> list[np.ndarray]:
-        """
-        Compute embeddings for a list of image paths.
-
-        THAD: TODO: No parallel arrays -- take a DataFrame as input, add a column containing the embeddings.  Don't return anything.
-
-        Raises:
-            FileNotFoundError: If any image path doesn't exist
-            ValueError: If any image cannot be loaded
-        """
+    def compute_image_embeddings(self, df: pd.DataFrame, image_path_column: str, output_embedding_column: str) -> None:
+        """Compute embeddings for images specified in DataFrame and add them as a new column."""
         pass
 
     @abstractmethod
-    def compute_text_embeddings(self, captions: list[str]) -> list[np.ndarray]:
-        """
-        Compute embeddings for a list of text captions.
-
-        Args:
-            captions: List of text strings to encode
-
-        Returns:
-            List of 1D numpy arrays, one embedding vector per input caption
-        """
+    def compute_text_embeddings(self, df: pd.DataFrame, text_column: str, output_embedding_column: str) -> None:
+        """Compute embeddings for text specified in DataFrame and add them as a new column."""
         pass

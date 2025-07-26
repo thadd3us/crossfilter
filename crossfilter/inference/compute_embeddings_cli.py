@@ -14,10 +14,10 @@ python -m crossfilter.inference.compute_embeddings_cli \
 
 How this works:
 * Images are expected to be named as "<uuid>.jpg" in any subdirectory of the input directory.
-TODO: THAD: The schema described below isn't quite right.  Please reference schema.EmbeddingsTables for proper names and descriptions.
-* There's a generic "EMBEDDINGS" table in the output DB for all embedding types.
-  * The table's primary key column is "UUID".
-  * There's a second column called "EMBEDDING" with a msgpack_numpy encoded 1D numpy array.
+* The output DB uses tables defined in schema.EmbeddingsTables:
+  * IMAGE_EMBEDDINGS table with UUID_STRING and SEMANTIC_EMBEDDING columns.
+  * UMAP_MODEL table for storing the trained UMAP model.
+  * {embedding_type}_UMAP_HAVERSINE table for UMAP projections.
 * When the CLI starts, it figures out which "<uuid>.jpg" files are missing embeddings in the table (unless `--recompute_existing_embeddings` is set to `true`).
 * Embedding computation loop:
     * For the missing embeddings, it computes them in batches of `--batch-size` using the `compute_image_embeddings` function from `siglip2_embedding_functions.py` (refactored to allow for incremental output to a sink, including a DB write queue).
@@ -36,6 +36,7 @@ import pickle
 import threading
 from pathlib import Path
 from queue import Queue
+from typing import List, Set
 from uuid import UUID
 
 import msgpack
@@ -64,7 +65,7 @@ from crossfilter.inference.run_umap import run_umap_projection
 logger = logging.getLogger(__name__)
 
 
-def _get_embedder_instance(embedding_type: EmbeddingType):
+def _get_embedder_instance(embedding_type: EmbeddingType) -> EmbeddingInterface:
     """Get the appropriate embedder instance based on embedding type."""
     if embedding_type == EmbeddingType.SIGLIP2:
         from crossfilter.inference.siglip2_embedding_functions import (
@@ -109,29 +110,35 @@ def _create_database_schema(engine: Engine, embedding_type: EmbeddingType) -> Ta
     return umap_model_table
 
 
-def _scan_image_files(input_dir: Path) -> dict[str, Path]:
-    """Scan input directory for UUID.jpg files and return mapping of UUID -> Path."""
+def _scan_image_files(input_dir: Path) -> pd.DataFrame:
+    """Scan input directory for UUID.jpg files and return DataFrame with UUID and path columns."""
     logger.info(f"Scanning for <uuid>.jpg files in {input_dir}")
 
     if not input_dir.exists():
         raise FileNotFoundError(f"Input directory not found: {input_dir}")
 
-    uuid_to_path: dict[str, Path] = {}
+    image_data = []
+    seen_uuids = set()
 
     # Find all .jpg files recursively
     for jpg_path in input_dir.rglob("*.jpg"):
         # Extract UUID from filename (remove .jpg extension)
         uuid_str = jpg_path.stem
-        if uuid_str in uuid_to_path:
+        if uuid_str in seen_uuids:
             logger.warning(f"Duplicate UUID found in {input_dir}: {uuid_str=}")
             continue
-        uuid_to_path[uuid_str] = jpg_path
+        seen_uuids.add(uuid_str)
+        image_data.append({
+            C.UUID_STRING: uuid_str,
+            "image_path": jpg_path
+        })
 
-    logger.info(f"Found {len(uuid_to_path)=} .jpg files")
-    return uuid_to_path
+    df = pd.DataFrame(image_data)
+    logger.info(f"Found {len(df)} .jpg files")
+    return df
 
 
-def _get_existing_embeddings(engine: Engine) -> set[str]:
+def _get_existing_embeddings(engine: Engine) -> Set[str]:
     """Get set of UUIDs that already have embeddings in the database."""
     try:
         query = f"SELECT {C.UUID_STRING} FROM {EmbeddingsTables.IMAGE_EMBEDDINGS}"
@@ -143,83 +150,54 @@ def _get_existing_embeddings(engine: Engine) -> set[str]:
 
 
 def _write_embeddings_worker(
-    write_queue: Queue,
+    write_queue: Queue[pd.DataFrame | None],
     output_embeddings_db: Path,
     stop_event: threading.Event,
 ) -> None:
     """Worker thread that writes embeddings to database using upsert_dataframe_to_sqlite."""
 
-    batch_items = []
-
     while not stop_event.is_set() or not write_queue.empty():
-        # Collect batch of items from queue
-        while len(batch_items) < 100:  # Batch size
-            try:
-                item = write_queue.get(timeout=0.1)
-                if item is None:  # Sentinel value to stop
-                    break
-                batch_items.append(item)
+        try:
+            item = write_queue.get(timeout=0.1)
+            if item is None:  # Sentinel value to stop
                 write_queue.task_done()
-            except Exception:
-                # Timeout or queue empty - process what we have
                 break
+            
+            # Write the DataFrame directly to the database
+            upsert_dataframe_to_sqlite(
+                item, output_embeddings_db, EmbeddingsTables.IMAGE_EMBEDDINGS
+            )
 
-        # Process batch if we have items
-        if batch_items:
-            try:
-                # Create DataFrame from batch items
-                uuids = []
-                embeddings = []
+            logger.debug(f"Wrote batch of {len(item)} embeddings to database")
+            write_queue.task_done()
 
-                for uuid_str, embedding in batch_items:
-                    uuids.append(uuid_str)
-                    embeddings.append(embedding)
-
-                batch_df = pd.DataFrame(
-                    {
-                        C.UUID_STRING: uuids,
-                        C.SEMANTIC_EMBEDDING: embeddings,
-                    }
-                )
-
-                # Use the utility function for upsert
-                upsert_dataframe_to_sqlite(
-                    batch_df, output_embeddings_db, EmbeddingsTables.IMAGE_EMBEDDINGS
-                )
-
-                logger.debug(
-                    f"Wrote batch of {len(batch_items)} embeddings to database"
-                )
-                batch_items.clear()
-
-            except Exception as e:
+        except Exception as e:
+            if "timeout" not in str(e).lower():
                 logger.error(f"Failed to write batch to database: {e}")
                 # Re-raise the exception to avoid silent failures
-                # The main thread will handle this appropriately
                 raise
-
-        # Check for sentinel or stop condition
-        if not write_queue.empty():
-            continue
-        elif stop_event.is_set():
-            break
 
 
 def _compute_embeddings_batch(
-    # TODO: No parallel arrays -- use a DataFrame.
-    batch_paths: list[Path],
-    batch_uuids: list[str],
-    write_queue: Queue,
+    batch_df: pd.DataFrame,
+    write_queue: Queue[pd.DataFrame | None],
     embedder: EmbeddingInterface,
 ) -> None:
     """Compute embeddings for a batch of images and enqueue them for writing."""
     try:
         # Compute embeddings for the batch using the embedder instance
-        embeddings = embedder.compute_image_embeddings(batch_paths)
+        # Add embeddings directly to the DataFrame
+        embedder.compute_image_embeddings(
+            batch_df, 
+            image_path_column="image_path", 
+            output_embedding_column=C.SEMANTIC_EMBEDDING
+        )
 
-        # Enqueue each embedding for writing
-        for uuid_str, embedding in zip(batch_uuids, embeddings):
-            write_queue.put((uuid_str, embedding))
+        # Create output DataFrame with just UUID and embedding columns
+        output_df = batch_df[[C.UUID_STRING, C.SEMANTIC_EMBEDDING]].copy()
+        
+        # Enqueue the DataFrame for writing
+        write_queue.put(output_df)
 
     except Exception as e:
         logger.error(f"Error computing embeddings for batch: {e}")
@@ -250,7 +228,7 @@ def _load_embeddings_from_db(engine: Engine) -> pd.DataFrame:
         return pd.DataFrame(columns=[C.UUID_STRING, C.SEMANTIC_EMBEDDING])
 
 
-def _store_umap_model(engine, umap_model_table: Table, umap_model) -> None:
+def _store_umap_model(engine: Engine, umap_model_table: Table, umap_model) -> None:
     """Store UMAP model in database."""
 
     # Serialize model with pickle
@@ -352,42 +330,37 @@ def main(
     umap_model_table = _create_database_schema(engine, embedding_type)
 
     # Scan for image files
-    uuid_to_path = _scan_image_files(input_dir)
+    all_images_df = _scan_image_files(input_dir)
 
-    if not uuid_to_path:
+    if all_images_df.empty:
         logger.warning("No valid UUID.jpg files found in input directory")
         return
 
     # Determine which embeddings need to be computed
     if recompute_existing_embeddings:
-        missing_uuids = set(uuid_to_path.keys())
-        logger.info(f"Recomputing all {len(missing_uuids)} embeddings")
+        missing_images_df = all_images_df.copy()
+        logger.info(f"Recomputing all {len(missing_images_df)} embeddings")
     else:
         existing_uuids = _get_existing_embeddings(engine)
-        missing_uuids = set(uuid_to_path.keys()) - existing_uuids
+        missing_images_df = all_images_df[~all_images_df[C.UUID_STRING].isin(existing_uuids)].copy()
         logger.info(f"Found {len(existing_uuids)} existing embeddings")
-        logger.info(f"Need to compute {len(missing_uuids)} new embeddings")
+        logger.info(f"Need to compute {len(missing_images_df)} new embeddings")
 
-    if not missing_uuids:
+    if missing_images_df.empty:
         logger.info("No embeddings need to be computed")
     else:
         # Create embedder instance once (efficient model loading)
         logger.info(f"Initializing embedder for {embedding_type}")
         embedder = _get_embedder_instance(embedding_type)
 
-        # Prepare batches for computation
-        # THAD: TODO: No parallel arrays - use a single DataFrame.  A batch is just a subset of the rows.
-        missing_uuids_list = list(missing_uuids)
-        batches: list[tuple[list[Path], list[str]]] = []
-
-        for i in range(0, len(missing_uuids_list), batch_size):
-            batch_uuids = missing_uuids_list[i : i + batch_size]
-            batch_paths = [uuid_to_path[uuid_str] for uuid_str in batch_uuids]
-            batches.append((batch_paths, batch_uuids))
+        # Create batches as DataFrame slices
+        batches: List[pd.DataFrame] = []
+        for i in range(0, len(missing_images_df), batch_size):
+            batch_df = missing_images_df.iloc[i:i + batch_size].copy()
+            batches.append(batch_df)
 
         # Set up database write queue and worker
-        # THAD: TODO: Put a strong type of the queue, and make it contain batch-sized DataFrames.  None of this tuple nonsense.
-        write_queue = Queue()
+        write_queue: Queue[pd.DataFrame | None] = Queue()
         stop_event = threading.Event()
 
         # Start database writer thread
@@ -401,9 +374,9 @@ def main(
             # Compute embeddings in batches with progress bar
             logger.info(f"Computing embeddings in {len(batches)} batches")
 
-            for batch_paths, batch_uuids in tqdm(batches, desc="Computing embeddings"):
+            for batch_df in tqdm(batches, desc="Computing embeddings"):
                 _compute_embeddings_batch(
-                    batch_paths, batch_uuids, write_queue, embedder
+                    batch_df, write_queue, embedder
                 )
 
             # Wait for all writes to complete

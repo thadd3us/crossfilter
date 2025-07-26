@@ -73,9 +73,9 @@ def test_compute_image_and_text_embeddings_match(
     test_df: pd.DataFrame, embedder: SigLIP2Embedder, snapshot: SnapshotAssertion
 ) -> None:
     df = test_df
-    df["image_embedding"] = embedder.compute_image_embeddings(df[C.SOURCE_FILE].to_list())
+    embedder.compute_image_embeddings(df, C.SOURCE_FILE, "image_embedding")
     # df[C.CAPTION] = ("A photo of " + df[C.CAPTION]).str.lower()
-    df["text_embedding"] = embedder.compute_text_embeddings(df[C.CAPTION].to_list())
+    embedder.compute_text_embeddings(df, C.CAPTION, "text_embedding")
 
     distances = scipy.spatial.distance.cdist(
         np.stack(df["image_embedding"].values),
@@ -102,9 +102,10 @@ def test_compute_image_and_text_embeddings_match(
 def test_error_handling_missing_image(embedder: SigLIP2Embedder) -> None:
     """Test error handling for missing image files."""
     missing_path = Path("/nonexistent/image.jpg")
+    df = pd.DataFrame({"image_path": [missing_path]})
 
     with pytest.raises(FileNotFoundError, match="Image not found"):
-        embedder.compute_image_embeddings([missing_path])
+        embedder.compute_image_embeddings(df, "image_path", "embedding")
 
 
 def test_error_handling_invalid_image(embedder: SigLIP2Embedder, tmp_path: Path) -> None:
@@ -112,24 +113,23 @@ def test_error_handling_invalid_image(embedder: SigLIP2Embedder, tmp_path: Path)
     # Create a non-image file
     invalid_file = tmp_path / "not_an_image.jpg"
     invalid_file.write_text("This is not an image")
+    df = pd.DataFrame({"image_path": [invalid_file]})
 
     with pytest.raises(ValueError, match="Failed to load image"):
-        embedder.compute_image_embeddings([invalid_file])
+        embedder.compute_image_embeddings(df, "image_path", "embedding")
 
 
 def test_empty_inputs(embedder: SigLIP2Embedder) -> None:
-    """Test handling of empty input lists."""
-    # Empty image list
-    image_embeddings = embedder.compute_image_embeddings([])
-    assert image_embeddings == []
+    """Test handling of empty input DataFrames."""
+    # Empty image DataFrame
+    empty_df = pd.DataFrame({"image_path": []})
+    embedder.compute_image_embeddings(empty_df, "image_path", "embedding")
+    assert empty_df.empty  # DataFrame should still be empty
 
-    # Empty text list
-    text_embeddings = embedder.compute_text_embeddings([])
-    assert text_embeddings == []
-
-    # # Empty embeddings for caption generation
-    # captions = generate_captions_from_image_embeddings([])
-    # assert captions == []
+    # Empty text DataFrame
+    empty_df = pd.DataFrame({"caption": []})
+    embedder.compute_text_embeddings(empty_df, "caption", "embedding")
+    assert empty_df.empty  # DataFrame should still be empty
 
 
 # def test_generate_captions_from_image_embeddings(

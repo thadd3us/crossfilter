@@ -128,10 +128,7 @@ def _scan_image_files(input_dir: Path) -> pd.DataFrame:
             logger.warning(f"Duplicate UUID found in {input_dir}: {uuid_str=}")
             continue
         seen_uuids.add(uuid_str)
-        image_data.append({
-            C.UUID_STRING: uuid_str,
-            "image_path": jpg_path
-        })
+        image_data.append({C.UUID_STRING: uuid_str, "image_path": jpg_path})
 
     df = pd.DataFrame(image_data)
     logger.info(f"Found {len(df)} .jpg files")
@@ -162,7 +159,7 @@ def _write_embeddings_worker(
             if item is None:  # Sentinel value to stop
                 write_queue.task_done()
                 break
-            
+
             # Write the DataFrame directly to the database
             upsert_dataframe_to_sqlite(
                 item, output_embeddings_db, EmbeddingsTables.IMAGE_EMBEDDINGS
@@ -188,14 +185,14 @@ def _compute_embeddings_batch(
         # Compute embeddings for the batch using the embedder instance
         # Add embeddings directly to the DataFrame
         embedder.compute_image_embeddings(
-            batch_df, 
-            image_path_column="image_path", 
-            output_embedding_column=C.SEMANTIC_EMBEDDING
+            batch_df,
+            image_path_column="image_path",
+            output_embedding_column=C.SEMANTIC_EMBEDDING,
         )
 
         # Create output DataFrame with just UUID and embedding columns
         output_df = batch_df[[C.UUID_STRING, C.SEMANTIC_EMBEDDING]].copy()
-        
+
         # Enqueue the DataFrame for writing
         write_queue.put(output_df)
 
@@ -342,7 +339,9 @@ def main(
         logger.info(f"Recomputing all {len(missing_images_df)} embeddings")
     else:
         existing_uuids = _get_existing_embeddings(engine)
-        missing_images_df = all_images_df[~all_images_df[C.UUID_STRING].isin(existing_uuids)].copy()
+        missing_images_df = all_images_df[
+            ~all_images_df[C.UUID_STRING].isin(existing_uuids)
+        ].copy()
         logger.info(f"Found {len(existing_uuids)} existing embeddings")
         logger.info(f"Need to compute {len(missing_images_df)} new embeddings")
 
@@ -356,7 +355,7 @@ def main(
         # Create batches as DataFrame slices
         batches: List[pd.DataFrame] = []
         for i in range(0, len(missing_images_df), batch_size):
-            batch_df = missing_images_df.iloc[i:i + batch_size].copy()
+            batch_df = missing_images_df.iloc[i : i + batch_size].copy()
             batches.append(batch_df)
 
         # Set up database write queue and worker
@@ -375,9 +374,7 @@ def main(
             logger.info(f"Computing embeddings in {len(batches)} batches")
 
             for batch_df in tqdm(batches, desc="Computing embeddings"):
-                _compute_embeddings_batch(
-                    batch_df, write_queue, embedder
-                )
+                _compute_embeddings_batch(batch_df, write_queue, embedder)
 
             # Wait for all writes to complete
             logger.info("Waiting for all embeddings to be written to database...")
@@ -396,8 +393,8 @@ def main(
         logger.info("Loading embeddings for UMAP projection...")
         df = _load_embeddings_from_db(engine)
 
-        if len(df) < 20:
-            logger.warning("Two few embeddings found for UMAP projection.")
+        if len(df) < 5:
+            logger.warning("Too few embeddings found for UMAP projection.")
         else:
             logger.info(f"Running UMAP projection on {len(df)} embeddings...")
 

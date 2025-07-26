@@ -47,13 +47,14 @@ class SchemaColumns(StrEnum):
     NAME = "NAME"
     CAPTION = "CAPTION"
     SOURCE_FILE = "SOURCE_FILE"
+
     TIMESTAMP_MAYBE_TIMEZONE_AWARE = "TIMESTAMP_MAYBE_TIMEZONE_AWARE"
     TIMESTAMP_UTC = "TIMESTAMP_UTC"
     GPS_LATITUDE = "GPS_LATITUDE"
     GPS_LONGITUDE = "GPS_LONGITUDE"
+
     RATING_0_TO_5 = "RATING_0_TO_5"
     SIZE_IN_BYTES = "SIZE_IN_BYTES"
-    COUNT = "COUNT"
 
     # Generic semantic embedding column
     SEMANTIC_EMBEDDING = "SEMANTIC_EMBEDDING"
@@ -61,6 +62,9 @@ class SchemaColumns(StrEnum):
     # Generic semantic embedding UMAP projection coordinates (on a sphere like lat/lon)
     SEMANTIC_EMBEDDING_UMAP_LATITUDE = "SEMANTIC_EMBEDDING_UMAP_LATITUDE"
     SEMANTIC_EMBEDDING_UMAP_LONGITUDE = "SEMANTIC_EMBEDDING_UMAP_LONGITUDE"
+
+    # Only when grouped/bucketed: how many rows are aggregated into this bucket.
+    COUNT = "COUNT"
 
 
 class DataType(StrEnum):

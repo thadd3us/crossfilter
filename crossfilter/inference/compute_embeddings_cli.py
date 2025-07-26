@@ -12,9 +12,9 @@ python -m crossfilter.inference.compute_embeddings_cli \
 
 ```
 
-
 How this works:
 * Images are expected to be named as "<uuid>.jpg" in any subdirectory of the input directory.
+TODO: THAD: The schema described below isn't quite right.  Please reference schema.EmbeddingsTables for proper names and descriptions.
 * There's a generic "EMBEDDINGS" table in the output DB for all embedding types.
   * The table's primary key column is "UUID".
   * There's a second column called "EMBEDDING" with a msgpack_numpy encoded 1D numpy array.
@@ -55,9 +55,10 @@ from tqdm import tqdm
 from crossfilter.core.schema import (
     EmbeddingType,
     EmbeddingsTables,
-    SchemaColumns,
+    SchemaColumns as C,
 )
 from crossfilter.data_ingestion.sqlite_utils import upsert_dataframe_to_sqlite
+from crossfilter.inference.embedding_interface import EmbeddingInterface
 from crossfilter.inference.run_umap import run_umap_projection
 
 logger = logging.getLogger(__name__)
@@ -89,9 +90,7 @@ app = typer.Typer(
 msgpack_numpy.patch()
 
 
-def _create_database_schema(
-    engine: Engine, embedding_type: EmbeddingType
-) -> Table:
+def _create_database_schema(engine: Engine, embedding_type: EmbeddingType) -> Table:
     """Create database schema and return UMAP model table object."""
     metadata = MetaData()
 
@@ -135,9 +134,9 @@ def _scan_image_files(input_dir: Path) -> dict[str, Path]:
 def _get_existing_embeddings(engine: Engine) -> set[str]:
     """Get set of UUIDs that already have embeddings in the database."""
     try:
-        query = f"SELECT {SchemaColumns.UUID_STRING} FROM {EmbeddingsTables.IMAGE_EMBEDDINGS}"
+        query = f"SELECT {C.UUID_STRING} FROM {EmbeddingsTables.IMAGE_EMBEDDINGS}"
         df = pd.read_sql(query, engine)
-        return set(df[SchemaColumns.UUID_STRING].values)
+        return set(df[C.UUID_STRING].values)
     except Exception:
         # Table doesn't exist yet, return empty set
         return set()
@@ -151,7 +150,7 @@ def _write_embeddings_worker(
     """Worker thread that writes embeddings to database using upsert_dataframe_to_sqlite."""
 
     batch_items = []
-    
+
     while not stop_event.is_set() or not write_queue.empty():
         # Collect batch of items from queue
         while len(batch_items) < 100:  # Batch size
@@ -164,39 +163,41 @@ def _write_embeddings_worker(
             except Exception:
                 # Timeout or queue empty - process what we have
                 break
-        
+
         # Process batch if we have items
         if batch_items:
             try:
                 # Create DataFrame from batch items
                 uuids = []
                 embeddings = []
-                
+
                 for uuid_str, embedding in batch_items:
                     uuids.append(uuid_str)
                     embeddings.append(embedding)
-                
-                batch_df = pd.DataFrame({
-                    SchemaColumns.UUID_STRING: uuids,
-                    SchemaColumns.SEMANTIC_EMBEDDING: embeddings,
-                })
-                
+
+                batch_df = pd.DataFrame(
+                    {
+                        C.UUID_STRING: uuids,
+                        C.SEMANTIC_EMBEDDING: embeddings,
+                    }
+                )
+
                 # Use the utility function for upsert
                 upsert_dataframe_to_sqlite(
-                    batch_df, 
-                    output_embeddings_db, 
-                    EmbeddingsTables.IMAGE_EMBEDDINGS
+                    batch_df, output_embeddings_db, EmbeddingsTables.IMAGE_EMBEDDINGS
                 )
-                
-                logger.debug(f"Wrote batch of {len(batch_items)} embeddings to database")
+
+                logger.debug(
+                    f"Wrote batch of {len(batch_items)} embeddings to database"
+                )
                 batch_items.clear()
-                
+
             except Exception as e:
                 logger.error(f"Failed to write batch to database: {e}")
                 # Re-raise the exception to avoid silent failures
                 # The main thread will handle this appropriately
                 raise
-        
+
         # Check for sentinel or stop condition
         if not write_queue.empty():
             continue
@@ -205,10 +206,11 @@ def _write_embeddings_worker(
 
 
 def _compute_embeddings_batch(
+    # TODO: No parallel arrays -- use a DataFrame.
     batch_paths: list[Path],
     batch_uuids: list[str],
     write_queue: Queue,
-    embedder,
+    embedder: EmbeddingInterface,
 ) -> None:
     """Compute embeddings for a batch of images and enqueue them for writing."""
     try:
@@ -226,30 +228,26 @@ def _compute_embeddings_batch(
 
 def _load_embeddings_from_db(engine: Engine) -> pd.DataFrame:
     """Load all embeddings from database into a DataFrame."""
-    
+
     try:
         query = f"""
-        SELECT {SchemaColumns.UUID_STRING}, {SchemaColumns.SEMANTIC_EMBEDDING}
+        SELECT {C.UUID_STRING}, {C.SEMANTIC_EMBEDDING}
         FROM {EmbeddingsTables.IMAGE_EMBEDDINGS}
         """
         df = pd.read_sql(query, engine)
-        
+
         if df.empty:
-            return pd.DataFrame(
-                columns=[SchemaColumns.UUID_STRING, SchemaColumns.SEMANTIC_EMBEDDING]
-            )
-        
+            return pd.DataFrame(columns=[C.UUID_STRING, C.SEMANTIC_EMBEDDING])
+
         # Deserialize embeddings using map operation
-        df[SchemaColumns.SEMANTIC_EMBEDDING] = df[SchemaColumns.SEMANTIC_EMBEDDING].map(
+        df[C.SEMANTIC_EMBEDDING] = df[C.SEMANTIC_EMBEDDING].map(
             lambda blob: msgpack.unpackb(blob)
         )
-        
+
         return df
     except Exception:
         # Table doesn't exist yet, return empty DataFrame
-        return pd.DataFrame(
-            columns=[SchemaColumns.UUID_STRING, SchemaColumns.SEMANTIC_EMBEDDING]
-        )
+        return pd.DataFrame(columns=[C.UUID_STRING, C.SEMANTIC_EMBEDDING])
 
 
 def _store_umap_model(engine, umap_model_table: Table, umap_model) -> None:
@@ -267,30 +265,34 @@ def _store_umap_model(engine, umap_model_table: Table, umap_model) -> None:
         conn.commit()
 
 
-def _upsert_umap_embeddings(output_embeddings_db: Path, embedding_type: EmbeddingType, df: pd.DataFrame) -> None:
+def _upsert_umap_embeddings(
+    output_embeddings_db: Path, embedding_type: EmbeddingType, df: pd.DataFrame
+) -> None:
     """Upsert UMAP embeddings into the haversine table."""
-    
+
     # Filter to rows that have valid UMAP coordinates
     valid_umap_mask = (
-        df[SchemaColumns.SEMANTIC_EMBEDDING_UMAP_LATITUDE].notna() &
-        df[SchemaColumns.SEMANTIC_EMBEDDING_UMAP_LONGITUDE].notna()
+        df[C.SEMANTIC_EMBEDDING_UMAP_LATITUDE].notna()
+        & df[C.SEMANTIC_EMBEDDING_UMAP_LONGITUDE].notna()
     )
-    
+
     if not valid_umap_mask.any():
         logger.warning("No valid UMAP coordinates to upsert")
         return
-    
+
     # Select only the columns we need for the UMAP haversine table
-    umap_df = df[valid_umap_mask][[
-        SchemaColumns.UUID_STRING,
-        SchemaColumns.SEMANTIC_EMBEDDING_UMAP_LATITUDE,
-        SchemaColumns.SEMANTIC_EMBEDDING_UMAP_LONGITUDE,
-    ]].copy()
-    
+    umap_df = df[valid_umap_mask][
+        [
+            C.UUID_STRING,
+            C.SEMANTIC_EMBEDDING_UMAP_LATITUDE,
+            C.SEMANTIC_EMBEDDING_UMAP_LONGITUDE,
+        ]
+    ].copy()
+
     # Use the existing utility function for upsert
     table_name = f"{embedding_type}_UMAP_HAVERSINE"
     upsert_dataframe_to_sqlite(umap_df, output_embeddings_db, table_name)
-    
+
     logger.info(f"Upserted {len(umap_df)} UMAP embeddings into {table_name} table")
 
 
@@ -374,8 +376,9 @@ def main(
         embedder = _get_embedder_instance(embedding_type)
 
         # Prepare batches for computation
+        # THAD: TODO: No parallel arrays - use a single DataFrame.  A batch is just a subset of the rows.
         missing_uuids_list = list(missing_uuids)
-        batches = []
+        batches: list[tuple[list[Path], list[str]]] = []
 
         for i in range(0, len(missing_uuids_list), batch_size):
             batch_uuids = missing_uuids_list[i : i + batch_size]
@@ -383,6 +386,7 @@ def main(
             batches.append((batch_paths, batch_uuids))
 
         # Set up database write queue and worker
+        # THAD: TODO: Put a strong type of the queue, and make it contain batch-sized DataFrames.  None of this tuple nonsense.
         write_queue = Queue()
         stop_event = threading.Event()
 
@@ -427,11 +431,11 @@ def main(
             # Run UMAP projection
             umap_model = run_umap_projection(
                 df,
-                embedding_column=SchemaColumns.SEMANTIC_EMBEDDING,
-                output_lat_column=SchemaColumns.SEMANTIC_EMBEDDING_UMAP_LATITUDE,
-                output_lon_column=SchemaColumns.SEMANTIC_EMBEDDING_UMAP_LONGITUDE,
+                embedding_column=C.SEMANTIC_EMBEDDING,
+                output_lat_column=C.SEMANTIC_EMBEDDING_UMAP_LATITUDE,
+                output_lon_column=C.SEMANTIC_EMBEDDING_UMAP_LONGITUDE,
             )
-            
+
             # Upsert the UMAP embeddings for the images into the haversine table
             _upsert_umap_embeddings(output_embeddings_db, embedding_type, df)
 

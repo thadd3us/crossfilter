@@ -19,11 +19,7 @@ class EmbeddingInterface(ABC):
         """
         Compute embeddings for a list of image paths.
 
-        Args:
-            image_paths: List of paths to image files
-
-        Returns:
-            List of 1D numpy arrays, one embedding vector per input image
+        THAD: TODO: No parallel arrays -- take a DataFrame as input, add a column containing the embeddings.  Don't return anything.
 
         Raises:
             FileNotFoundError: If any image path doesn't exist

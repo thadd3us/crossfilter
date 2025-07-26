@@ -21,8 +21,19 @@ logger = logging.getLogger(__name__)
 
 class EmbeddingsTables(StrEnum):
     IMAGE_EMBEDDINGS = "IMAGE_EMBEDDINGS"
+    # Contains UUID_STRING, SEMANTIC_EMBEDDING column.
+
+    IMAGE_UMAP_PROJECTIONS = "IMAGE_UMAP_PROJECTIONS"
+    # Contains: UUID_STRING, SEMANTIC_EMBEDDING_UMAP_LATITUDE, SEMANTIC_EMBEDDING_UMAP_LONGITUDE columns.
+
     UMAP_MODEL = "UMAP_MODEL"
-    # TODO: text emeddings
+
+    # TODO: Table for text embeddings.
+
+
+class EmbeddingType(StrEnum):
+    SIGLIP2 = "SIGLIP2"
+    FAKE_EMBEDDING_FOR_TESTING = "FAKE_EMBEDDING_FOR_TESTING"
 
 
 class SchemaColumns(StrEnum):
@@ -57,11 +68,6 @@ class DataType(StrEnum):
     VIDEO = "VIDEO"
     GPX_TRACKPOINT = "GPX_TRACKPOINT"
     GPX_WAYPOINT = "GPX_WAYPOINT"
-
-
-class EmbeddingType(StrEnum):
-    SIGLIP2 = "SIGLIP2"
-    FAKE_EMBEDDING_FOR_TESTING = "FAKE_EMBEDDING_FOR_TESTING"
 
 
 class DataSchema(pa.DataFrameModel):

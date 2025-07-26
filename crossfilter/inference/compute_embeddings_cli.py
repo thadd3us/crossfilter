@@ -27,7 +27,7 @@ How this works:
 * UMAP computation:
     * Once all embeddings are computed and written to the DB, if `--reproject_umap_embeddings` is set, the CLI will reproject all the available embeddings to the UMAP space.
     * The UMAP model is stored into the DB as BLOB in a table called UMAP_MODEL, with a single column called MODEL.
-    * The embeddings are are stored in a DB table called UMAP_HAVERSINE, with columns UUID (primary key), schema.LATITUDE, schema.LONGITUDE.
+    * The embeddings are stored in a DB table called {embedding_type}_UMAP_HAVERSINE, with columns UUID (primary key), SEMANTIC_EMBEDDING_UMAP_LATITUDE, SEMANTIC_EMBEDDING_UMAP_LONGITUDE.
     * Nice-to-have: we seed the UMAP embedding with existing embeddings, so that they don't move "too much" when new UUIDs are added.
 """
 
@@ -46,12 +46,9 @@ from sqlalchemy import (
     Column,
     LargeBinary,
     MetaData,
-    String,
     Table,
     create_engine,
-    select,
 )
-from sqlalchemy.dialects.sqlite import insert
 from sqlalchemy.engine import Engine
 from tqdm import tqdm
 
@@ -60,6 +57,7 @@ from crossfilter.core.schema import (
     EmbeddingsTables,
     SchemaColumns,
 )
+from crossfilter.data_ingestion.sqlite_utils import upsert_dataframe_to_sqlite
 from crossfilter.inference.run_umap import run_umap_projection
 
 logger = logging.getLogger(__name__)
@@ -93,17 +91,9 @@ msgpack_numpy.patch()
 
 def _create_database_schema(
     engine: Engine, embedding_type: EmbeddingType
-) -> tuple[Table, Table]:
-    """Create database schema and return table objects."""
+) -> Table:
+    """Create database schema and return UMAP model table object."""
     metadata = MetaData()
-
-    # Create embeddings table
-    embeddings_table = Table(
-        EmbeddingsTables.IMAGE_EMBEDDINGS,
-        metadata,
-        Column(SchemaColumns.UUID_STRING, String, primary_key=True),
-        Column(SchemaColumns.SEMANTIC_EMBEDDING, LargeBinary, nullable=False),
-    )
 
     # Create UMAP model table
     umap_model_table = Table(
@@ -112,10 +102,12 @@ def _create_database_schema(
         Column("MODEL", LargeBinary, nullable=False),
     )
 
+    # Note: Both embeddings table and UMAP haversine table are created automatically by upsert_dataframe_to_sqlite
+
     # Create all tables
     metadata.create_all(engine)
 
-    return embeddings_table, umap_model_table
+    return umap_model_table
 
 
 def _scan_image_files(input_dir: Path) -> dict[str, Path]:
@@ -140,64 +132,76 @@ def _scan_image_files(input_dir: Path) -> dict[str, Path]:
     return uuid_to_path
 
 
-def _get_existing_embeddings(engine: Engine, embeddings_table: Table) -> set[str]:
+def _get_existing_embeddings(engine: Engine) -> set[str]:
     """Get set of UUIDs that already have embeddings in the database."""
-    with engine.connect() as conn:
-        # Execute query to get all UUIDs
-        # THAD: TODO: Use pd.read_sql here.
-        result = conn.execute(select(embeddings_table.c[SchemaColumns.UUID_STRING]))
-        return {row[0] for row in result}
+    try:
+        query = f"SELECT {SchemaColumns.UUID_STRING} FROM {EmbeddingsTables.IMAGE_EMBEDDINGS}"
+        df = pd.read_sql(query, engine)
+        return set(df[SchemaColumns.UUID_STRING].values)
+    except Exception:
+        # Table doesn't exist yet, return empty set
+        return set()
 
 
 def _write_embeddings_worker(
     write_queue: Queue,
-    engine: Engine,
-    embeddings_table: Table,
+    output_embeddings_db: Path,
     stop_event: threading.Event,
 ) -> None:
-    """Worker thread that writes embeddings to database using SQLAlchemy."""
+    """Worker thread that writes embeddings to database using upsert_dataframe_to_sqlite."""
 
-    with engine.connect() as conn:
-        while not stop_event.is_set() or not write_queue.empty():
+    batch_items = []
+    
+    while not stop_event.is_set() or not write_queue.empty():
+        # Collect batch of items from queue
+        while len(batch_items) < 100:  # Batch size
             try:
-                # Get item from queue with timeout
-                # THAD: TODO: Pull everything out of the queue, insert in batch.
-                # THAD: TODO: There's a bug here -- if this times out, the writer thread will stop.
                 item = write_queue.get(timeout=0.1)
-
                 if item is None:  # Sentinel value to stop
                     break
-
-                uuid_str, embedding = item
-
-                # Serialize embedding with msgpack
-                embedding_blob = msgpack.packb(embedding)
-
-                # Use SQLAlchemy upsert for SQLite
-                stmt = insert(embeddings_table).values(
-                    {
-                        SchemaColumns.UUID_STRING: uuid_str,
-                        SchemaColumns.SEMANTIC_EMBEDDING: embedding_blob,
-                    }
-                )
-                stmt = stmt.on_conflict_do_update(
-                    index_elements=[embeddings_table.c[SchemaColumns.UUID_STRING]],
-                    set_={
-                        embeddings_table.c[
-                            SchemaColumns.SEMANTIC_EMBEDDING
-                        ]: stmt.excluded[SchemaColumns.SEMANTIC_EMBEDDING]
-                    },
-                )
-
-                conn.execute(stmt)
-                conn.commit()
-
+                batch_items.append(item)
                 write_queue.task_done()
-
-            except Exception as e:
-                if not stop_event.is_set():
-                    logger.exception(f"Error writing embedding to database.")
+            except Exception:
+                # Timeout or queue empty - process what we have
                 break
+        
+        # Process batch if we have items
+        if batch_items:
+            try:
+                # Create DataFrame from batch items
+                uuids = []
+                embeddings = []
+                
+                for uuid_str, embedding in batch_items:
+                    uuids.append(uuid_str)
+                    embeddings.append(embedding)
+                
+                batch_df = pd.DataFrame({
+                    SchemaColumns.UUID_STRING: uuids,
+                    SchemaColumns.SEMANTIC_EMBEDDING: embeddings,
+                })
+                
+                # Use the utility function for upsert
+                upsert_dataframe_to_sqlite(
+                    batch_df, 
+                    output_embeddings_db, 
+                    EmbeddingsTables.IMAGE_EMBEDDINGS
+                )
+                
+                logger.debug(f"Wrote batch of {len(batch_items)} embeddings to database")
+                batch_items.clear()
+                
+            except Exception as e:
+                logger.error(f"Failed to write batch to database: {e}")
+                # Re-raise the exception to avoid silent failures
+                # The main thread will handle this appropriately
+                raise
+        
+        # Check for sentinel or stop condition
+        if not write_queue.empty():
+            continue
+        elif stop_event.is_set():
+            break
 
 
 def _compute_embeddings_batch(
@@ -220,41 +224,32 @@ def _compute_embeddings_batch(
         raise
 
 
-def _load_embeddings_from_db(engine: Engine, embeddings_table: Table) -> pd.DataFrame:
+def _load_embeddings_from_db(engine: Engine) -> pd.DataFrame:
     """Load all embeddings from database into a DataFrame."""
-
-    with engine.connect() as conn:
-        # THAD: TODO: Use pd.read_sql here, and map operations on the columns to unpack.
-        result = conn.execute(
-            select(
-                embeddings_table.c[SchemaColumns.UUID_STRING],
-                embeddings_table.c[SchemaColumns.SEMANTIC_EMBEDDING],
+    
+    try:
+        query = f"""
+        SELECT {SchemaColumns.UUID_STRING}, {SchemaColumns.SEMANTIC_EMBEDDING}
+        FROM {EmbeddingsTables.IMAGE_EMBEDDINGS}
+        """
+        df = pd.read_sql(query, engine)
+        
+        if df.empty:
+            return pd.DataFrame(
+                columns=[SchemaColumns.UUID_STRING, SchemaColumns.SEMANTIC_EMBEDDING]
             )
+        
+        # Deserialize embeddings using map operation
+        df[SchemaColumns.SEMANTIC_EMBEDDING] = df[SchemaColumns.SEMANTIC_EMBEDDING].map(
+            lambda blob: msgpack.unpackb(blob)
         )
-        rows = result.fetchall()
-
-    if not rows:
+        
+        return df
+    except Exception:
+        # Table doesn't exist yet, return empty DataFrame
         return pd.DataFrame(
             columns=[SchemaColumns.UUID_STRING, SchemaColumns.SEMANTIC_EMBEDDING]
         )
-
-    # Deserialize embeddings
-    uuids = []
-    embeddings = []
-
-    for uuid_str, embedding_blob in rows:
-        embedding = msgpack.unpackb(embedding_blob)
-        uuids.append(uuid_str)
-        embeddings.append(embedding)
-
-    df = pd.DataFrame(
-        {
-            SchemaColumns.UUID_STRING: uuids,
-            SchemaColumns.SEMANTIC_EMBEDDING: embeddings,
-        }
-    )
-
-    return df
 
 
 def _store_umap_model(engine, umap_model_table: Table, umap_model) -> None:
@@ -270,6 +265,33 @@ def _store_umap_model(engine, umap_model_table: Table, umap_model) -> None:
         # Insert new model
         conn.execute(umap_model_table.insert().values(MODEL=model_blob))
         conn.commit()
+
+
+def _upsert_umap_embeddings(output_embeddings_db: Path, embedding_type: EmbeddingType, df: pd.DataFrame) -> None:
+    """Upsert UMAP embeddings into the haversine table."""
+    
+    # Filter to rows that have valid UMAP coordinates
+    valid_umap_mask = (
+        df[SchemaColumns.SEMANTIC_EMBEDDING_UMAP_LATITUDE].notna() &
+        df[SchemaColumns.SEMANTIC_EMBEDDING_UMAP_LONGITUDE].notna()
+    )
+    
+    if not valid_umap_mask.any():
+        logger.warning("No valid UMAP coordinates to upsert")
+        return
+    
+    # Select only the columns we need for the UMAP haversine table
+    umap_df = df[valid_umap_mask][[
+        SchemaColumns.UUID_STRING,
+        SchemaColumns.SEMANTIC_EMBEDDING_UMAP_LATITUDE,
+        SchemaColumns.SEMANTIC_EMBEDDING_UMAP_LONGITUDE,
+    ]].copy()
+    
+    # Use the existing utility function for upsert
+    table_name = f"{embedding_type}_UMAP_HAVERSINE"
+    upsert_dataframe_to_sqlite(umap_df, output_embeddings_db, table_name)
+    
+    logger.info(f"Upserted {len(umap_df)} UMAP embeddings into {table_name} table")
 
 
 @app.command()
@@ -325,7 +347,7 @@ def main(
     engine = create_engine(f"sqlite:///{output_embeddings_db}")
 
     # Create database schema
-    embeddings_table, umap_model_table = _create_database_schema(engine, embedding_type)
+    umap_model_table = _create_database_schema(engine, embedding_type)
 
     # Scan for image files
     uuid_to_path = _scan_image_files(input_dir)
@@ -339,7 +361,7 @@ def main(
         missing_uuids = set(uuid_to_path.keys())
         logger.info(f"Recomputing all {len(missing_uuids)} embeddings")
     else:
-        existing_uuids = _get_existing_embeddings(engine, embeddings_table)
+        existing_uuids = _get_existing_embeddings(engine)
         missing_uuids = set(uuid_to_path.keys()) - existing_uuids
         logger.info(f"Found {len(existing_uuids)} existing embeddings")
         logger.info(f"Need to compute {len(missing_uuids)} new embeddings")
@@ -367,7 +389,7 @@ def main(
         # Start database writer thread
         writer_thread = threading.Thread(
             target=_write_embeddings_worker,
-            args=(write_queue, engine, embeddings_table, stop_event),
+            args=(write_queue, output_embeddings_db, stop_event),
         )
         writer_thread.start()
 
@@ -385,15 +407,17 @@ def main(
             write_queue.join()
 
         finally:
-            # Stop the writer thread
-            stop_event.set()  # THAD: Is this right?  Couldn't this stop the writer before it's flushed?
+            # Wait for all items to be processed first
+            write_queue.join()
+            # Then signal to stop and wait for thread to finish processing remaining items
             write_queue.put(None)  # Sentinel value
+            stop_event.set()
             writer_thread.join()
 
     # Run UMAP projection if requested
     if reproject_umap_embeddings:
         logger.info("Loading embeddings for UMAP projection...")
-        df = _load_embeddings_from_db(engine, embeddings_table)
+        df = _load_embeddings_from_db(engine)
 
         if len(df) < 20:
             logger.warning("Two few embeddings found for UMAP projection.")
@@ -407,7 +431,9 @@ def main(
                 output_lat_column=SchemaColumns.SEMANTIC_EMBEDDING_UMAP_LATITUDE,
                 output_lon_column=SchemaColumns.SEMANTIC_EMBEDDING_UMAP_LONGITUDE,
             )
-            # THAD: Also upsert the UMAP embeddings for the images into a table called `{embedding_type}_UMAP_HAVERSINE`,  with columns UUID (primary key), schema.LATITUDE, schema.LONGITUDE.
+            
+            # Upsert the UMAP embeddings for the images into the haversine table
+            _upsert_umap_embeddings(output_embeddings_db, embedding_type, df)
 
             # Store UMAP model in database
             _store_umap_model(engine, umap_model_table, umap_model)

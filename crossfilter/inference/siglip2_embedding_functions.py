@@ -173,30 +173,3 @@ class SigLIP2Embedder(EmbeddingInterface):
         return embeddings
 
 
-# Backward compatibility functions that delegate to the class
-def compute_image_embeddings(
-    image_paths: list[Path],
-    model_name: str = "google/siglip-so400m-patch14-384",
-) -> list[np.ndarray]:
-    """
-    Backward compatibility function for compute_image_embeddings.
-    
-    Note: This function creates a new embedder instance each time, which is inefficient.
-    Consider using SigLIP2Embedder class directly for better performance.
-    """
-    embedder = SigLIP2Embedder(model_name)
-    return embedder.compute_image_embeddings(image_paths)
-
-
-def compute_text_embeddings(
-    captions: list[str],
-    model_name: str = "google/siglip-so400m-patch14-384",
-) -> list[np.ndarray]:
-    """
-    Backward compatibility function for compute_text_embeddings.
-    
-    Note: This function creates a new embedder instance each time, which is inefficient.
-    Consider using SigLIP2Embedder class directly for better performance.
-    """
-    embedder = SigLIP2Embedder(model_name)
-    return embedder.compute_text_embeddings(captions)

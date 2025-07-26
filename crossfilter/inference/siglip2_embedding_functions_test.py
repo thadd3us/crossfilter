@@ -16,8 +16,7 @@ import scipy.spatial.distance
 import plotly.express as px
 
 from crossfilter.inference.siglip2_embedding_functions import (
-    compute_image_embeddings,
-    compute_text_embeddings,
+    SigLIP2Embedder,
 )
 from tests.util.syrupy_html_snapshot import HTMLSnapshotExtension
 
@@ -27,6 +26,12 @@ from tests.util.syrupy_html_snapshot import HTMLSnapshotExtension
 pytestmark = pytest.mark.resource_intensive
 
 logger = logging.getLogger(__name__)
+
+
+@pytest.fixture
+def embedder() -> SigLIP2Embedder:
+    """Create SigLIP2Embedder instance for testing."""
+    return SigLIP2Embedder()
 
 
 @pytest.fixture
@@ -65,12 +70,12 @@ def test_df(source_tree_root: Path) -> pd.DataFrame:
 
 
 def test_compute_image_and_text_embeddings_match(
-    test_df: pd.DataFrame, snapshot: SnapshotAssertion
+    test_df: pd.DataFrame, embedder: SigLIP2Embedder, snapshot: SnapshotAssertion
 ) -> None:
     df = test_df
-    df["image_embedding"] = compute_image_embeddings(df[C.SOURCE_FILE].to_list())
+    df["image_embedding"] = embedder.compute_image_embeddings(df[C.SOURCE_FILE].to_list())
     # df[C.CAPTION] = ("A photo of " + df[C.CAPTION]).str.lower()
-    df["text_embedding"] = compute_text_embeddings(df[C.CAPTION].to_list())
+    df["text_embedding"] = embedder.compute_text_embeddings(df[C.CAPTION].to_list())
 
     distances = scipy.spatial.distance.cdist(
         np.stack(df["image_embedding"].values),
@@ -94,32 +99,32 @@ def test_compute_image_and_text_embeddings_match(
     )
 
 
-def test_error_handling_missing_image() -> None:
+def test_error_handling_missing_image(embedder: SigLIP2Embedder) -> None:
     """Test error handling for missing image files."""
     missing_path = Path("/nonexistent/image.jpg")
 
     with pytest.raises(FileNotFoundError, match="Image not found"):
-        compute_image_embeddings([missing_path])
+        embedder.compute_image_embeddings([missing_path])
 
 
-def test_error_handling_invalid_image(tmp_path: Path) -> None:
+def test_error_handling_invalid_image(embedder: SigLIP2Embedder, tmp_path: Path) -> None:
     """Test error handling for invalid image files."""
     # Create a non-image file
     invalid_file = tmp_path / "not_an_image.jpg"
     invalid_file.write_text("This is not an image")
 
     with pytest.raises(ValueError, match="Failed to load image"):
-        compute_image_embeddings([invalid_file])
+        embedder.compute_image_embeddings([invalid_file])
 
 
-def test_empty_inputs() -> None:
+def test_empty_inputs(embedder: SigLIP2Embedder) -> None:
     """Test handling of empty input lists."""
     # Empty image list
-    image_embeddings = compute_image_embeddings([])
+    image_embeddings = embedder.compute_image_embeddings([])
     assert image_embeddings == []
 
     # Empty text list
-    text_embeddings = compute_text_embeddings([])
+    text_embeddings = embedder.compute_text_embeddings([])
     assert text_embeddings == []
 
     # # Empty embeddings for caption generation

@@ -1,10 +1,14 @@
 from dataclasses import dataclass
+import logging
 from typing import Any, Final
 import uuid
 from crossfilter.core.data_subset import DataSubset
 import enum
+from crossfilter.core.schema import SchemaColumns as C
 
 import pandas as pd
+
+logger = logging.getLogger(__name__)
 
 
 # Need to have the same type when comparing NA and present values.
@@ -36,10 +40,12 @@ class GroupedBucketedProjection:
     projection_uuid: str
 
     # Each group may be bucketed by a different column, depending on how many rows are in the group.
-    grouped_by_columns: tuple[str, ...]
+    grouped_by_columns: list[str, ...]
 
     # Key: how is this indexed?  Can it be (group_key)->bucket_key|uuid?
     projected_data: pd.DataFrame
+
+    name_to_group: dict[str, _Group]
 
 
 def create_grouped_bucketed_projection(
@@ -75,26 +81,15 @@ def create_grouped_bucketed_projection(
     else:
         groups.sort(key=lambda x: x.group_name)
 
-    return GroupedBucketedProjection(
+    result = GroupedBucketedProjection(
         projection_uuid=str(uuid.uuid4()),
         grouped_by_columns=group_by_columns,
         projected_data=pd.concat(
             [group.group_df for group in groups], ignore_index=False
         ),
+        name_to_group={g.group_name: g for g in groups},
     )
-    # groups: list[_Group] = []
-
-    # group_key_to_group_df: dict[tuple[Any, ...], pd.DataFrame] = {}
-    # group_key_to_group_size: dict[tuple[Any, ...], int] = {}
-    # for group_name, group_df in groups:
-    #     group_key = tuple(group_name)
-    #     group_key_to_group_df[group_key] = group_df
-    #     group_key_to_group_size[group_key] = len(group_df)
-
-    # if sort_groups_by_cardinality:
-    #     group_keys = sorted(
-    #         group_key_to_group_size.keys(), key=lambda x: group_key_to_group_size[x]
-    #     )
+    return result
 
 
 def _maybe_bucket_group(
@@ -102,13 +97,38 @@ def _maybe_bucket_group(
     max_entries: int,
     bucketing_candidate_columns: tuple[str, ...],
 ) -> None:
-    if len(group.group_df) <= max_entries:
+    df = group.group_df
+    original_count = len(df)
+    if len(df) <= max_entries:
+        logger.info(f"{group.group_name=}: {len(df)=} <= {max_entries=}, not bucketing")
+        return
+    if not bucketing_candidate_columns:
+        logger.warning(
+            f"{group.group_name=}: Want to bucket {len(df)=}, but have no columns."
+        )
         return
 
-    raise NotImplementedError("Not implemented")
-    # for bucketing_candidate_column in bucketing_candidate_columns:
-    #     if group.group_df[bucketing_candidate_column].nunique() <= max_entries:
-    #         group.bucketed_on_column = bucketing_candidate_column
-    #         bucketed_df = group.group_df.groupby(
-    #             bucketing_candidate_column, dropna=False
-    #         )
+    last_count = len(group.group_df)
+    logger.info(f"{group.group_name=}: Looking for bucketing scheme for {len(df)=}")
+    for c in bucketing_candidate_columns:
+        assert df[c].notna().all()
+        this_count = df[c].nunique()
+        # This assert could fire because H3 levels are not perfectly hierarchical.
+        assert this_count <= last_count, f"{this_count=} > {last_count=} for {c=}"
+        if this_count <= max_entries:
+            break
+    logger.info(
+        f"{group.group_name=}: Using bucketing scheme on {c=} with {this_count=}"
+    )
+    group.optional_bucketed_on_column = c
+
+    df[C.COUNT] = df.groupby(group.optional_bucketed_on_column).transform("size")
+    # Keep the first.
+    df = df.drop_duplicates(subset=[group.optional_bucketed_on_column])
+    assert len(df) == this_count, f"{len(df)=} != {this_count=}, {c=}"
+    df = df.reset_index()
+    df.index.name = C.DF_ID
+    sum_count = df[C.COUNT].sum()
+    assert sum_count == original_count, f"{sum_count=} != {original_count=}, {c=}"
+
+    group.group_df = df

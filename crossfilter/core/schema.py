@@ -88,7 +88,7 @@ class DataSchema(pa.DataFrameModel):
     )
     GPS_LATITUDE: Series[float] = pa.Field(nullable=True, ge=-90, le=90)
     GPS_LONGITUDE: Series[float] = pa.Field(nullable=True, ge=-180, le=180)
-    RATING_0_TO_5: Series[pd.Int64Dtype] = pa.Field(nullable=True, ge=0, le=5)
+    RATING_0_TO_5: Series[pd.Int32Dtype] = pa.Field(nullable=True, ge=0, le=5)
     SIZE_IN_BYTES: Series[pd.Int64Dtype] = pa.Field(nullable=True, ge=0)
 
     # For aggregated data, the COUNT column says how many rows are aggregated into the bucket.

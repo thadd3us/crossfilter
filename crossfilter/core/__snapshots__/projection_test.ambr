@@ -2,6 +2,30 @@
 # name: test_create_grouped_bucketed_projection_group_by_data_type_no_bucketing
   list([
     dict({
+      'DATA_TYPE': '?',
+      'H3_01': 'abcd',
+      'H3_02': 'abcde ',
+      'NAME': 'name6',
+      'RATING_0_TO_5': nan,
+      'TIMESTAMP_DAY': '2025-08-02',
+      'TIMESTAMP_UTC': '2025-08-02T9:00:00',
+      'TIMESTAMP_YEAR': '2025-01-01',
+      'UUID_STRING': 'uuid6',
+      <_C.GROUP_NAME: '_GROUP_NAME'>: '?',
+    }),
+    dict({
+      'DATA_TYPE': '?',
+      'H3_01': 'abcd',
+      'H3_02': 'abcde ',
+      'NAME': 'name9',
+      'RATING_0_TO_5': 4.0,
+      'TIMESTAMP_DAY': nan,
+      'TIMESTAMP_UTC': nan,
+      'TIMESTAMP_YEAR': nan,
+      'UUID_STRING': 'uuid9',
+      <_C.GROUP_NAME: '_GROUP_NAME'>: '?',
+    }),
+    dict({
       'DATA_TYPE': 'GPS',
       'H3_01': 'abcd',
       'H3_02': 'abcde ',
@@ -11,6 +35,7 @@
       'TIMESTAMP_UTC': '2024-07-27T9:00:00',
       'TIMESTAMP_YEAR': '2024-01-01',
       'UUID_STRING': 'uuid0',
+      <_C.GROUP_NAME: '_GROUP_NAME'>: 'GPS',
     }),
     dict({
       'DATA_TYPE': 'GPS',
@@ -22,6 +47,7 @@
       'TIMESTAMP_UTC': '2024-07-28T9:00:00',
       'TIMESTAMP_YEAR': '2024-01-01',
       'UUID_STRING': 'uuid1',
+      <_C.GROUP_NAME: '_GROUP_NAME'>: 'GPS',
     }),
     dict({
       'DATA_TYPE': 'GPS',
@@ -33,6 +59,7 @@
       'TIMESTAMP_UTC': '2024-07-29T9:00:00',
       'TIMESTAMP_YEAR': '2024-01-01',
       'UUID_STRING': 'uuid2',
+      <_C.GROUP_NAME: '_GROUP_NAME'>: 'GPS',
     }),
     dict({
       'DATA_TYPE': 'GPS',
@@ -44,6 +71,7 @@
       'TIMESTAMP_UTC': '2024-07-30T9:00:00',
       'TIMESTAMP_YEAR': '2024-01-01',
       'UUID_STRING': 'uuid3',
+      <_C.GROUP_NAME: '_GROUP_NAME'>: 'GPS',
     }),
     dict({
       'DATA_TYPE': 'PHOTO',
@@ -55,6 +83,7 @@
       'TIMESTAMP_UTC': '2024-07-31T9:00:00',
       'TIMESTAMP_YEAR': '2024-01-01',
       'UUID_STRING': 'uuid4',
+      <_C.GROUP_NAME: '_GROUP_NAME'>: 'PHOTO',
     }),
     dict({
       'DATA_TYPE': 'PHOTO',
@@ -66,6 +95,7 @@
       'TIMESTAMP_UTC': '2025-08-01T9:00:00',
       'TIMESTAMP_YEAR': '2025-01-01',
       'UUID_STRING': 'uuid5',
+      <_C.GROUP_NAME: '_GROUP_NAME'>: 'PHOTO',
     }),
     dict({
       'DATA_TYPE': 'PHOTO',
@@ -77,28 +107,7 @@
       'TIMESTAMP_UTC': '2025-08-03T9:00:00',
       'TIMESTAMP_YEAR': '2025-01-01',
       'UUID_STRING': 'uuid7',
-    }),
-    dict({
-      'DATA_TYPE': 'Unknown',
-      'H3_01': 'abcd',
-      'H3_02': 'abcde ',
-      'NAME': 'name6',
-      'RATING_0_TO_5': nan,
-      'TIMESTAMP_DAY': '2025-08-02',
-      'TIMESTAMP_UTC': '2025-08-02T9:00:00',
-      'TIMESTAMP_YEAR': '2025-01-01',
-      'UUID_STRING': 'uuid6',
-    }),
-    dict({
-      'DATA_TYPE': 'Unknown',
-      'H3_01': 'abcd',
-      'H3_02': 'abcde ',
-      'NAME': 'name9',
-      'RATING_0_TO_5': 4.0,
-      'TIMESTAMP_DAY': nan,
-      'TIMESTAMP_UTC': nan,
-      'TIMESTAMP_YEAR': nan,
-      'UUID_STRING': 'uuid9',
+      <_C.GROUP_NAME: '_GROUP_NAME'>: 'PHOTO',
     }),
     dict({
       'DATA_TYPE': 'VIDEO',
@@ -110,6 +119,7 @@
       'TIMESTAMP_UTC': '2025-08-04T9:00:00',
       'TIMESTAMP_YEAR': '2025-01-01',
       'UUID_STRING': 'uuid8',
+      <_C.GROUP_NAME: '_GROUP_NAME'>: 'VIDEO',
     }),
     dict({
       'DATA_TYPE': 'VIDEO',
@@ -121,6 +131,7 @@
       'TIMESTAMP_UTC': '2025-08-06T9:00:00',
       'TIMESTAMP_YEAR': '2025-01-01',
       'UUID_STRING': 'uuid10',
+      <_C.GROUP_NAME: '_GROUP_NAME'>: 'VIDEO',
     }),
   ])
 # ---
@@ -257,14 +268,17 @@
       'C': '7',
     }),
     dict({
-      'A': '2.0',
+      'A': '2',
       'B': '5.0',
       'C': '8',
     }),
     dict({
-      'A': '3.0',
+      'A': '3',
       'B': '?',
       'C': '?',
     }),
   ])
+# ---
+# name: test_groupby_fillna.1
+  True
 # ---

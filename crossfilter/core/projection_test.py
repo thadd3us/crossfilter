@@ -4,7 +4,11 @@ import pandas as pd
 from syrupy.assertion import SnapshotAssertion
 
 from crossfilter.core.data_subset import DataSubset
-from crossfilter.core.projection import create_grouped_bucketed_projection
+from crossfilter.core.projection import (
+    create_grouped_bucketed_projection,
+    groupby_fillna,
+    _C,
+)
 from crossfilter.core.schema import DataSchema as C
 
 
@@ -34,7 +38,7 @@ def test_create_grouped_bucketed_projection_no_grouping_no_bucketing(
 ) -> None:
     projection = create_grouped_bucketed_projection(
         ds,
-        group_by_columns=(),
+        group_by_columns=[],
         bucketing_candidate_columns=(),
         max_entries_per_group=100,
         sort_groups_by_cardinality=False,
@@ -48,9 +52,20 @@ def test_create_grouped_bucketed_projection_group_by_data_type_no_bucketing(
 ) -> None:
     projection = create_grouped_bucketed_projection(
         ds,
-        group_by_columns=(C.DATA_TYPE,),
+        group_by_columns=[C.DATA_TYPE],
         bucketing_candidate_columns=(),
         max_entries_per_group=100,
         sort_groups_by_cardinality=False,
     )
     assert projection.projected_data.to_dict(orient="records") == snapshot
+    assert projection.projected_data[_C.GROUP_NAME].value_counts(
+        dropna=False
+    ).to_dict() == {"GPS": 4, "PHOTO": 3, "?": 2, "VIDEO": 2}
+
+
+def test_groupby_fillna(snapshot: SnapshotAssertion) -> None:
+    df = pd.DataFrame({"A": [None, 2, 3], "B": [4, 5, None], "C": ["7", 8, None]})
+    df["A"] = df["A"].astype(pd.Int64Dtype())
+    new_df = groupby_fillna(df)
+    assert new_df.to_dict(orient="records") == snapshot
+    assert new_df["A"].tolist() == ["?", "2", "3"], "Don't be floats!"

@@ -46,10 +46,16 @@ def run_and_stream_output(command: list[str], timeout: float) -> subprocess.Pope
 
     # Create threads to read from stdout and stderr concurrently
     stdout_thread = threading.Thread(
-        target=read_pipe_in_thread, args=(process.stdout, "STDOUT"), daemon=True
+        target=read_pipe_in_thread,
+        args=(process.stdout, "STDOUT"),
+        daemon=True,
+        name="stdout_poll_thread",
     )
     stderr_thread = threading.Thread(
-        target=read_pipe_in_thread, args=(process.stderr, "STDERR"), daemon=True
+        target=read_pipe_in_thread,
+        args=(process.stderr, "STDERR"),
+        daemon=True,
+        name="stderr_poll_thread",
     )
 
     stdout_thread.start()
@@ -73,7 +79,7 @@ def test_compute_embeddings_cli_fake_embeddings(
     # Run the CLI with SIGLIP2 embeddings and UMAP projection
     cmd = [
         *("python", "-m"),
-        "crossfilter.inference.compute_embeddings_cli",
+        "crossfilter.inference.run_embeddings_cli",
         *("--embedding_type", str(EmbeddingType.FAKE_EMBEDDING_FOR_TESTING)),
         *("--input_dir", str(test_photos_dir)),
         *("--output_embeddings_db", str(output_db)),
@@ -82,6 +88,7 @@ def test_compute_embeddings_cli_fake_embeddings(
         "--reproject_umap_embeddings",
     ]
     process = run_and_stream_output(cmd, timeout=5)
+    logger.info(f"CLI process returned code: {process.returncode}")
     assert process.returncode == 0, f"CLI failed with stderr: {process.stderr}"
 
     assert output_db.exists(), "Output database was not created."
@@ -92,7 +99,13 @@ def test_compute_embeddings_cli_fake_embeddings(
         tables = pd.read_sql("SELECT name FROM sqlite_master WHERE type='table'", conn)
         actual_tables = sorted(tables["name"])
         T = schema.EmbeddingsTables
-        expected_tables = sorted({T.IMAGE_EMBEDDINGS, T.UMAP_MODEL})
+        expected_tables = sorted(
+            {
+                T.IMAGE_EMBEDDINGS,
+                T.IMAGE_UMAP_PROJECTIONS,
+                T.UMAP_MODEL,
+            }
+        )
         assert actual_tables == expected_tables
 
         # Load embeddings table

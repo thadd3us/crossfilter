@@ -69,6 +69,11 @@ def create_or_update_table_schema(
     if not is_valid_sql_identifier(table_name):
         raise ValueError(f"Invalid table name: {table_name}")
 
+    if df.index.name is None:
+        raise ValueError(
+            "DataFrame has no index name, we don't know what index name to use."
+        )
+
     id_column: str = escape_sql_identifier(df.index.name)
 
     inspector = inspect(engine)

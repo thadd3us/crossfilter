@@ -368,7 +368,7 @@ def test_clip_embedding_projection_type(sample_df: pd.DataFrame) -> None:
         FilterOperatorType.INTERSECTION,
     )
     session.apply_filter_event(filter_event)
-    
+
     # Should filter to the selected rows (even though CLIP projection has no data)
     assert len(session.filtered_rows) == 10
 

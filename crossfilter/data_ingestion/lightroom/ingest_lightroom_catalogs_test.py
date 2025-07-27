@@ -1,7 +1,6 @@
 """Tests for Lightroom catalog ingestion CLI program."""
 
 import os
-import sys
 import zipfile
 from pathlib import Path
 

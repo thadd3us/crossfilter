@@ -15,9 +15,7 @@ References:
 """
 
 import logging
-from pathlib import Path
 
-import numpy as np
 import pandas as pd
 import torch
 from PIL import Image
@@ -106,7 +104,7 @@ class SigLIP2Embedder(EmbeddingInterface):
                 batch_images.append(image)
                 valid_indices.append(idx)
 
-            except Exception as e:
+            except Exception:
                 logger.exception(f"Failed to load image {image_path}, skipping it...")
 
         # TODO: If the batch is empty, we can't run SIGLIP2.

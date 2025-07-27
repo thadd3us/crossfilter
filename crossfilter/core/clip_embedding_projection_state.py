@@ -9,9 +9,9 @@ from crossfilter.core.bucketing import (
     bucket_by_target_column,
     get_optimal_semantic_embedding_umap_h3_level,
 )
-from crossfilter.core.schema import get_semantic_embedding_umap_h3_column_name
 from crossfilter.core.projection_state import ProjectionState
 from crossfilter.core.schema import SchemaColumns as C
+from crossfilter.core.schema import get_semantic_embedding_umap_h3_column_name
 
 logger = logging.getLogger(__name__)
 

@@ -2,18 +2,16 @@
 
 import logging
 from decimal import Decimal
-from pathlib import Path
 
-import numpy as np
 import pandas as pd
 import pytest
 from syrupy import SnapshotAssertion
 
-from crossfilter.inference.test_fixtures import test_df
+from crossfilter.core.schema import SchemaColumns as C
 from crossfilter.inference.fake_embedding_functions import (
     FakeEmbedder,
 )
-from crossfilter.core.schema import SchemaColumns as C
+from crossfilter.inference.test_fixtures import test_df
 
 assert test_df is not None, "Preserve import."
 

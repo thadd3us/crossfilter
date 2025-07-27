@@ -1,6 +1,7 @@
-import pytest
-import pandas as pd
 from pathlib import Path
+
+import pandas as pd
+import pytest
 
 from crossfilter.core.schema import SchemaColumns as C
 

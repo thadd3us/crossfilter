@@ -36,8 +36,7 @@ import pickle
 import threading
 from pathlib import Path
 from queue import Queue
-from typing import List, Set
-from uuid import UUID
+from typing import Any
 
 import msgpack
 import msgpack_numpy
@@ -54,15 +53,18 @@ from sqlalchemy.engine import Engine
 from tqdm import tqdm
 
 from crossfilter.core.schema import (
-    EmbeddingType,
     EmbeddingsTables,
-    SchemaColumns as C,
+    EmbeddingType,
 )
+from crossfilter.core.schema import SchemaColumns as C, EmbeddingsTables
 from crossfilter.data_ingestion.sqlite_utils import upsert_dataframe_to_sqlite
 from crossfilter.inference.embedding_interface import EmbeddingInterface
-from crossfilter.inference.run_umap import run_umap_projection
+from crossfilter.inference import umap_haversine
 
 logger = logging.getLogger(__name__)
+
+# Enable msgpack_numpy for serialization/deserialization
+msgpack_numpy.patch()
 
 
 def _get_embedder_instance(embedding_type: EmbeddingType) -> EmbeddingInterface:
@@ -87,27 +89,24 @@ app = typer.Typer(
     help="Compute embeddings for images and store them in SQLite database"
 )
 
-# Enable msgpack_numpy for serialization/deserialization
-msgpack_numpy.patch()
 
+# def _create_database_schema(engine: Engine, embedding_type: EmbeddingType) -> Table:
+#     """Create database schema and return UMAP model table object."""
+#     metadata = MetaData()
 
-def _create_database_schema(engine: Engine, embedding_type: EmbeddingType) -> Table:
-    """Create database schema and return UMAP model table object."""
-    metadata = MetaData()
+#     # Create UMAP model table
+#     umap_model_table = Table(
+#         EmbeddingsTables.UMAP_MODEL,
+#         metadata,
+#         Column("MODEL", LargeBinary, nullable=False),
+#     )
 
-    # Create UMAP model table
-    umap_model_table = Table(
-        EmbeddingsTables.UMAP_MODEL,
-        metadata,
-        Column("MODEL", LargeBinary, nullable=False),
-    )
+#     # Note: Both embeddings table and UMAP haversine table are created automatically by upsert_dataframe_to_sqlite
 
-    # Note: Both embeddings table and UMAP haversine table are created automatically by upsert_dataframe_to_sqlite
+#     # Create all tables
+#     metadata.create_all(engine)
 
-    # Create all tables
-    metadata.create_all(engine)
-
-    return umap_model_table
+#     return umap_model_table
 
 
 def _scan_image_files(input_dir: Path) -> pd.DataFrame:
@@ -135,7 +134,7 @@ def _scan_image_files(input_dir: Path) -> pd.DataFrame:
     return df
 
 
-def _get_existing_embeddings(engine: Engine) -> Set[str]:
+def _get_existing_embeddings(engine: Engine) -> set[str]:
     """Get set of UUIDs that already have embeddings in the database."""
     try:
         query = f"SELECT {C.UUID_STRING} FROM {EmbeddingsTables.IMAGE_EMBEDDINGS}"
@@ -149,30 +148,19 @@ def _get_existing_embeddings(engine: Engine) -> Set[str]:
 def _write_embeddings_worker(
     write_queue: Queue[pd.DataFrame | None],
     output_embeddings_db: Path,
-    stop_event: threading.Event,
 ) -> None:
     """Worker thread that writes embeddings to database using upsert_dataframe_to_sqlite."""
 
-    while not stop_event.is_set() or not write_queue.empty():
-        try:
-            item = write_queue.get(timeout=0.1)
-            if item is None:  # Sentinel value to stop
-                write_queue.task_done()
-                break
+    while True:
+        item = write_queue.get()
+        if item is None:  # Sentinel value to stop
+            break
 
-            # Write the DataFrame directly to the database
-            upsert_dataframe_to_sqlite(
-                item, output_embeddings_db, EmbeddingsTables.IMAGE_EMBEDDINGS
-            )
-
-            logger.debug(f"Wrote batch of {len(item)} embeddings to database")
-            write_queue.task_done()
-
-        except Exception as e:
-            if "timeout" not in str(e).lower():
-                logger.error(f"Failed to write batch to database: {e}")
-                # Re-raise the exception to avoid silent failures
-                raise
+        # Write the DataFrame directly to the database
+        upsert_dataframe_to_sqlite(
+            item, output_embeddings_db, EmbeddingsTables.IMAGE_EMBEDDINGS
+        )
+        logger.debug(f"Wrote batch of {len(item)} embeddings to database")
 
 
 def _compute_embeddings_batch(
@@ -225,7 +213,7 @@ def _load_embeddings_from_db(engine: Engine) -> pd.DataFrame:
         return pd.DataFrame(columns=[C.UUID_STRING, C.SEMANTIC_EMBEDDING])
 
 
-def _store_umap_model(engine: Engine, umap_model_table: Table, umap_model) -> None:
+def _store_umap_model(engine: Engine, umap_model_table: Table, umap_model: Any) -> None:
     """Store UMAP model in database."""
 
     # Serialize model with pickle
@@ -265,8 +253,10 @@ def _upsert_umap_embeddings(
     ].copy()
 
     # Use the existing utility function for upsert
-    table_name = f"{embedding_type}_UMAP_HAVERSINE"
-    upsert_dataframe_to_sqlite(umap_df, output_embeddings_db, table_name)
+    upsert_dataframe_to_sqlite(
+        umap_df,
+        output_embeddings_db,
+    )
 
     logger.info(f"Upserted {len(umap_df)} UMAP embeddings into {table_name} table")
 
@@ -305,14 +295,6 @@ def main(
     # Set up logging
     logging.basicConfig(level=logging.INFO)
 
-    logger.info("Starting embedding computation with parameters:")
-    logger.info(f"  embedding_type: {embedding_type}")
-    logger.info(f"  input_dir: {input_dir}")
-    logger.info(f"  output_embeddings_db: {output_embeddings_db}")
-    logger.info(f"  batch_size: {batch_size}")
-    logger.info(f"  recompute_existing_embeddings: {recompute_existing_embeddings}")
-    logger.info(f"  reproject_umap_embeddings: {reproject_umap_embeddings}")
-
     # Validate input directory
     if not input_dir.exists():
         raise typer.BadParameter(f"Input directory does not exist: {input_dir}")
@@ -323,8 +305,8 @@ def main(
     # Create database engine
     engine = create_engine(f"sqlite:///{output_embeddings_db}")
 
-    # Create database schema
-    umap_model_table = _create_database_schema(engine, embedding_type)
+    # # Create database schema
+    # umap_model_table = _create_database_schema(engine, embedding_type)
 
     # Scan for image files
     all_images_df = _scan_image_files(input_dir)
@@ -353,40 +335,34 @@ def main(
         embedder = _get_embedder_instance(embedding_type)
 
         # Create batches as DataFrame slices
-        batches: List[pd.DataFrame] = []
+        batches: list[pd.DataFrame] = []
         for i in range(0, len(missing_images_df), batch_size):
             batch_df = missing_images_df.iloc[i : i + batch_size].copy()
             batches.append(batch_df)
 
         # Set up database write queue and worker
         write_queue: Queue[pd.DataFrame | None] = Queue()
-        stop_event = threading.Event()
 
         # Start database writer thread
         writer_thread = threading.Thread(
             target=_write_embeddings_worker,
-            args=(write_queue, output_embeddings_db, stop_event),
+            args=(write_queue, output_embeddings_db),
         )
-        writer_thread.start()
 
+        writer_thread.start()
         try:
             # Compute embeddings in batches with progress bar
             logger.info(f"Computing embeddings in {len(batches)} batches")
 
             for batch_df in tqdm(batches, desc="Computing embeddings"):
                 _compute_embeddings_batch(batch_df, write_queue, embedder)
-
-            # Wait for all writes to complete
-            logger.info("Waiting for all embeddings to be written to database...")
-            write_queue.join()
-
         finally:
-            # Wait for all items to be processed first
-            write_queue.join()
             # Then signal to stop and wait for thread to finish processing remaining items
             write_queue.put(None)  # Sentinel value
-            stop_event.set()
+            logger.info("Waiting for all embeddings to be written to database...")
             writer_thread.join()
+
+        logger.info("All embeddings written to database.")
 
     # Run UMAP projection if requested
     if reproject_umap_embeddings:
@@ -399,7 +375,7 @@ def main(
             logger.info(f"Running UMAP projection on {len(df)} embeddings...")
 
             # Run UMAP projection
-            umap_model = run_umap_projection(
+            umap_model = umap_haversine.run_umap_projection(
                 df,
                 embedding_column=C.SEMANTIC_EMBEDDING,
                 output_lat_column=C.SEMANTIC_EMBEDDING_UMAP_LATITUDE,
@@ -410,7 +386,7 @@ def main(
             _upsert_umap_embeddings(output_embeddings_db, embedding_type, df)
 
             # Store UMAP model in database
-            _store_umap_model(engine, umap_model_table, umap_model)
+            _store_umap_model(engine, EmbeddingsTables.UMAP_MODEL, umap_model)
             logger.info("UMAP model stored in database")
 
     logger.info("Embedding computation completed successfully")

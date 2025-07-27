@@ -4,21 +4,19 @@ Tests for SigLIP2 embedding functions.
 
 import logging
 from pathlib import Path
-import pandas as pd
 
 import numpy as np
-import pytest
-from syrupy import SnapshotAssertion
-from crossfilter.core.schema import SchemaColumns as C
-
-import scipy.spatial.distance
+import pandas as pd
 import plotly.express as px
+import pytest
+import scipy.spatial.distance
+from syrupy import SnapshotAssertion
 
+from crossfilter.core.schema import SchemaColumns as C
 from crossfilter.inference.siglip2_embedding_functions import (
     SigLIP2Embedder,
 )
 from tests.util.syrupy_html_snapshot import HTMLSnapshotExtension
-from crossfilter.inference.test_fixtures import test_df
 
 # Mark all tests in this file as resource intensive to avoid downloading the SIGLIP2 model in regular test runs
 # Use fake_embedding_functions_test.py for fast testing instead

@@ -4,21 +4,20 @@ Tests for compute_embeddings_cli.py.
 
 import logging
 import shlex
-import shutil
 import sqlite3
 import subprocess
-from pathlib import Path
 import threading
+from pathlib import Path
 from typing import TextIO
 
 import msgpack_numpy
 import numpy as np
 import pandas as pd
-import pytest
 from syrupy import SnapshotAssertion
 
 from crossfilter.core import schema
-from crossfilter.core.schema import EmbeddingType, SchemaColumns as C
+from crossfilter.core.schema import EmbeddingType
+from crossfilter.core.schema import SchemaColumns as C
 
 # Enable msgpack_numpy for deserialization
 msgpack_numpy.patch()

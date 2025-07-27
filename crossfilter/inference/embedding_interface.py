@@ -1,6 +1,7 @@
 """Common interface for embedding computation classes."""
 
 from abc import ABC, abstractmethod
+
 import pandas as pd
 
 

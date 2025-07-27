@@ -14,8 +14,8 @@ import typer
 from tqdm import tqdm
 
 from crossfilter.core.bucketing import (
-    add_semantic_embedding_umap_h3_bucket_columns,
     add_geo_h3_bucket_columns,
+    add_semantic_embedding_umap_h3_bucket_columns,
 )
 from crossfilter.core.schema import SchemaColumns
 from crossfilter.data_ingestion.lightroom.lightroom_parser import (

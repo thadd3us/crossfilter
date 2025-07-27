@@ -74,6 +74,7 @@ def create_or_update_table_schema(
         if not inspector.has_table(table_name):
             # Create new empty table
             logger.info(f"Creating new empty table: {table_name}")
+            # TODO: Use the index name to figure out the name of the index column.
             conn.execute(
                 text(f"CREATE TABLE {table_name} ({SchemaColumns.UUID_STRING} STRING)")
             )
@@ -121,7 +122,7 @@ def upsert_dataframe_to_sqlite(
     # Create database directory if it doesn't exist
     destination_sqlite_db.parent.mkdir(parents=True, exist_ok=True)
 
-    # Create engine
+    # Create engine.
     engine = create_engine(f"sqlite:///{destination_sqlite_db}")
 
     # Create or update table structure - will ensure unique constraint exists
@@ -131,13 +132,6 @@ def upsert_dataframe_to_sqlite(
     temp_table = f"{destination_table}_temp_{uuid.uuid4().hex}"
 
     with engine.connect() as conn:
-        # Create temporary table with same structure
-        # conn.execute(
-        #     text(
-        #         f"CREATE TABLE {escape_sql_identifier(temp_table)} AS SELECT * FROM {escape_sql_identifier(destination_table)} WHERE 1=0"
-        #     )
-        # )
-
         max_rows_per_insert = 500
         logger.info(
             f"Inserting {len(df)} rows to {temp_table} in batches of {max_rows_per_insert}"

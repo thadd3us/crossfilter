@@ -9,8 +9,8 @@ import pandas as pd
 import plotly.express as px
 from syrupy import SnapshotAssertion
 
-from crossfilter.inference import umap_haversine
 from crossfilter.core.schema import SchemaColumns
+from crossfilter.inference import umap_haversine
 from tests.util.syrupy_html_snapshot import HTMLSnapshotExtension
 
 logger = logging.getLogger(__name__)

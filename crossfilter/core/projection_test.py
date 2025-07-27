@@ -28,6 +28,7 @@ uuid9,,4,name9,,,,abcd,abcde
 uuid10,VIDEO,5,name10,2025-08-06T9:00:00,2025-01-01,2025-08-06,, 
 """
     df = pd.read_csv(StringIO(csv_data))
+    df[C.RATING_0_TO_5] = df[C.RATING_0_TO_5].astype(pd.Int32Dtype())
     # df = df.set_index(C.UUID_STRING, verify_integrity=True)
     return DataSubset(subset_uuid="test_subset_uuid", df=df)
 

@@ -44,7 +44,7 @@ def test_create_grouped_bucketed_projection_no_grouping_no_bucketing(
         max_entries_per_group=100,
         sort_groups_by_cardinality=False,
     )
-    assert projection.projected_data.to_dict(orient="records") == snapshot
+    assert projection.projected_data.to_dict(index=True, orient="records") == snapshot
 
 
 def test_create_grouped_bucketed_projection_group_by_data_type_no_bucketing(
@@ -58,7 +58,7 @@ def test_create_grouped_bucketed_projection_group_by_data_type_no_bucketing(
         max_entries_per_group=100,
         sort_groups_by_cardinality=False,
     )
-    assert projection.projected_data.to_dict(orient="records") == snapshot
+    assert projection.projected_data.to_dict(index=True, orient="records") == snapshot
     assert projection.projected_data[_C.GROUP_NAME].value_counts(
         dropna=False
     ).to_dict() == {"GPS": 4, "PHOTO": 3, "?": 2, "VIDEO": 2}
@@ -76,7 +76,7 @@ def test_create_grouped_bucketed_projection_group_by_data_type_bucketing_H3_COAR
         max_entries_per_group=1,
         sort_groups_by_cardinality=False,
     )
-    assert projection.projected_data.to_dict(orient="records") == snapshot
+    assert projection.projected_data.to_dict(index=True, orient="records") == snapshot
     name_to_bucket_level = {
         g.group_name: g.optional_bucketed_on_column
         for g in projection.name_to_group.values()
@@ -95,7 +95,7 @@ def test_create_grouped_bucketed_projection_group_by_data_type_bucketing_H3_COAR
         max_entries_per_group=2,
         sort_groups_by_cardinality=False,
     )
-    assert projection.projected_data.to_dict(orient="records") == snapshot
+    assert projection.projected_data.to_dict(index=True, orient="records") == snapshot
     name_to_bucket_level = {
         g.group_name: g.optional_bucketed_on_column
         for g in projection.name_to_group.values()

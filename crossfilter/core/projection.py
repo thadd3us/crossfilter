@@ -85,7 +85,10 @@ def create_grouped_bucketed_projection(
         projection_uuid=str(uuid.uuid4()),
         grouped_by_columns=group_by_columns,
         projected_data=pd.concat(
-            [group.group_df for group in groups], ignore_index=False
+            # TODO: Somehow we are ending up with an "index" column in the output???
+            # And no valid index column.
+            [group.group_df for group in groups],
+            ignore_index=False,
         ),
         name_to_group={g.group_name: g for g in groups},
     )
@@ -126,7 +129,7 @@ def _maybe_bucket_group(
     # Keep the first.
     df = df.drop_duplicates(subset=[group.optional_bucketed_on_column])
     assert len(df) == this_count, f"{len(df)=} != {this_count=}, {c=}"
-    df = df.reset_index()
+    df = df.reset_index(drop=True)
     df.index.name = C.DF_ID
     sum_count = df[C.COUNT].sum()
     assert sum_count == original_count, f"{sum_count=} != {original_count=}, {c=}"

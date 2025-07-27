@@ -13,7 +13,6 @@
       'TIMESTAMP_YEAR': '2025-01-01',
       'UUID_STRING': 'uuid6',
       <_C.GROUP_NAME: '_GROUP_NAME'>: '?',
-      'index': 6.0,
     }),
     dict({
       <SchemaColumns.COUNT: 'COUNT'>: 1.0,
@@ -27,7 +26,6 @@
       'TIMESTAMP_YEAR': nan,
       'UUID_STRING': 'uuid9',
       <_C.GROUP_NAME: '_GROUP_NAME'>: '?',
-      'index': 9.0,
     }),
     dict({
       <SchemaColumns.COUNT: 'COUNT'>: 4.0,
@@ -41,7 +39,6 @@
       'TIMESTAMP_YEAR': '2024-01-01',
       'UUID_STRING': 'uuid0',
       <_C.GROUP_NAME: '_GROUP_NAME'>: 'GPS',
-      'index': 0.0,
     }),
     dict({
       <SchemaColumns.COUNT: 'COUNT'>: 3.0,
@@ -55,7 +52,6 @@
       'TIMESTAMP_YEAR': '2024-01-01',
       'UUID_STRING': 'uuid4',
       <_C.GROUP_NAME: '_GROUP_NAME'>: 'PHOTO',
-      'index': 4.0,
     }),
     dict({
       <SchemaColumns.COUNT: 'COUNT'>: nan,
@@ -69,7 +65,6 @@
       'TIMESTAMP_YEAR': '2025-01-01',
       'UUID_STRING': 'uuid8',
       <_C.GROUP_NAME: '_GROUP_NAME'>: 'VIDEO',
-      'index': nan,
     }),
   ])
 # ---
@@ -87,7 +82,6 @@
       'TIMESTAMP_YEAR': '2025-01-01',
       'UUID_STRING': 'uuid6',
       <_C.GROUP_NAME: '_GROUP_NAME'>: '?',
-      'index': nan,
     }),
     dict({
       <SchemaColumns.COUNT: 'COUNT'>: nan,
@@ -101,7 +95,6 @@
       'TIMESTAMP_YEAR': nan,
       'UUID_STRING': 'uuid9',
       <_C.GROUP_NAME: '_GROUP_NAME'>: '?',
-      'index': nan,
     }),
     dict({
       <SchemaColumns.COUNT: 'COUNT'>: 2.0,
@@ -115,7 +108,6 @@
       'TIMESTAMP_YEAR': '2024-01-01',
       'UUID_STRING': 'uuid0',
       <_C.GROUP_NAME: '_GROUP_NAME'>: 'GPS',
-      'index': 0.0,
     }),
     dict({
       <SchemaColumns.COUNT: 'COUNT'>: 2.0,
@@ -129,7 +121,6 @@
       'TIMESTAMP_YEAR': '2024-01-01',
       'UUID_STRING': 'uuid2',
       <_C.GROUP_NAME: '_GROUP_NAME'>: 'GPS',
-      'index': 2.0,
     }),
     dict({
       <SchemaColumns.COUNT: 'COUNT'>: 2.0,
@@ -143,7 +134,6 @@
       'TIMESTAMP_YEAR': '2024-01-01',
       'UUID_STRING': 'uuid4',
       <_C.GROUP_NAME: '_GROUP_NAME'>: 'PHOTO',
-      'index': 4.0,
     }),
     dict({
       <SchemaColumns.COUNT: 'COUNT'>: 1.0,
@@ -157,7 +147,6 @@
       'TIMESTAMP_YEAR': '2025-01-01',
       'UUID_STRING': 'uuid7',
       <_C.GROUP_NAME: '_GROUP_NAME'>: 'PHOTO',
-      'index': 7.0,
     }),
     dict({
       <SchemaColumns.COUNT: 'COUNT'>: nan,
@@ -171,7 +160,6 @@
       'TIMESTAMP_YEAR': '2025-01-01',
       'UUID_STRING': 'uuid8',
       <_C.GROUP_NAME: '_GROUP_NAME'>: 'VIDEO',
-      'index': nan,
     }),
   ])
 # ---
@@ -179,8 +167,8 @@
   list([
     dict({
       'DATA_TYPE': '?',
-      'H3_01': 'abcd',
-      'H3_02': 'abcde ',
+      'H3_01': 'abce',
+      'H3_02': 'abce2',
       'NAME': 'name6',
       'RATING_0_TO_5': None,
       'TIMESTAMP_DAY': '2025-08-02',
@@ -204,7 +192,7 @@
     dict({
       'DATA_TYPE': 'GPS',
       'H3_01': 'abcd',
-      'H3_02': 'abcde ',
+      'H3_02': 'abcd1',
       'NAME': 'name0',
       'RATING_0_TO_5': 1,
       'TIMESTAMP_DAY': '2024-07-27',
@@ -216,7 +204,7 @@
     dict({
       'DATA_TYPE': 'GPS',
       'H3_01': 'abcd',
-      'H3_02': 'abcde ',
+      'H3_02': 'abcd1',
       'NAME': 'name1',
       'RATING_0_TO_5': 2,
       'TIMESTAMP_DAY': '2024-07-28',
@@ -228,7 +216,7 @@
     dict({
       'DATA_TYPE': 'GPS',
       'H3_01': 'abcd',
-      'H3_02': 'abcde ',
+      'H3_02': 'abcd2',
       'NAME': 'name2',
       'RATING_0_TO_5': 3,
       'TIMESTAMP_DAY': '2024-07-29',
@@ -240,7 +228,7 @@
     dict({
       'DATA_TYPE': 'GPS',
       'H3_01': 'abcd',
-      'H3_02': 'abcde ',
+      'H3_02': 'abcd2',
       'NAME': 'name3',
       'RATING_0_TO_5': 4,
       'TIMESTAMP_DAY': '2024-07-30',
@@ -251,8 +239,8 @@
     }),
     dict({
       'DATA_TYPE': 'PHOTO',
-      'H3_01': 'abcd',
-      'H3_02': 'abcde ',
+      'H3_01': 'abce',
+      'H3_02': 'abce1',
       'NAME': 'name4',
       'RATING_0_TO_5': 5,
       'TIMESTAMP_DAY': '2024-07-31',
@@ -263,8 +251,8 @@
     }),
     dict({
       'DATA_TYPE': 'PHOTO',
-      'H3_01': 'abcd',
-      'H3_02': 'abcde ',
+      'H3_01': 'abce',
+      'H3_02': 'abce1',
       'NAME': 'name5',
       'RATING_0_TO_5': None,
       'TIMESTAMP_DAY': '2025-08-01',
@@ -275,8 +263,8 @@
     }),
     dict({
       'DATA_TYPE': 'PHOTO',
-      'H3_01': 'abcd',
-      'H3_02': 'abcde ',
+      'H3_01': 'abce',
+      'H3_02': 'abce2',
       'NAME': 'name7',
       'RATING_0_TO_5': 2,
       'TIMESTAMP_DAY': '2025-08-03',
@@ -287,8 +275,8 @@
     }),
     dict({
       'DATA_TYPE': 'VIDEO',
-      'H3_01': 'abcd',
-      'H3_02': 'abcde ',
+      'H3_01': 'abce',
+      'H3_02': 'abce3',
       'NAME': 'name8',
       'RATING_0_TO_5': 3,
       'TIMESTAMP_DAY': '2025-08-04',
@@ -316,7 +304,7 @@
     dict({
       'DATA_TYPE': 'GPS',
       'H3_01': 'abcd',
-      'H3_02': 'abcde ',
+      'H3_02': 'abcd1',
       'NAME': 'name0',
       'RATING_0_TO_5': 1,
       'TIMESTAMP_DAY': '2024-07-27',
@@ -327,7 +315,7 @@
     dict({
       'DATA_TYPE': 'GPS',
       'H3_01': 'abcd',
-      'H3_02': 'abcde ',
+      'H3_02': 'abcd1',
       'NAME': 'name1',
       'RATING_0_TO_5': 2,
       'TIMESTAMP_DAY': '2024-07-28',
@@ -338,7 +326,7 @@
     dict({
       'DATA_TYPE': 'GPS',
       'H3_01': 'abcd',
-      'H3_02': 'abcde ',
+      'H3_02': 'abcd2',
       'NAME': 'name2',
       'RATING_0_TO_5': 3,
       'TIMESTAMP_DAY': '2024-07-29',
@@ -349,7 +337,7 @@
     dict({
       'DATA_TYPE': 'GPS',
       'H3_01': 'abcd',
-      'H3_02': 'abcde ',
+      'H3_02': 'abcd2',
       'NAME': 'name3',
       'RATING_0_TO_5': 4,
       'TIMESTAMP_DAY': '2024-07-30',
@@ -359,8 +347,8 @@
     }),
     dict({
       'DATA_TYPE': 'PHOTO',
-      'H3_01': 'abcd',
-      'H3_02': 'abcde ',
+      'H3_01': 'abce',
+      'H3_02': 'abce1',
       'NAME': 'name4',
       'RATING_0_TO_5': 5,
       'TIMESTAMP_DAY': '2024-07-31',
@@ -370,8 +358,8 @@
     }),
     dict({
       'DATA_TYPE': 'PHOTO',
-      'H3_01': 'abcd',
-      'H3_02': 'abcde ',
+      'H3_01': 'abce',
+      'H3_02': 'abce1',
       'NAME': 'name5',
       'RATING_0_TO_5': None,
       'TIMESTAMP_DAY': '2025-08-01',
@@ -381,8 +369,8 @@
     }),
     dict({
       'DATA_TYPE': nan,
-      'H3_01': 'abcd',
-      'H3_02': 'abcde ',
+      'H3_01': 'abce',
+      'H3_02': 'abce2',
       'NAME': 'name6',
       'RATING_0_TO_5': None,
       'TIMESTAMP_DAY': '2025-08-02',
@@ -392,8 +380,8 @@
     }),
     dict({
       'DATA_TYPE': 'PHOTO',
-      'H3_01': 'abcd',
-      'H3_02': 'abcde ',
+      'H3_01': 'abce',
+      'H3_02': 'abce2',
       'NAME': 'name7',
       'RATING_0_TO_5': 2,
       'TIMESTAMP_DAY': '2025-08-03',
@@ -403,8 +391,8 @@
     }),
     dict({
       'DATA_TYPE': 'VIDEO',
-      'H3_01': 'abcd',
-      'H3_02': 'abcde ',
+      'H3_01': 'abce',
+      'H3_02': 'abce3',
       'NAME': 'name8',
       'RATING_0_TO_5': 3,
       'TIMESTAMP_DAY': '2025-08-04',

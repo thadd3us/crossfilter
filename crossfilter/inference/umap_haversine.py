@@ -47,7 +47,6 @@ def run_umap_projection(
     """
     import umap
 
-
     # Validate required columns exist
     if embedding_column not in df.columns:
         raise ValueError(f"Required column '{embedding_column}' not found in DataFrame")
@@ -79,14 +78,18 @@ def run_umap_projection(
     # Stack all valid embeddings into a matrix using pandas operations
     embedding_matrix = np.stack(valid_embeddings_series.values)
 
-    logger.info(f"Running UMAP on {len(valid_embeddings_series)} valid embeddings "
-                f"with shape {embedding_matrix.shape}")
+    logger.info(
+        f"Running UMAP on {len(valid_embeddings_series)} valid embeddings "
+        f"with shape {embedding_matrix.shape}"
+    )
 
     # Configure and run UMAP
     # Ensure n_neighbors is valid (must be >= 2 and < n_samples)
     n_valid = len(valid_embeddings_series)
     effective_n_neighbors = min(n_neighbors, n_valid - 1)
-    effective_n_neighbors = max(2, effective_n_neighbors)  # UMAP requires n_neighbors >= 2
+    effective_n_neighbors = max(
+        2, effective_n_neighbors
+    )  # UMAP requires n_neighbors >= 2
 
     # Handle case where we have only 1 embedding (UMAP can't run)
     if n_valid == 1:
@@ -115,12 +118,21 @@ def run_umap_projection(
     latitude = np.degrees(-np.arccos(z)) + 90
     longitude = np.degrees(np.arctan2(x, y))
 
+    assert np.all(latitude >= -90) and np.all(latitude <= 90)
+    assert np.all(longitude >= -180) and np.all(longitude <= 180)
+
     result_df.loc[valid_embedding_mask, output_lat_column] = latitude
     result_df.loc[valid_embedding_mask, output_lon_column] = longitude
 
-    result_df[output_lat_column] = result_df[output_lat_column].clip(lower=-90, upper=90)
-    result_df[output_lon_column] = result_df[output_lon_column].clip(lower=-180, upper=180)
+    # result_df[output_lat_column] = result_df[output_lat_column].clip(
+    #     lower=-90, upper=90
+    # )
+    # result_df[output_lon_column] = result_df[output_lon_column].clip(
+    #     lower=-180, upper=180
+    # )
 
-    logger.info(f"UMAP projection completed. Valid coordinates assigned to {n_valid} rows")
+    logger.info(
+        f"UMAP projection completed. Valid coordinates assigned to {n_valid} rows"
+    )
 
     return sphere_mapper

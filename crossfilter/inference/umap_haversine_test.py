@@ -9,7 +9,7 @@ import pandas as pd
 import plotly.express as px
 from syrupy import SnapshotAssertion
 
-from crossfilter.inference.run_umap import run_umap_projection
+from crossfilter.inference import umap_haversine
 from crossfilter.core.schema import SchemaColumns
 from tests.util.syrupy_html_snapshot import HTMLSnapshotExtension
 
@@ -36,16 +36,20 @@ def _generate_test_embeddings(
     classes = np.tile([0, 1, 2], n_samples // 3 + 1)[:n_samples]
 
     # Generate embeddings with small noise around centroids
-    noise = rng.normal(0, 0.05, (n_samples, embedding_dim))  # Small stddev for tight clusters
+    noise = rng.normal(
+        0, 0.05, (n_samples, embedding_dim)
+    )  # Small stddev for tight clusters
     embeddings = centers[classes] + noise
     embeddings = embeddings / np.linalg.norm(embeddings, axis=1, keepdims=True)
 
     # Create DataFrame
-    df = pd.DataFrame({
-        "UMAP_STRING": [f"sample_{i:03d}" for i in range(n_samples)],
-        "FAKE_EMBEDDING_FOR_TESTING_EMBEDDING": list(embeddings),
-        "TRUE_CLASS": classes,
-    })
+    df = pd.DataFrame(
+        {
+            "UMAP_STRING": [f"sample_{i:03d}" for i in range(n_samples)],
+            "FAKE_EMBEDDING_FOR_TESTING_EMBEDDING": list(embeddings),
+            "TRUE_CLASS": classes,
+        }
+    )
 
     # Set some embeddings to None for missing data
     n_missing = int(n_samples * missing_fraction)
@@ -68,16 +72,20 @@ def test_run_umap_projection_happy_path(snapshot: SnapshotAssertion) -> None:
     )
 
     # Run UMAP projection
-    run_umap_projection(
-        df, 
+    umap_haversine.run_umap_projection(
+        df,
         embedding_column="FAKE_EMBEDDING_FOR_TESTING_EMBEDDING",
         output_lat_column=SchemaColumns.SEMANTIC_EMBEDDING_UMAP_LATITUDE,
         output_lon_column=SchemaColumns.SEMANTIC_EMBEDDING_UMAP_LONGITUDE,
-        random_state=42
+        random_state=42,
     )
 
     # Plot the results
-    fig = px.scatter(df, y=SchemaColumns.SEMANTIC_EMBEDDING_UMAP_LATITUDE, x=SchemaColumns.SEMANTIC_EMBEDDING_UMAP_LONGITUDE, color="TRUE_CLASS")
+    fig = px.scatter(
+        df,
+        y=SchemaColumns.SEMANTIC_EMBEDDING_UMAP_LATITUDE,
+        x=SchemaColumns.SEMANTIC_EMBEDDING_UMAP_LONGITUDE,
+        color="TRUE_CLASS",
+    )
     html = fig.to_html(include_plotlyjs="cdn", div_id="test-plot-div")
     assert html == snapshot(extension_class=HTMLSnapshotExtension)
-

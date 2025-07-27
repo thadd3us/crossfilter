@@ -9,6 +9,7 @@ from typing import Optional
 
 import pandas as pd
 from pydantic import BaseModel
+from sqlalchemy import create_engine
 
 from crossfilter.core.schema import DataType, SchemaColumns
 from crossfilter.data_ingestion.sqlite_utils import query_sqlite_to_dataframe
@@ -185,7 +186,8 @@ def parse_lightroom_catalog(
         """
 
         # Query the main data
-        df = query_sqlite_to_dataframe(catalog_path, main_query)
+        engine = create_engine(f"sqlite:///{catalog_path}")
+        df = query_sqlite_to_dataframe(engine, main_query)
 
         if df.empty:
             logger.warning("No images found in Lightroom catalog")
@@ -242,10 +244,10 @@ def parse_lightroom_catalog(
 
                 # If the parsed timestamp is timezone-naive, assume it's UTC
                 if parsed.tz is None:
-                    return parsed.tz_localize('UTC')
+                    return parsed.tz_localize("UTC")
                 else:
                     # If it's timezone-aware, convert to UTC
-                    return parsed.tz_convert('UTC')
+                    return parsed.tz_convert("UTC")
             except (ValueError, TypeError, pd.errors.OutOfBoundsDatetime) as e:
                 logger.warning(f"Failed to parse timestamp '{timestamp_str}': {e}")
                 return pd.NaT

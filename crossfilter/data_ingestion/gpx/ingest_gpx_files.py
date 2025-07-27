@@ -4,6 +4,7 @@ import logging
 from pathlib import Path
 
 import pandas as pd
+from sqlalchemy import create_engine
 import typer
 from tqdm.contrib.concurrent import process_map
 
@@ -104,9 +105,11 @@ def main(
     logger.info(
         f"Total records: {len(combined_df)} (H3 columns computed per-file in parallel)"
     )
+    combined_df = combined_df.set_index(C.UUID_STRING, verify_integrity=True)
 
     # Upsert to database
-    upsert_dataframe_to_sqlite(combined_df, destination_sqlite_db, destination_table)
+    engine = create_engine(f"sqlite:///{destination_sqlite_db}")
+    upsert_dataframe_to_sqlite(combined_df, engine, destination_table)
 
     logger.info("GPX ingestion completed successfully")
 

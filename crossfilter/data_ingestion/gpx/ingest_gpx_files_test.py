@@ -3,6 +3,7 @@
 from pathlib import Path
 
 import pytest
+from sqlalchemy import create_engine
 from syrupy.assertion import SnapshotAssertion
 
 from crossfilter.core.schema import DataType, SchemaColumns
@@ -110,5 +111,6 @@ def test_thad_ingest_dev_data(
         max_workers=1,
     )
 
-    df = query_sqlite_to_dataframe(tmp_path / "data.sqlite", "SELECT * FROM data")
+    engine = create_engine(f"sqlite:///{tmp_path / 'data.sqlite'}")
+    df = query_sqlite_to_dataframe(engine, "SELECT * FROM data")
     assert df.to_dict(orient="records") == snapshot

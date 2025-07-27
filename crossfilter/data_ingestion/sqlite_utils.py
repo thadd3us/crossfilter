@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any, Union
 
 import pandas as pd
+from pandas.core.strings.accessor import str_extractall
 import tqdm
 from sqlalchemy import (
     Engine,
@@ -34,29 +35,28 @@ def get_pandas_to_sqlalchemy_dtype(pandas_dtype: str) -> str:
         return "TEXT"
 
 
-def has_unique_constraint_on_uuid(engine: Engine, table_name: str) -> bool:
+def has_unique_constraint_on_column(
+    engine: Engine, table_name: str, column_name: str
+) -> bool:
     """Check if table has a unique constraint or index on UUID_STRING column."""
     inspector = inspect(engine)
 
     # Check for unique constraints
-    try:
-        unique_constraints = inspector.get_unique_constraints(table_name)
-        for constraint in unique_constraints:
-            if SchemaColumns.UUID_STRING in constraint.get("column_names", []):
-                return True
-    except Exception as e:
-        logger.debug(f"get_unique_constraints not supported: {e}")
+    unique_constraints = inspector.get_unique_constraints(table_name)
+    for constraint in unique_constraints:
+        if column_name in constraint.get("column_names", []):
+            return True
 
-    # Check for unique indexes
-    try:
-        indexes = inspector.get_indexes(table_name)
-        for index in indexes:
-            if index.get("unique", False) and SchemaColumns.UUID_STRING in index.get(
-                "column_names", []
-            ):
-                return True
-    except Exception as e:
-        logger.debug(f"get_indexes failed: {e}")
+    # # Check for unique indexes
+    # try:
+    #     indexes = inspector.get_indexes(table_name)
+    #     for index in indexes:
+    #         if index.get("unique", False) and SchemaColumns.UUID_STRING in index.get(
+    #             "column_names", []
+    #         ):
+    #             return True
+    # except Exception as e:
+    #     logger.debug(f"get_indexes failed: {e}")
 
     return False
 
@@ -69,31 +69,31 @@ def create_or_update_table_schema(
     if not is_valid_sql_identifier(table_name):
         raise ValueError(f"Invalid table name: {table_name}")
 
+    id_column: str = escape_sql_identifier(df.index.name)
+
     inspector = inspect(engine)
     with engine.connect() as conn:
         if not inspector.has_table(table_name):
             # Create new empty table
             logger.info(f"Creating new empty table: {table_name}")
             # TODO: Use the index name to figure out the name of the index column.
-            conn.execute(
-                text(f"CREATE TABLE {table_name} ({SchemaColumns.UUID_STRING} STRING)")
-            )
+            conn.execute(text(f"CREATE TABLE {table_name} ({id_column} STRING)"))
 
         # Check if we need to add columns
         existing_columns = {col["name"] for col in inspector.get_columns(table_name)}
-        df_columns = set(df.columns)
-        missing_columns = df_columns - existing_columns
+        missing_columns = [c for c in df.columns if c not in existing_columns]
 
         if missing_columns:
             logger.info(f"Adding missing columns to {table_name}: {missing_columns}")
             for col in missing_columns:
+                logger.info(f"Adding column {table_name}.{col}.")
                 if not is_valid_sql_identifier(col):
                     raise ValueError(f"Invalid column name: {col}")
                 dtype = get_pandas_to_sqlalchemy_dtype(str(df[col].dtype))
                 conn.execute(text(f"ALTER TABLE {table_name} ADD COLUMN {col} {dtype}"))
 
         # Check if unique constraint exists on UUID_STRING
-        has_unique = has_unique_constraint_on_uuid(engine, table_name)
+        has_unique = has_unique_constraint_on_column(engine, table_name, id_column)
         if not has_unique:
             # Create unique index - let exceptions propagate if there are duplicates
             conn.execute(
@@ -109,7 +109,7 @@ def create_or_update_table_schema(
 
 
 def upsert_dataframe_to_sqlite(
-    df: pd.DataFrame, destination_sqlite_db: Path, destination_table: str
+    df: pd.DataFrame, engine: Engine, destination_table: str
 ) -> None:
     """Upsert DataFrame to SQLite database using bulk operations."""
     if df.columns.empty:
@@ -118,12 +118,6 @@ def upsert_dataframe_to_sqlite(
     # Validate table name
     if not is_valid_sql_identifier(destination_table):
         raise ValueError(f"Invalid table name: {destination_table}")
-
-    # Create database directory if it doesn't exist
-    destination_sqlite_db.parent.mkdir(parents=True, exist_ok=True)
-
-    # Create engine.
-    engine = create_engine(f"sqlite:///{destination_sqlite_db}")
 
     # Create or update table structure - will ensure unique constraint exists
     create_or_update_table_schema(engine, destination_table, df)
@@ -134,17 +128,18 @@ def upsert_dataframe_to_sqlite(
     with engine.connect() as conn:
         max_rows_per_insert = 500
         logger.info(
-            f"Inserting {len(df)} rows to {temp_table} in batches of {max_rows_per_insert}"
+            f"Inserting {len(df)} rows to temporary table {temp_table} in batches of {max_rows_per_insert}"
         )
         for i in tqdm.tqdm(range(0, len(df), max_rows_per_insert)):
             df.iloc[i : i + max_rows_per_insert].to_sql(
-                temp_table, engine, if_exists="append", index=False, method="multi"
+                temp_table, engine, if_exists="append", index=True, method="multi"
             )
         logger.info(f"Upserted {len(df)} rows to {temp_table}")
 
         # Perform bulk upsert using a single INSERT OR REPLACE statement
         # This is much more efficient than individual row processing
         columns = list(df.columns)
+        columns.insert(0, df.index.name)
 
         # Validate all column names
         for col in columns:
@@ -160,6 +155,7 @@ def upsert_dataframe_to_sqlite(
             SELECT {columns_str} FROM {escape_sql_identifier(temp_table)}
         """
         )
+        logger.info(f"Upserting {len(df)} rows to {destination_table}")
         conn.execute(upsert_stmt)
 
         # Clean up temporary table
@@ -167,17 +163,13 @@ def upsert_dataframe_to_sqlite(
 
         conn.commit()
 
-    logger.info(
-        f"Upserted {len(df)} records to {destination_table} in {destination_sqlite_db}"
-    )
+    logger.info(f"Upserted {len(df)} records to {destination_table}.")
 
 
 def query_sqlite_to_dataframe(
-    sqlite_db_path: Path, query: str, params: Union[dict[str, Any], None] = None
+    engine: Engine, query: str, params: Union[dict[str, Any], None] = None
 ) -> pd.DataFrame:
     """Execute SQL query against SQLite database and return DataFrame."""
-    engine = create_engine(f"sqlite:///{sqlite_db_path}")
-
     with engine.connect() as conn:
         df = pd.read_sql_query(query, conn, params=params)
 

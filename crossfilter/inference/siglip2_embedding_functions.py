@@ -31,7 +31,7 @@ logger = logging.getLogger(__name__)
 def _get_device() -> torch.device:
     """Get the appropriate device for computation (MPS for Apple Silicon, CUDA for NVIDIA, CPU fallback)."""
     if torch.backends.mps.is_available():
-        return torch.device("mps")
+        return torch.device("cpu")
     elif torch.cuda.is_available():
         return torch.device("cuda")
     else:
@@ -67,7 +67,9 @@ class SigLIP2Embedder(EmbeddingInterface):
         """
         self.model_name = model_name
         self.device = _get_device()
-        logger.info(f"Initializing SigLIP2Embedder with model {model_name} on device: {self.device}")
+        logger.info(
+            f"Initializing SigLIP2Embedder with model {model_name} on device: {self.device}"
+        )
 
         # Load model and processor
         self.model = AutoModel.from_pretrained(model_name, local_files_only=True)
@@ -80,10 +82,12 @@ class SigLIP2Embedder(EmbeddingInterface):
 
         logger.info("SigLIP2Embedder initialized successfully")
 
-    def compute_image_embeddings(self, df: pd.DataFrame, image_path_column: str, output_embedding_column: str) -> None:
+    def compute_image_embeddings(
+        self, df: pd.DataFrame, image_path_column: str, output_embedding_column: str
+    ) -> None:
         """Compute SigLIP2 embeddings for images specified in DataFrame and add them as a new column."""
         # Get image paths, converting to Path objects if needed
-        image_paths = df[image_path_column].apply(lambda x: Path(x) if not isinstance(x, Path) else x)
+        image_paths = df[image_path_column]
         batch_images = []
         valid_indices = []
 
@@ -103,11 +107,17 @@ class SigLIP2Embedder(EmbeddingInterface):
                 valid_indices.append(idx)
 
             except Exception as e:
-                raise ValueError(f"Failed to load image {image_path}: {e}")
+                logger.exception(f"Failed to load image {image_path}, skipping it...")
+
+        # TODO: If the batch is empty, we can't run SIGLIP2.
+        if not batch_images:
+            raise ValueError("No valid images found in the DataFrame.")
 
         # Process all images through model
         with torch.no_grad():
-            inputs = self.processor(images=batch_images, return_tensors="pt").to(self.device)
+            inputs = self.processor(images=batch_images, return_tensors="pt").to(
+                self.device
+            )
 
             # Get image embeddings
             outputs = self.model.get_image_features(**inputs)
@@ -120,20 +130,25 @@ class SigLIP2Embedder(EmbeddingInterface):
 
         # Initialize output column with None
         df[output_embedding_column] = None
-        
+
         # Assign embeddings to the correct rows
-        for i, idx in enumerate(valid_indices):
-            df.at[idx, output_embedding_column] = batch_embeddings[i]
+        for idx, embedding in zip(valid_indices, batch_embeddings):
+            df.at[idx, output_embedding_column] = embedding
 
         logger.info(f"Computed embeddings for {len(batch_images)} images")
 
-    def compute_text_embeddings(self, df: pd.DataFrame, text_column: str, output_embedding_column: str) -> None:
+    def compute_text_embeddings(
+        self, df: pd.DataFrame, text_column: str, output_embedding_column: str
+    ) -> None:
         """Compute SigLIP2 embeddings for text specified in DataFrame and add them as a new column."""
         # Get text data, filtering out null values
         text_data = df[text_column].dropna()
 
         captions = text_data.tolist()
         valid_indices = text_data.index.tolist()
+
+        if not captions:
+            raise ValueError("No valid captions found in the DataFrame.")
 
         # Process all captions through model
         with torch.no_grad():
@@ -152,11 +167,8 @@ class SigLIP2Embedder(EmbeddingInterface):
 
         # Initialize output column with None
         df[output_embedding_column] = None
-        
-        # Assign embeddings to the correct rows
-        for i, idx in enumerate(valid_indices):
-            df.at[idx, output_embedding_column] = batch_embeddings[i]
+
+        for idx, embedding in zip(valid_indices, batch_embeddings):
+            df.at[idx, output_embedding_column] = embedding
 
         logger.info(f"Computed embeddings for {len(captions)} captions")
-
-

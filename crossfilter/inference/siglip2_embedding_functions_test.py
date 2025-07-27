@@ -9,7 +9,6 @@ import pandas as pd
 import numpy as np
 import pytest
 from syrupy import SnapshotAssertion
-from torch import cosine_similarity
 from crossfilter.core.schema import SchemaColumns as C
 
 import scipy.spatial.distance
@@ -19,6 +18,7 @@ from crossfilter.inference.siglip2_embedding_functions import (
     SigLIP2Embedder,
 )
 from tests.util.syrupy_html_snapshot import HTMLSnapshotExtension
+from crossfilter.inference.test_fixtures import test_df
 
 # Mark all tests in this file as resource intensive to avoid downloading the SIGLIP2 model in regular test runs
 # Use fake_embedding_functions_test.py for fast testing instead
@@ -28,45 +28,10 @@ pytestmark = pytest.mark.resource_intensive
 logger = logging.getLogger(__name__)
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def embedder() -> SigLIP2Embedder:
     """Create SigLIP2Embedder instance for testing."""
     return SigLIP2Embedder()
-
-
-@pytest.fixture
-def test_df(source_tree_root: Path) -> pd.DataFrame:
-
-    filenames = """00_munich_rathaus.jpg
-01_golden_gate_bridge.jpg
-02_earth_from_space.jpg
-03_backlit_man_looking_out.jpg
-04_mountain_view.jpg
-05_astronaut_on_moon.jpg
-06_fireworks_on_blue_sunset.jpg
-07_paper_bundle_and_pen.jpg
-08_herman_hesse.jpg
-09_martin_luther_king_jr.jpg""".split(
-        "\n"
-    )
-    df = pd.DataFrame({"filename": filenames})
-    df[C.SOURCE_FILE] = df["filename"].map(
-        lambda x: source_tree_root / "test_data" / "test_photos" / x
-    )
-    df[C.CAPTION] = [
-        "Minga Rathaus an einem schönen sonnigen Tag mit blauem Himmel",
-        "Golden Gate Bridge in San Francisco",
-        "Planet Earth as seen from space showing blue oceans and white clouds",
-        "A backlit man looking out over a gray scene",
-        "Mountain peaks, in black and white",
-        "Astronaut in a spacesuit on the gray lunar surface",
-        "Fireworks exploding in front of a deep blue sunset",
-        "Aged bundle of papers tied with twine, and an old-fashioned pen",
-        "Herman Hesse, der ein Buch liest und eine Brille trägt",
-        "Martin Luther King, Jr.",
-    ]
-    assert df[C.SOURCE_FILE].map(Path.exists).all()
-    return df
 
 
 def test_compute_image_and_text_embeddings_match(
@@ -99,36 +64,36 @@ def test_compute_image_and_text_embeddings_match(
     )
 
 
-def test_error_handling_missing_image(embedder: SigLIP2Embedder) -> None:
-    """Test error handling for missing image files."""
-    missing_path = Path("/nonexistent/image.jpg")
-    df = pd.DataFrame({"image_path": [missing_path]})
-
-    with pytest.raises(FileNotFoundError, match="Image not found"):
-        embedder.compute_image_embeddings(df, "image_path", "embedding")
-
-
-def test_error_handling_invalid_image(embedder: SigLIP2Embedder, tmp_path: Path) -> None:
+def test_error_handling_invalid_image(
+    test_df: pd.DataFrame,
+    embedder: SigLIP2Embedder,
+    tmp_path: Path,
+    snapshot: SnapshotAssertion,
+) -> None:
     """Test error handling for invalid image files."""
     # Create a non-image file
     invalid_file = tmp_path / "not_an_image.jpg"
     invalid_file.write_text("This is not an image")
-    df = pd.DataFrame({"image_path": [invalid_file]})
 
-    with pytest.raises(ValueError, match="Failed to load image"):
-        embedder.compute_image_embeddings(df, "image_path", "embedding")
+    test_df = test_df.head(3).copy()
+    test_df.loc[1, C.SOURCE_FILE] = invalid_file
+
+    embedder.compute_image_embeddings(test_df, "image_path", "embedding")
+    assert test_df[[C.CAPTION, "image_embedding"]].to_dict(orient="records") == snapshot
 
 
 def test_empty_inputs(embedder: SigLIP2Embedder) -> None:
     """Test handling of empty input DataFrames."""
     # Empty image DataFrame
     empty_df = pd.DataFrame({"image_path": []})
-    embedder.compute_image_embeddings(empty_df, "image_path", "embedding")
+    with pytest.raises(ValueError):
+        embedder.compute_image_embeddings(empty_df, "image_path", "embedding")
     assert empty_df.empty  # DataFrame should still be empty
 
     # Empty text DataFrame
     empty_df = pd.DataFrame({"caption": []})
-    embedder.compute_text_embeddings(empty_df, "caption", "embedding")
+    with pytest.raises(ValueError):
+        embedder.compute_text_embeddings(empty_df, "caption", "embedding")
     assert empty_df.empty  # DataFrame should still be empty
 
 

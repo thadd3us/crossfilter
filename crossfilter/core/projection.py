@@ -1,3 +1,12 @@
+"""
+TODO: I think this might benefit from clarifying the schema:
+DF_ID: the integer id of rows with data points.
+MAYBE_BUCKETED_ID: integer id in a datafram that might be bucketed.
+Maybe we do just keep a cell of all the DF_IDs that a bucketed_ID derived from--this makes lookups simple+easy.
+
+Then we can assert about what the index is called when processing/transforming dataframes.
+"""
+
 from dataclasses import dataclass
 import logging
 from typing import Any, Final
@@ -81,15 +90,18 @@ def create_grouped_bucketed_projection(
     else:
         groups.sort(key=lambda x: x.group_name)
 
+    df = pd.concat(
+        # TODO: Somehow we are ending up with an "index" column in the output???
+        # And no valid index column.
+        [group.group_df for group in groups],
+        ignore_index=True,
+    )
+    df.index.name = C.DF_ID
+
     result = GroupedBucketedProjection(
         projection_uuid=str(uuid.uuid4()),
         grouped_by_columns=group_by_columns,
-        projected_data=pd.concat(
-            # TODO: Somehow we are ending up with an "index" column in the output???
-            # And no valid index column.
-            [group.group_df for group in groups],
-            ignore_index=False,
-        ),
+        projected_data=df,
         name_to_group={g.group_name: g for g in groups},
     )
     return result

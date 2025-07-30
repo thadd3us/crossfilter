@@ -2,7 +2,7 @@
   "name": "Crossfilter Development",
   "build": {
     "dockerfile": "../Dockerfile",
-    "context": "..",
+    "context": ".."
   },
   "postCreateCommand": "uv sync --extra=dev",
   "customizations": {

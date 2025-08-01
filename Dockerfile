@@ -62,5 +62,7 @@ FROM build_stage_1 AS copy_user_home
 # Sculptor compatibility for now; we're going to be user501 in Sculptor and need to work in this directory.
 COPY --from=prepare_user_home --chown=dev:dev --chmod=a+rwX /user_home /user_home
 
+RUN chmod -R a+rwX /home/dev
+
 USER dev
 WORKDIR /user_home/

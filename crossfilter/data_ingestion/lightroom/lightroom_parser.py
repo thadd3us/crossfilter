@@ -5,11 +5,11 @@ import os
 import tempfile
 import zipfile
 from pathlib import Path
-from typing import Dict, List, Optional, Set
+from typing import Optional
 
 import pandas as pd
 from pydantic import BaseModel
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine
 
 from crossfilter.core.schema import DataType, SchemaColumns
 from crossfilter.data_ingestion.sqlite_utils import query_sqlite_to_dataframe
@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 class LightroomParserConfig(BaseModel):
     """Configuration for Lightroom parser."""
 
-    ignore_collections: Set[str] = {"quick collection"}
+    ignore_collections: set[str] = {"quick collection"}
     include_metadata: bool = True
     include_keywords: bool = True
     include_collections: bool = True
@@ -128,7 +128,6 @@ def parse_lightroom_catalog(
     if config is None:
         config = LightroomParserConfig()
 
-    original_path = catalog_path
     extracted_temp_dir = None
 
     try:
@@ -187,7 +186,8 @@ def parse_lightroom_catalog(
         """
 
         # Query the main data
-        df = query_sqlite_to_dataframe(catalog_path, main_query)
+        engine = create_engine(f"sqlite:///{catalog_path}")
+        df = query_sqlite_to_dataframe(engine, main_query)
 
         if df.empty:
             logger.warning("No images found in Lightroom catalog")
@@ -323,7 +323,7 @@ def parse_lightroom_catalog(
                 )
 
 
-def _get_keywords_for_images(catalog_path: Path, image_ids: List[str]) -> pd.DataFrame:
+def _get_keywords_for_images(catalog_path: Path, image_ids: list[str]) -> pd.DataFrame:
     """Get keywords for the specified image IDs."""
     if not image_ids:
         return pd.DataFrame(columns=[SchemaColumns.UUID_STRING, "keywords"])
@@ -363,7 +363,7 @@ def _get_keywords_for_images(catalog_path: Path, image_ids: List[str]) -> pd.Dat
 
 
 def _get_collections_for_images(
-    catalog_path: Path, image_ids: List[str], ignore_collections: Set[str]
+    catalog_path: Path, image_ids: list[str], ignore_collections: set[str]
 ) -> pd.DataFrame:
     """Get collections for the specified image IDs."""
     if not image_ids:

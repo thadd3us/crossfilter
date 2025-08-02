@@ -1,13 +1,9 @@
 """Tests for Lightroom catalog ingestion CLI program."""
 
-import sqlite3
-import subprocess
-import sys
+import os
 import zipfile
 from pathlib import Path
-from typing import List
 
-import msgpack_numpy as msgpack
 import numpy as np
 import pandas as pd
 import pytest
@@ -15,10 +11,10 @@ from syrupy.assertion import SnapshotAssertion
 
 from crossfilter.core.schema import DataType, SchemaColumns
 from crossfilter.data_ingestion.lightroom.ingest_lightroom_catalogs import (
-    find_lightroom_catalogs,
-    main,
-    load_clip_embeddings_from_sqlite,
     compute_umap_projection,
+    find_lightroom_catalogs,
+    load_clip_embeddings_from_sqlite,
+    main,
 )
 from crossfilter.data_ingestion.lightroom.lightroom_parser import (
     LightroomParserConfig,
@@ -116,7 +112,7 @@ def test_load_lightroom_catalog_error_handling(tmp_path: Path) -> None:
 
     # Should return empty DataFrame with proper schema on error
     with pytest.raises(Exception):
-        df = load_lightroom_catalog_to_df(invalid_catalog, config)
+        load_lightroom_catalog_to_df(invalid_catalog, config)
 
 
 def test_load_lightroom_catalog_real_data(test_catalogs_dir: Path) -> None:
@@ -252,7 +248,7 @@ def test_config_case_insensitive_ignore(test_catalogs_dir: Path) -> None:
     assert SchemaColumns.UUID_STRING in df.columns
 
 
-@pytest.mark.skipif(sys.platform != "darwin", reason="Data is only on Thad's laptop")
+@pytest.mark.skipif(os.environ.get("THAD_DATA_AVAILAVLE") != "true", reason="Data is only on Thad's laptop")
 def test_thad_ingest_dev_data(
     source_tree_root: Path, tmp_path: Path, snapshot: SnapshotAssertion
 ) -> None:
@@ -370,21 +366,21 @@ def test_compute_umap_projection(tmp_path: Path) -> None:
     # Check result structure
     assert len(result_df) == 4
     assert SchemaColumns.UUID_STRING in result_df.columns
-    assert SchemaColumns.CLIP_UMAP_HAVERSINE_LATITUDE in result_df.columns
-    assert SchemaColumns.CLIP_UMAP_HAVERSINE_LONGITUDE in result_df.columns
+    assert SchemaColumns.SEMANTIC_EMBEDDING_UMAP_LATITUDE in result_df.columns
+    assert SchemaColumns.SEMANTIC_EMBEDDING_UMAP_LONGITUDE in result_df.columns
 
     # Check that UMAP coordinates are numeric
-    assert result_df[SchemaColumns.CLIP_UMAP_HAVERSINE_LATITUDE].dtype in [
+    assert result_df[SchemaColumns.SEMANTIC_EMBEDDING_UMAP_LATITUDE].dtype in [
         np.float32,
         np.float64,
     ]
-    assert result_df[SchemaColumns.CLIP_UMAP_HAVERSINE_LONGITUDE].dtype in [
+    assert result_df[SchemaColumns.SEMANTIC_EMBEDDING_UMAP_LONGITUDE].dtype in [
         np.float32,
         np.float64,
     ]
 
     # Test with output file
-    output_file = tmp_path / "umap_transformer.pkl"
+    tmp_path / "umap_transformer.pkl"
     result_df2, umap_transformer2 = compute_umap_projection(test_embeddings)
 
     import umap

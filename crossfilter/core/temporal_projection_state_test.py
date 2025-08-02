@@ -4,19 +4,14 @@ import pandas as pd
 import pytest
 from syrupy import SnapshotAssertion
 
-from crossfilter.core.backend_frontend_shared_schema import (
-    FilterEvent,
-    FilterOperatorType,
-    ProjectionType,
-)
 from crossfilter.core.bucketing import add_bucketed_columns
 from crossfilter.core.schema import (
-    SchemaColumns as C,
     DataType,
-)
-from crossfilter.core.schema import (
     TemporalLevel,
     get_temporal_column_name,
+)
+from crossfilter.core.schema import (
+    SchemaColumns as C,
 )
 from crossfilter.core.temporal_projection_state import TemporalProjectionState
 

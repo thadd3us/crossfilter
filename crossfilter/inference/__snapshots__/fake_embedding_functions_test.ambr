@@ -1,0 +1,239 @@
+# serializer version: 1
+# name: test_compute_image_embeddings
+  list([
+    dict({
+      <SchemaColumns.CAPTION: 'CAPTION'>: 'Minga Rathaus an einem schönen sonnigen Tag mit blauem Himmel',
+      <SchemaColumns.SEMANTIC_EMBEDDING: 'SEMANTIC_EMBEDDING'>: list([
+        0.5246,
+        0.5206,
+        0.5293,
+        0.2301,
+        0.2305,
+        0.2599,
+      ]),
+      'filename': '00_munich_rathaus.jpg',
+    }),
+    dict({
+      <SchemaColumns.CAPTION: 'CAPTION'>: 'Golden Gate Bridge in San Francisco',
+      <SchemaColumns.SEMANTIC_EMBEDDING: 'SEMANTIC_EMBEDDING'>: list([
+        0.4782,
+        0.5077,
+        0.5197,
+        0.2657,
+        0.2887,
+        0.2995,
+      ]),
+      'filename': '01_golden_gate_bridge.jpg',
+    }),
+    dict({
+      <SchemaColumns.CAPTION: 'CAPTION'>: 'Planet Earth as seen from space showing blue oceans and white clouds',
+      <SchemaColumns.SEMANTIC_EMBEDDING: 'SEMANTIC_EMBEDDING'>: list([
+        0.398,
+        0.4077,
+        0.4672,
+        0.3788,
+        0.3804,
+        0.4111,
+      ]),
+      'filename': '02_earth_from_space.jpg',
+    }),
+    dict({
+      <SchemaColumns.CAPTION: 'CAPTION'>: 'A backlit man looking out over a gray scene',
+      <SchemaColumns.SEMANTIC_EMBEDDING: 'SEMANTIC_EMBEDDING'>: list([
+        0.4048,
+        0.4224,
+        0.4209,
+        0.4004,
+        0.4006,
+        0.3998,
+      ]),
+      'filename': '03_backlit_man_looking_out.jpg',
+    }),
+    dict({
+      <SchemaColumns.CAPTION: 'CAPTION'>: 'Mountain peaks, in black and white',
+      <SchemaColumns.SEMANTIC_EMBEDDING: 'SEMANTIC_EMBEDDING'>: list([
+        0.4645,
+        0.4645,
+        0.4645,
+        0.3428,
+        0.3428,
+        0.3428,
+      ]),
+      'filename': '04_mountain_view.jpg',
+    }),
+    dict({
+      <SchemaColumns.CAPTION: 'CAPTION'>: 'Astronaut in a spacesuit on the gray lunar surface',
+      <SchemaColumns.SEMANTIC_EMBEDDING: 'SEMANTIC_EMBEDDING'>: list([
+        0.4846,
+        0.4809,
+        0.4766,
+        0.3197,
+        0.3198,
+        0.3197,
+      ]),
+      'filename': '05_astronaut_on_moon.jpg',
+    }),
+    dict({
+      <SchemaColumns.CAPTION: 'CAPTION'>: 'Fireworks exploding in front of a deep blue sunset',
+      <SchemaColumns.SEMANTIC_EMBEDDING: 'SEMANTIC_EMBEDDING'>: list([
+        0.2601,
+        0.213,
+        0.6152,
+        0.4572,
+        0.3989,
+        0.3746,
+      ]),
+      'filename': '06_fireworks_on_blue_sunset.jpg',
+    }),
+    dict({
+      <SchemaColumns.CAPTION: 'CAPTION'>: 'Aged bundle of papers tied with twine, and an old-fashioned pen',
+      <SchemaColumns.SEMANTIC_EMBEDDING: 'SEMANTIC_EMBEDDING'>: list([
+        0.5964,
+        0.5401,
+        0.4172,
+        0.2621,
+        0.239,
+        0.2297,
+      ]),
+      'filename': '07_paper_bundle_and_pen.jpg',
+    }),
+    dict({
+      <SchemaColumns.CAPTION: 'CAPTION'>: 'Herman Hesse, der ein Buch liest und eine Brille trägt',
+      <SchemaColumns.SEMANTIC_EMBEDDING: 'SEMANTIC_EMBEDDING'>: list([
+        0.5022,
+        0.5042,
+        0.5051,
+        0.2844,
+        0.2831,
+        0.2783,
+      ]),
+      'filename': '08_herman_hesse.jpg',
+    }),
+    dict({
+      <SchemaColumns.CAPTION: 'CAPTION'>: 'Martin Luther King, Jr.',
+      <SchemaColumns.SEMANTIC_EMBEDDING: 'SEMANTIC_EMBEDDING'>: list([
+        0.5057,
+        0.5057,
+        0.5057,
+        0.2785,
+        0.2785,
+        0.2785,
+      ]),
+      'filename': '09_martin_luther_king_jr.jpg',
+    }),
+  ])
+# ---
+# name: test_compute_text_embeddings
+  list([
+    dict({
+      <SchemaColumns.CAPTION: 'CAPTION'>: 'Minga Rathaus an einem schönen sonnigen Tag mit blauem Himmel',
+      <SchemaColumns.SEMANTIC_EMBEDDING: 'SEMANTIC_EMBEDDING'>: list([
+        77.0,
+        105.0,
+        110.0,
+        103.0,
+        97.0,
+      ]),
+      'filename': '00_munich_rathaus.jpg',
+    }),
+    dict({
+      <SchemaColumns.CAPTION: 'CAPTION'>: 'Golden Gate Bridge in San Francisco',
+      <SchemaColumns.SEMANTIC_EMBEDDING: 'SEMANTIC_EMBEDDING'>: list([
+        71.0,
+        111.0,
+        108.0,
+        100.0,
+        101.0,
+      ]),
+      'filename': '01_golden_gate_bridge.jpg',
+    }),
+    dict({
+      <SchemaColumns.CAPTION: 'CAPTION'>: 'Planet Earth as seen from space showing blue oceans and white clouds',
+      <SchemaColumns.SEMANTIC_EMBEDDING: 'SEMANTIC_EMBEDDING'>: list([
+        80.0,
+        108.0,
+        97.0,
+        110.0,
+        101.0,
+      ]),
+      'filename': '02_earth_from_space.jpg',
+    }),
+    dict({
+      <SchemaColumns.CAPTION: 'CAPTION'>: 'A backlit man looking out over a gray scene',
+      <SchemaColumns.SEMANTIC_EMBEDDING: 'SEMANTIC_EMBEDDING'>: list([
+        65.0,
+        32.0,
+        98.0,
+        97.0,
+        99.0,
+      ]),
+      'filename': '03_backlit_man_looking_out.jpg',
+    }),
+    dict({
+      <SchemaColumns.CAPTION: 'CAPTION'>: 'Mountain peaks, in black and white',
+      <SchemaColumns.SEMANTIC_EMBEDDING: 'SEMANTIC_EMBEDDING'>: list([
+        77.0,
+        111.0,
+        117.0,
+        110.0,
+        116.0,
+      ]),
+      'filename': '04_mountain_view.jpg',
+    }),
+    dict({
+      <SchemaColumns.CAPTION: 'CAPTION'>: 'Astronaut in a spacesuit on the gray lunar surface',
+      <SchemaColumns.SEMANTIC_EMBEDDING: 'SEMANTIC_EMBEDDING'>: list([
+        65.0,
+        115.0,
+        116.0,
+        114.0,
+        111.0,
+      ]),
+      'filename': '05_astronaut_on_moon.jpg',
+    }),
+    dict({
+      <SchemaColumns.CAPTION: 'CAPTION'>: 'Fireworks exploding in front of a deep blue sunset',
+      <SchemaColumns.SEMANTIC_EMBEDDING: 'SEMANTIC_EMBEDDING'>: list([
+        70.0,
+        105.0,
+        114.0,
+        101.0,
+        119.0,
+      ]),
+      'filename': '06_fireworks_on_blue_sunset.jpg',
+    }),
+    dict({
+      <SchemaColumns.CAPTION: 'CAPTION'>: 'Aged bundle of papers tied with twine, and an old-fashioned pen',
+      <SchemaColumns.SEMANTIC_EMBEDDING: 'SEMANTIC_EMBEDDING'>: list([
+        65.0,
+        103.0,
+        101.0,
+        100.0,
+        32.0,
+      ]),
+      'filename': '07_paper_bundle_and_pen.jpg',
+    }),
+    dict({
+      <SchemaColumns.CAPTION: 'CAPTION'>: 'Herman Hesse, der ein Buch liest und eine Brille trägt',
+      <SchemaColumns.SEMANTIC_EMBEDDING: 'SEMANTIC_EMBEDDING'>: list([
+        72.0,
+        101.0,
+        114.0,
+        109.0,
+        97.0,
+      ]),
+      'filename': '08_herman_hesse.jpg',
+    }),
+    dict({
+      <SchemaColumns.CAPTION: 'CAPTION'>: 'Martin Luther King, Jr.',
+      <SchemaColumns.SEMANTIC_EMBEDDING: 'SEMANTIC_EMBEDDING'>: list([
+        77.0,
+        97.0,
+        114.0,
+        116.0,
+        105.0,
+      ]),
+      'filename': '09_martin_luther_king_jr.jpg',
+    }),
+  ])
+# ---

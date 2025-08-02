@@ -34,6 +34,11 @@ dependencies = [
     "numba>=0.56.0",
     "umap-learn>=0.5.9",
     "dogpile.cache>=1.2.0",
+    "torch>=2.0.0",
+    "transformers>=4.30.0",
+    "pillow>=9.0.0",
+    "sentencepiece>=0.1.95",
+    "protobuf>=3.20.0",
 ]
 
 [project.optional-dependencies]
@@ -46,6 +51,7 @@ dev = [
     "pytest-cov>=4.1.0",
     "pytest-asyncio>=0.21.0",
     "pytest-playwright>=0.4.0",
+    "pytest-xdist>=3.3.0",
     "playwright>=1.40.0",
     "black>=23.9.0",
     "ruff>=0.1.0",
@@ -55,6 +61,7 @@ dev = [
     "ipykernel",
     "jupyter",
     "ipywidgets",
+    "py-spy>=0.3.14",
 ]
 
 [project.scripts]
@@ -120,11 +127,13 @@ addopts = [
     "--cov-report=term-missing",
     "--cov-report=html",
     "--cov-report=xml",
+    "-n=0",
 ]
 markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
     "integration: marks tests as integration tests",
     "e2e: marks tests as end-to-end browser tests",
+    "resource_intensive: marks tests that require significant computational resources like model downloads (deselect with '-m \"not resource_intensive\"')",
 ]
 
 [tool.coverage.run]

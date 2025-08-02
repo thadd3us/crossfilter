@@ -1,9 +1,7 @@
 """Tests for Lightroom catalog parser."""
 
-import tempfile
 import zipfile
 from pathlib import Path
-from typing import Set
 
 import pandas as pd
 import pytest
@@ -350,7 +348,7 @@ def test_parse_multiple_catalogs(test_catalogs_dir: Path) -> None:
 
     # Check for UUID uniqueness across catalogs
     uuid_counts = combined_df[SchemaColumns.UUID_STRING].value_counts()
-    duplicates = uuid_counts[uuid_counts > 1]
+    uuid_counts[uuid_counts > 1]
 
     # This is informational - we might expect some duplicates between test catalogs
     assert len(all_dataframes) > 0, "Should have parsed at least one catalog"
@@ -358,8 +356,7 @@ def test_parse_multiple_catalogs(test_catalogs_dir: Path) -> None:
 
 def test_parse_timezone_aware_timestamps(test_catalogs_dir: Path, snapshot) -> None:
     """Test parsing catalog with various timezone formats in timestamps including NULL values."""
-    from syrupy.assertion import SnapshotAssertion
-    
+
     # Use dedicated test catalog with timezone formats and NULL captureTime
     test_catalog = (
         test_catalogs_dir / "test_parse_timezone_aware_timestamps" / "test_parse_timezone_aware_timestamps.lrcat"

@@ -1,7 +1,10 @@
 # TODO Items
 
 * AG Grid table view of the selected rows.
+* CLI for a program to compute SigLIP2 embeddings on a directory full of images and write to sqlite DB, only doing what isn't in the DB already, with tqdm.
+
 * SQLite to Plotly treemap of size of each table and column.
+* AG Grid view of counted column values, selectable, with proper NA handling.
 * Handle bad data on ingestion and validate against the pandera schema before writing the to DB.
 * GPS loader for the Google Takeout data -- add schema fields?
 * Allow program to read from multiple sqlite DBs, to speed loading when you want to focus (2022 GPS tracks, for example).)

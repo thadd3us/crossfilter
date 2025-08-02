@@ -1,6 +1,7 @@
 """Common server fixtures for testing."""
 
 import logging
+import socket
 import subprocess
 import sys
 import threading
@@ -14,10 +15,19 @@ import requests
 logger = logging.getLogger(__name__)
 
 
+def find_free_port() -> int:
+    """Find a free port by binding to port 0 and letting the OS choose."""
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.bind(('', 0))
+        s.listen(1)
+        port = s.getsockname()[1]
+    return port
+
+
 def wait_for_server(url: str, max_attempts: int = 15) -> bool:
     """Wait for the server to be ready using exponential backoff."""
     delay_ms = 1
-    for attempt in range(max_attempts):
+    for _attempt in range(max_attempts):
         try:
             response = requests.get(url, timeout=5)
             if response.status_code == 200:
@@ -38,12 +48,12 @@ def server_with_data(source_tree_root: Path) -> Generator[str, None, None]:
     """
     # Path to the sample data
     sample_data_path = source_tree_root / "test_data" / "sample_100.jsonl"
-    
+
     # Path to the UUID preview images directory
     uuid_preview_images_path = source_tree_root / "test_data" / "uuid_preview_images"
 
-    # Start the server on a test port
-    test_port = 8001
+    # Start the server on a dynamically allocated free port to avoid conflicts in parallel tests
+    test_port = find_free_port()
     server_url = f"http://localhost:{test_port}"
 
     # Command to start the server with pre-loaded data and UUID preview images

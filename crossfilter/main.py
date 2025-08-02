@@ -4,37 +4,33 @@ import json
 import logging
 import signal
 import sys
-import traceback
 from dataclasses import dataclass
-from io import BytesIO
 from pathlib import Path
 from typing import Any, Optional
 
-from crossfilter.core.schema import SchemaColumns as C
 import pandas as pd
 import typer
 import uvicorn
 from fastapi import Depends, FastAPI, HTTPException, Query, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import HTMLResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
-from fastapi.exceptions import RequestValidationError
-from starlette.exceptions import HTTPException as StarletteHTTPException
-from crossfilter.core.schema import SchemaColumns as C
 
 from crossfilter.core.backend_frontend_shared_schema import (
     DfIdsFilterRequest,
+    FilterEvent,
     FilterResponse,
     LoadDataRequest,
     LoadDataResponse,
     ProjectionPlotResponse,
     SessionStateResponse,
 )
-from crossfilter.core.backend_frontend_shared_schema import FilterEvent, ProjectionType
+from crossfilter.core.schema import SchemaColumns as C
 from crossfilter.core.schema import load_jsonl_to_dataframe, load_sqlite_to_dataframe
 from crossfilter.core.session_state import SessionState
-from crossfilter.visualization.temporal_cdf_plot import create_temporal_cdf
-from crossfilter.visualization.geo_plot import create_geo_plot
 from crossfilter.visualization.clip_embedding_plot import create_clip_embedding_plot
+from crossfilter.visualization.geo_plot import create_geo_plot
+from crossfilter.visualization.temporal_cdf_plot import create_temporal_cdf
 
 
 @dataclass
@@ -261,8 +257,8 @@ async def get_clip_embedding_plot_data(
 
     # Check if CLIP columns are present in the data
     if (
-        C.CLIP_UMAP_HAVERSINE_LATITUDE not in session_state.all_rows.columns
-        or C.CLIP_UMAP_HAVERSINE_LONGITUDE not in session_state.all_rows.columns
+        C.SEMANTIC_EMBEDDING_UMAP_LATITUDE not in session_state.all_rows.columns
+        or C.SEMANTIC_EMBEDDING_UMAP_LONGITUDE not in session_state.all_rows.columns
     ):
         # Return empty plot when CLIP columns are missing
         import plotly.graph_objects as go
@@ -272,15 +268,15 @@ async def get_clip_embedding_plot_data(
             xaxis_title="CLIP UMAP Longitude",
             yaxis_title="CLIP UMAP Latitude",
             annotations=[
-                dict(
-                    x=0.5,
-                    y=0.5,
-                    xref="paper",
-                    yref="paper",
-                    text="No CLIP embedding data available",
-                    showarrow=False,
-                    font=dict(size=16),
-                )
+                {
+                    "x": 0.5,
+                    "y": 0.5,
+                    "xref": "paper",
+                    "yref": "paper",
+                    "text": "No CLIP embedding data available",
+                    "showarrow": False,
+                    "font": {"size": 16},
+                }
             ],
         )
         return ProjectionPlotResponse(
@@ -334,7 +330,7 @@ async def filter_to_df_ids(
     session_state: SessionState = Depends(get_session_state),
 ) -> FilterResponse:
     """Filter data to only include points with specified df_ids from a plot."""
-    logger.info(f"Filtering to df_ids.")
+    logger.info("Filtering to df_ids.")
 
     try:
         filter_event = FilterEvent(

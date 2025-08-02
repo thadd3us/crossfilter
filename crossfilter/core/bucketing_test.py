@@ -16,13 +16,13 @@ from crossfilter.core.bucketing import (
     get_optimal_temporal_level,
 )
 from crossfilter.core.schema import (
-    SchemaColumns as C,
     DataType,
-)
-from crossfilter.core.schema import (
     TemporalLevel,
     get_h3_column_name,
     get_temporal_column_name,
+)
+from crossfilter.core.schema import (
+    SchemaColumns as C,
 )
 
 

@@ -1,0 +1,45 @@
+# serializer version: 1
+# name: test_compute_embeddings_cli_fake_embeddings
+  list([
+    dict({
+      'SEMANTIC_EMBEDDING': array([0.525, 0.521, 0.529, 0.23 , 0.23 , 0.26 ], dtype=float32),
+      'UUID_STRING': '00_munich_rathaus',
+    }),
+    dict({
+      'SEMANTIC_EMBEDDING': array([0.478, 0.508, 0.52 , 0.266, 0.289, 0.299], dtype=float32),
+      'UUID_STRING': '01_golden_gate_bridge',
+    }),
+    dict({
+      'SEMANTIC_EMBEDDING': array([0.398, 0.408, 0.467, 0.379, 0.38 , 0.411], dtype=float32),
+      'UUID_STRING': '02_earth_from_space',
+    }),
+    dict({
+      'SEMANTIC_EMBEDDING': array([0.405, 0.422, 0.421, 0.4  , 0.401, 0.4  ], dtype=float32),
+      'UUID_STRING': '03_backlit_man_looking_out',
+    }),
+    dict({
+      'SEMANTIC_EMBEDDING': array([0.465, 0.465, 0.465, 0.343, 0.343, 0.343], dtype=float32),
+      'UUID_STRING': '04_mountain_view',
+    }),
+    dict({
+      'SEMANTIC_EMBEDDING': array([0.485, 0.481, 0.477, 0.32 , 0.32 , 0.32 ], dtype=float32),
+      'UUID_STRING': '05_astronaut_on_moon',
+    }),
+    dict({
+      'SEMANTIC_EMBEDDING': array([0.26 , 0.213, 0.615, 0.457, 0.399, 0.375], dtype=float32),
+      'UUID_STRING': '06_fireworks_on_blue_sunset',
+    }),
+    dict({
+      'SEMANTIC_EMBEDDING': array([0.596, 0.54 , 0.417, 0.262, 0.239, 0.23 ], dtype=float32),
+      'UUID_STRING': '07_paper_bundle_and_pen',
+    }),
+    dict({
+      'SEMANTIC_EMBEDDING': array([0.502, 0.504, 0.505, 0.284, 0.283, 0.278], dtype=float32),
+      'UUID_STRING': '08_herman_hesse',
+    }),
+    dict({
+      'SEMANTIC_EMBEDDING': array([0.506, 0.506, 0.506, 0.279, 0.279, 0.279], dtype=float32),
+      'UUID_STRING': '09_martin_luther_king_jr',
+    }),
+  ])
+# ---

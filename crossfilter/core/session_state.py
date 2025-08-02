@@ -13,13 +13,13 @@ from crossfilter.core.backend_frontend_shared_schema import (
     ProjectionType,
     SessionStateResponse,
 )
-from crossfilter.core.schema import SchemaColumns as C
 from crossfilter.core.bucketing import add_temporal_bucketed_columns
-from crossfilter.core.geo_projection_state import GeoProjectionState
-from crossfilter.core.temporal_projection_state import TemporalProjectionState
 from crossfilter.core.clip_embedding_projection_state import (
     ClipEmbeddingProjectionState,
 )
+from crossfilter.core.geo_projection_state import GeoProjectionState
+from crossfilter.core.schema import SchemaColumns as C
+from crossfilter.core.temporal_projection_state import TemporalProjectionState
 
 logger = logging.getLogger(__name__)
 

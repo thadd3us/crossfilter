@@ -9,7 +9,8 @@ from crossfilter.core.backend_frontend_shared_schema import (
     ProjectionType,
 )
 from crossfilter.core.projection_state import ProjectionState
-from crossfilter.core.schema import SchemaColumns as C, DataType
+from crossfilter.core.schema import DataType
+from crossfilter.core.schema import SchemaColumns as C
 
 
 @pytest.fixture
@@ -39,7 +40,7 @@ def bucketed_data() -> pd.DataFrame:
             "bucket_column": ["bucket_a", "bucket_b", "bucket_c"],
             C.GPS_LATITUDE: [37.7749, 37.7759, 37.7769],
             C.GPS_LONGITUDE: [-122.4194, -122.4204, -122.4214],
-            "count": [5, 8, 7],
+            C.COUNT: [5, 8, 7],  # Use SchemaColumns.COUNT instead of lowercase "count"
         }
     )
     df.index.name = C.DF_ID
@@ -95,6 +96,7 @@ def test_apply_filter_event_aggregated_mode(
     # Set up aggregated mode
     projection.projection_df = bucketed_data.copy()
     projection.current_bucketing_column = "bucket_column"
+    projection.groupby_column = None  # No groupby for this test since bucketed_data doesn't have DATA_TYPE
 
     # Add bucket column to sample data
     sample_data_with_buckets = sample_data.copy()

@@ -5,17 +5,13 @@ from typing import Optional
 
 import pandas as pd
 
-from crossfilter.core.backend_frontend_shared_schema import (
-    FilterEvent,
-    FilterOperatorType,
-)
 from crossfilter.core.bucketing import (
     bucket_by_target_column,
-    get_clip_umap_h3_column_name,
-    get_optimal_clip_umap_h3_level,
+    get_optimal_semantic_embedding_umap_h3_level,
 )
 from crossfilter.core.projection_state import ProjectionState
 from crossfilter.core.schema import SchemaColumns as C
+from crossfilter.core.schema import get_semantic_embedding_umap_h3_column_name
 
 logger = logging.getLogger(__name__)
 
@@ -50,13 +46,13 @@ class ClipEmbeddingProjectionState:
         Args:
             filtered_rows: Current filtered subset of all_rows
         """
-        # Check if CLIP columns are present in the data
+        # Check if semantic embedding UMAP columns are present in the data
         if (
-            C.CLIP_UMAP_HAVERSINE_LATITUDE not in filtered_rows.columns
-            or C.CLIP_UMAP_HAVERSINE_LONGITUDE not in filtered_rows.columns
+            C.SEMANTIC_EMBEDDING_UMAP_LATITUDE not in filtered_rows.columns
+            or C.SEMANTIC_EMBEDDING_UMAP_LONGITUDE not in filtered_rows.columns
         ):
             logger.info(
-                f"CLIP UMAP columns not found in data, skipping CLIP embedding projection update"
+                "Semantic embedding UMAP columns not found in data, skipping semantic embedding projection update"
             )
             # Set empty projection with no buckets
             self.projection_state.current_bucketing_column = None
@@ -64,16 +60,16 @@ class ClipEmbeddingProjectionState:
             self.projection_state.projection_df = pd.DataFrame()
             return
 
-        # Drop rows with missing CLIP UMAP coordinates
+        # Drop rows with missing semantic embedding UMAP coordinates
         logger.info(
-            f"Projecting {len(filtered_rows)=} rows with CLIP UMAP coordinates."
+            f"Projecting {len(filtered_rows)=} rows with semantic embedding UMAP coordinates."
         )
         filtered_rows = filtered_rows.dropna(
-            subset=[C.CLIP_UMAP_HAVERSINE_LATITUDE, C.CLIP_UMAP_HAVERSINE_LONGITUDE]
+            subset=[C.SEMANTIC_EMBEDDING_UMAP_LATITUDE, C.SEMANTIC_EMBEDDING_UMAP_LONGITUDE]
         )
-        logger.info(f"Kept {len(filtered_rows)=} rows with CLIP UMAP coordinates")
+        logger.info(f"Kept {len(filtered_rows)=} rows with semantic embedding UMAP coordinates")
 
-        optimal_level = get_optimal_clip_umap_h3_level(
+        optimal_level = get_optimal_semantic_embedding_umap_h3_level(
             filtered_rows, self.projection_state.max_rows
         )
 
@@ -84,7 +80,7 @@ class ClipEmbeddingProjectionState:
             return
 
         self.current_h3_level = optimal_level
-        self.projection_state.current_bucketing_column = get_clip_umap_h3_column_name(
+        self.projection_state.current_bucketing_column = get_semantic_embedding_umap_h3_column_name(
             optimal_level
         )
         self.projection_state.projection_df = bucket_by_target_column(

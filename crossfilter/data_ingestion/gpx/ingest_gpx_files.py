@@ -2,21 +2,21 @@
 
 import logging
 from pathlib import Path
-from typing import List
 
 import pandas as pd
+from sqlalchemy import create_engine
 import typer
 from tqdm.contrib.concurrent import process_map
-from crossfilter.core.schema import SchemaColumns as C
 
 from crossfilter.core.schema import SchemaColumns
+from crossfilter.core.schema import SchemaColumns as C
 from crossfilter.data_ingestion.gpx.gpx_parser import load_gpx_file_to_df
 from crossfilter.data_ingestion.sqlite_utils import upsert_dataframe_to_sqlite
 
 logger = logging.getLogger(__name__)
 
 
-def find_gpx_files(base_dir: Path) -> List[Path]:
+def find_gpx_files(base_dir: Path) -> list[Path]:
     """Find all GPX files recursively in the base directory."""
     if not base_dir.exists():
         raise FileNotFoundError(f"Base directory not found: {base_dir}")
@@ -105,9 +105,11 @@ def main(
     logger.info(
         f"Total records: {len(combined_df)} (H3 columns computed per-file in parallel)"
     )
+    combined_df = combined_df.set_index(C.UUID_STRING, verify_integrity=True)
 
     # Upsert to database
-    upsert_dataframe_to_sqlite(combined_df, destination_sqlite_db, destination_table)
+    engine = create_engine(f"sqlite:///{destination_sqlite_db}")
+    upsert_dataframe_to_sqlite(combined_df, engine, destination_table)
 
     logger.info("GPX ingestion completed successfully")
 

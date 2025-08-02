@@ -1,7 +1,6 @@
 """Basic frontend UI test for temporal CDF plot using Playwright."""
 
 import logging
-import os
 import sys
 
 import pytest
@@ -49,15 +48,15 @@ def test_temporal_cdf_plot_png_snapshot(
 
     # Wait for Vue app to mount and initialize
     page.wait_for_selector('.app', timeout=5000)
-    
+
     # Wait for the app to initialize, detect pre-loaded data, and auto-load the plot
     # The plot should render automatically when data is detected in Vue.js structure
     page.wait_for_function(
         """
         () => {
             const plotContainers = document.querySelectorAll('.plot-container');
-            return plotContainers.length > 0 && 
-                   Array.from(plotContainers).some(container => 
+            return plotContainers.length > 0 &&
+                   Array.from(plotContainers).some(container =>
                        container.querySelector('.main-svg') !== null
                    );
         }
@@ -86,11 +85,11 @@ def test_temporal_cdf_plot_content(page: Page, server_with_data: str) -> None:
 
     # Wait for Vue app to mount
     page.wait_for_selector('.app', timeout=5000)
-    
+
     # Check that the Vue app structure is present
     app_container = page.locator('.app')
     assert app_container.count() > 0
-    
+
     # Check that status bar exists
     status_bar = page.locator('.top-status-bar')
     assert status_bar.count() > 0
@@ -101,8 +100,8 @@ def test_temporal_cdf_plot_content(page: Page, server_with_data: str) -> None:
         """
         () => {
             const plotContainers = document.querySelectorAll('.plot-container');
-            return plotContainers.length > 0 && 
-                   Array.from(plotContainers).some(container => 
+            return plotContainers.length > 0 &&
+                   Array.from(plotContainers).some(container =>
                        container.querySelector('.main-svg') !== null
                    );
         }
@@ -158,7 +157,7 @@ def test_filter_to_selected_ui_elements(page: Page, server_with_data: str) -> No
 
     # In Vue.js, selection info is shown inline when there's a selection
     # Initially there should be no selection text visible
-    selection_spans = page.locator("span:has-text('Selected')") 
+    selection_spans = page.locator("span:has-text('Selected')")
     assert selection_spans.count() == 0
 
     # Get initial row count to verify data is loaded from Vue.js status bar

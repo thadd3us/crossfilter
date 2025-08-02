@@ -13,12 +13,27 @@ from pandera.typing import Series
 
 # Import shared types from backend_frontend_shared_schema
 from crossfilter.core.backend_frontend_shared_schema import (
-    FilterEvent,
-    ProjectionType,
     TemporalLevel,
 )
 
 logger = logging.getLogger(__name__)
+
+
+class EmbeddingsTables(StrEnum):
+    IMAGE_EMBEDDINGS = "IMAGE_EMBEDDINGS"
+    # Contains UUID_STRING, SEMANTIC_EMBEDDING column.
+
+    IMAGE_UMAP_PROJECTIONS = "IMAGE_UMAP_PROJECTIONS"
+    # Contains: UUID_STRING, SEMANTIC_EMBEDDING_UMAP_LATITUDE, SEMANTIC_EMBEDDING_UMAP_LONGITUDE columns.
+
+    UMAP_MODEL = "UMAP_MODEL"
+
+    # TODO: Table for text embeddings.
+
+
+class EmbeddingType(StrEnum):
+    SIGLIP2 = "SIGLIP2"
+    FAKE_EMBEDDING_FOR_TESTING = "FAKE_EMBEDDING_FOR_TESTING"
 
 
 class SchemaColumns(StrEnum):
@@ -32,17 +47,24 @@ class SchemaColumns(StrEnum):
     NAME = "NAME"
     CAPTION = "CAPTION"
     SOURCE_FILE = "SOURCE_FILE"
+
     TIMESTAMP_MAYBE_TIMEZONE_AWARE = "TIMESTAMP_MAYBE_TIMEZONE_AWARE"
     TIMESTAMP_UTC = "TIMESTAMP_UTC"
     GPS_LATITUDE = "GPS_LATITUDE"
     GPS_LONGITUDE = "GPS_LONGITUDE"
+
     RATING_0_TO_5 = "RATING_0_TO_5"
     SIZE_IN_BYTES = "SIZE_IN_BYTES"
-    COUNT = "COUNT"
 
-    # CLIP embedding UMAP projection coordinates (on a sphere like lat/lon)
-    CLIP_UMAP_HAVERSINE_LATITUDE = "CLIP_UMAP_HAVERSINE_LATITUDE"
-    CLIP_UMAP_HAVERSINE_LONGITUDE = "CLIP_UMAP_HAVERSINE_LONGITUDE"
+    # Generic semantic embedding column
+    SEMANTIC_EMBEDDING = "SEMANTIC_EMBEDDING"
+
+    # Generic semantic embedding UMAP projection coordinates (on a sphere like lat/lon)
+    SEMANTIC_EMBEDDING_UMAP_LATITUDE = "SEMANTIC_EMBEDDING_UMAP_LATITUDE"
+    SEMANTIC_EMBEDDING_UMAP_LONGITUDE = "SEMANTIC_EMBEDDING_UMAP_LONGITUDE"
+
+    # Only when grouped/bucketed: how many rows are aggregated into this bucket.
+    COUNT = "COUNT"
 
 
 class DataType(StrEnum):
@@ -66,7 +88,7 @@ class DataSchema(pa.DataFrameModel):
     )
     GPS_LATITUDE: Series[float] = pa.Field(nullable=True, ge=-90, le=90)
     GPS_LONGITUDE: Series[float] = pa.Field(nullable=True, ge=-180, le=180)
-    RATING_0_TO_5: Series[pd.Int64Dtype] = pa.Field(nullable=True, ge=0, le=5)
+    RATING_0_TO_5: Series[pd.Int32Dtype] = pa.Field(nullable=True, ge=0, le=5)
     SIZE_IN_BYTES: Series[pd.Int64Dtype] = pa.Field(nullable=True, ge=0)
 
     # For aggregated data, the COUNT column says how many rows are aggregated into the bucket.
@@ -86,11 +108,11 @@ def get_h3_column_name(level: int) -> str:
     return f"BUCKETED_H3_L{level}"
 
 
-def get_clip_umap_h3_column_name(level: int) -> str:
-    """Get the CLIP UMAP H3 column name for a specific level (0-15)."""
+def get_semantic_embedding_umap_h3_column_name(level: int) -> str:
+    """Get the semantic embedding UMAP H3 column name for a specific level (0-15)."""
     if not 0 <= level <= 15:
         raise ValueError(f"H3 level must be between 0 and 15, got {level}")
-    return f"BUCKETED_CLIP_HAVERSINE_UMAP_H3_L{level}"
+    return f"BUCKETED_SEMANTIC_EMBEDDING_UMAP_H3_L{level}"
 
 
 def get_temporal_column_name(level: TemporalLevel) -> str:
@@ -199,12 +221,15 @@ def load_sqlite_to_dataframe(sqlite_db_path: Path, table_name: str) -> pd.DataFr
     df[SchemaColumns.GPS_LATITUDE] = df[SchemaColumns.GPS_LATITUDE].clip(-90, 90)
     df[SchemaColumns.GPS_LONGITUDE] = df[SchemaColumns.GPS_LONGITUDE].clip(-180, 180)
 
-    # df[SchemaColumns.CLIP_UMAP_HAVERSINE_LATITUDE] = df[
-    #     SchemaColumns.CLIP_UMAP_HAVERSINE_LATITUDE
-    # ].clip(-90, 90)
-    # df[SchemaColumns.CLIP_UMAP_HAVERSINE_LONGITUDE] = df[
-    #     SchemaColumns.CLIP_UMAP_HAVERSINE_LONGITUDE
-    # ].clip(-180, 180)
+    # Clip semantic embedding UMAP coordinates if present
+    if SchemaColumns.SEMANTIC_EMBEDDING_UMAP_LATITUDE in df.columns:
+        df[SchemaColumns.SEMANTIC_EMBEDDING_UMAP_LATITUDE] = df[
+            SchemaColumns.SEMANTIC_EMBEDDING_UMAP_LATITUDE
+        ].clip(-90, 90)
+    if SchemaColumns.SEMANTIC_EMBEDDING_UMAP_LONGITUDE in df.columns:
+        df[SchemaColumns.SEMANTIC_EMBEDDING_UMAP_LONGITUDE] = df[
+            SchemaColumns.SEMANTIC_EMBEDDING_UMAP_LONGITUDE
+        ].clip(-180, 180)
 
     # Validate and coerce only the schema columns
     schema_df = df[required_columns].copy()

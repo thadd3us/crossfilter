@@ -86,16 +86,29 @@ uv run --extra dev ruff check . && uv run --extra dev black --check .
 
 ### Testing
 ```bash
-# Run once.
-uv run playwright install
+# Install Playwright browsers (first time only)
+uv run --extra dev playwright install
 ```
 
 ```bash
-# Run all tests
+# Run fast tests (skips resource intensive tests like model downloads)
+uv run --extra dev pytest -m "not resource_intensive"
+
+# Run all tests including resource intensive ones
 uv run --extra dev pytest
 
-# Run with coverage
-uv run --extra dev pytest --cov=crossfilter
+# Run with coverage (skipping resource intensive tests)
+uv run --extra dev pytest -m "not resource_intensive" --cov=crossfilter
+
+# Run only resource intensive tests (like SIGLIP2 model tests)
+uv run --extra dev pytest -m resource_intensive
+
+# Skip frontend tests (useful for CI without browser dependencies)
+uv run --extra dev pytest -m "not e2e"
+
+
+# Disable pytest-xdist for more focused profiling (if needed)
+uv run --extra dev py-spy record -o profile.html -- pytest -m "not (resource_intensive or e2e)" -n0
 ```
 
 ### Project Structure

@@ -1,0 +1,99 @@
+# serializer version: 1
+# name: test_compute_embeddings_cli_siglip2_full_workflow
+  list([
+    dict({
+      'SEMANTIC_EMBEDDING': array([0.528, 0.525, 0.533, 0.222, 0.222, 0.251], dtype=float32),
+      'UUID_STRING': '00_munich_rathaus',
+    }),
+    dict({
+      'SEMANTIC_EMBEDDING': array([0.483, 0.501, 0.512, 0.27 , 0.295, 0.307], dtype=float32),
+      'UUID_STRING': '01_golden_gate_bridge',
+    }),
+    dict({
+      'SEMANTIC_EMBEDDING': array([0.398, 0.408, 0.467, 0.379, 0.38 , 0.411], dtype=float32),
+      'UUID_STRING': '02_earth_from_space',
+    }),
+    dict({
+      'SEMANTIC_EMBEDDING': array([0.406, 0.424, 0.422, 0.399, 0.399, 0.398], dtype=float32),
+      'UUID_STRING': '03_backlit_man_looking_out',
+    }),
+    dict({
+      'SEMANTIC_EMBEDDING': array([0.469, 0.469, 0.469, 0.336, 0.336, 0.336], dtype=float32),
+      'UUID_STRING': '04_mountain_view',
+    }),
+    dict({
+      'SEMANTIC_EMBEDDING': array([0.485, 0.482, 0.477, 0.319, 0.319, 0.319], dtype=float32),
+      'UUID_STRING': '05_astronaut_on_moon',
+    }),
+    dict({
+      'SEMANTIC_EMBEDDING': array([0.306, 0.256, 0.588, 0.451, 0.4  , 0.363], dtype=float32),
+      'UUID_STRING': '06_fireworks_on_blue_sunset',
+    }),
+    dict({
+      'SEMANTIC_EMBEDDING': array([0.601, 0.537, 0.401, 0.277, 0.247, 0.23 ], dtype=float32),
+      'UUID_STRING': '07_paper_bundle_and_pen',
+    }),
+    dict({
+      'SEMANTIC_EMBEDDING': array([0.506, 0.508, 0.509, 0.277, 0.276, 0.272], dtype=float32),
+      'UUID_STRING': '08_herman_hesse',
+    }),
+    dict({
+      'SEMANTIC_EMBEDDING': array([0.517, 0.517, 0.517, 0.257, 0.257, 0.257], dtype=float32),
+      'UUID_STRING': '09_martin_luther_king_jr',
+    }),
+  ])
+# ---
+# name: test_load_embeddings_from_db_with_data
+  dict({
+    'embedding_dtypes': list([
+      'float32',
+      'float32',
+    ]),
+    'embedding_samples': list([
+      list([
+        0.10000000149011612,
+        0.20000000298023224,
+        0.30000001192092896,
+      ]),
+      list([
+        0.4000000059604645,
+        0.5,
+        0.6000000238418579,
+      ]),
+    ]),
+    'embedding_shapes': list([
+      tuple(
+        3,
+      ),
+      tuple(
+        3,
+      ),
+    ]),
+    'num_rows': 2,
+    'uuids': list([
+      '550e8400-e29b-41d4-a716-446655440000',
+      '6ba7b810-9dad-11d1-80b4-00c04fd430c8',
+    ]),
+  })
+# ---
+# name: test_scan_image_files
+  dict({
+    'num_files': 6,
+    'relative_paths': list([
+      '550e8400-e29b-41d4-a716-446655440000.jpg',
+      '6ba7b810-9dad-11d1-80b4-00c04fd430c8.jpg',
+      '6ba7b811-9dad-11d1-80b4-00c04fd430c8.jpg',
+      'nested/550e8400-e29b-41d4-a716-446655440001.jpg',
+      'nested/6ba7b810-9dad-11d1-80b4-00c04fd430c9.jpg',
+      'nested/6ba7b811-9dad-11d1-80b4-00c04fd430ca.jpg',
+    ]),
+    'uuids': list([
+      '550e8400-e29b-41d4-a716-446655440000',
+      '550e8400-e29b-41d4-a716-446655440001',
+      '6ba7b810-9dad-11d1-80b4-00c04fd430c8',
+      '6ba7b810-9dad-11d1-80b4-00c04fd430c9',
+      '6ba7b811-9dad-11d1-80b4-00c04fd430c8',
+      '6ba7b811-9dad-11d1-80b4-00c04fd430ca',
+    ]),
+  })
+# ---

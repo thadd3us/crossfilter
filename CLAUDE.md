@@ -55,7 +55,7 @@ The application is built around a **projection-based architecture** where multip
 2. **Follow FastAPI Patterns**: Use async/await, proper response models, dependency injection
 3. **Preserve Performance Focus**: Remember this is designed for large datasets (millions of points)
 4. **Use Existing Dependencies**: Pandas, NumPy, H3, Plotly, FastAPI, Typer, Pydantic
-5. **Test Commands**: `uv run --extra dev pytest` for testing
+5. **Test Commands**: `uv run --extra dev pytest -m "not resource_intensive"` for fast testing (skips model downloads)
 6. **THAD TODOs**: If you see any lines marked with `THAD:`, please address the todo-item mentioned on the rest of the line!
 
 
@@ -92,7 +92,7 @@ The application is built around a **projection-based architecture** where multip
 27. **Don't enumerate arguments in docstrings**: Just use good names and type hints to make it clear what things are.
 28. **Never Use @property Decorators**: Avoid using `@property` decorators for getters and setters. Use direct naked attribute access instead. Properties add unnecessary verbosity and complexity without meaningful benefit. Just access and modify attributes directly (e.g., `obj.max_rows = 100` instead of property-based access).
 29. **Read the docs in //docs/*.md**: And keep them up to date!
-30. **Use pytype hints**: Put them on member variables, function arguments, and return types.  If it improves readability, put them on local variables, too.
+30. **Use pytype hints**: Put them on ALL member variables, ALL function arguments, and return types.  If it improves readability, put them on local variables, too.  Use `list[str]` and `str | None, NOT `List[str]` and NOT `Optional[str]`.
 
 ### Project Structure
 ```
@@ -122,24 +122,17 @@ crossfilter/
 - **Headless Support**: Built-in headless browser support for CI/CD environments
 - **Test Location**: End-to-end tests in `tests/test_frontend_e2e.py`
 - **Fixtures**: Automated server startup/teardown and browser management
-- **Test Markers**: Use `@pytest.mark.e2e` for frontend tests
+- **Test Markers**:
+  * Use `@pytest.mark.e2e` for frontend tests
+  * Don't ever run `@pytest.mark.resource_intensive` tests.
 
-#### Running Frontend Tests
+#### Running Tests
 ```bash
-# Install Playwright browsers (first time only)
-uv run --extra dev playwright install
+# Run fast tests (skips frontend and resource intensive tests like model downloads)
+uv run --extra dev pytest -m "not (resource_intensive or e2e)"
 
-# Run all tests including frontend
-uv run --extra dev pytest
-
-# Run only frontend tests
-uv run --extra dev pytest -m e2e
-
-# Run frontend tests with visible browser (for debugging)
-uv run --extra dev pytest -m e2e --headed
-
-# Skip frontend tests
-uv run --extra dev pytest -m "not e2e"
+# Run all reasonable tests, including frontend.
+uv run --extra dev pytest -m "not (resource_intensive)"
 ```
 
 #### Headless Browser Support
@@ -200,7 +193,10 @@ uv run python -m crossfilter.main serve
 # Or with custom port
 uv run python -m crossfilter.main serve --port 8080
 
-# Run tests
+# Run fast tests (skips resource intensive model downloads)
+uv run --extra dev pytest -m "not resource_intensive"
+
+# Run all tests including resource intensive ones
 uv run --extra dev pytest
 ```
 

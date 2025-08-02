@@ -4,21 +4,20 @@ import logging
 import pickle
 import sqlite3
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import Optional
 
+import dogpile.cache
 import msgpack_numpy as msgpack
 import numpy as np
 import pandas as pd
 import typer
 from tqdm import tqdm
 
-import dogpile.cache
-
-from crossfilter.core.schema import SchemaColumns
 from crossfilter.core.bucketing import (
     add_geo_h3_bucket_columns,
-    add_clip_umap_h3_bucket_columns,
+    add_semantic_embedding_umap_h3_bucket_columns,
 )
+from crossfilter.core.schema import SchemaColumns
 from crossfilter.data_ingestion.lightroom.lightroom_parser import (
     LightroomParserConfig,
 )
@@ -72,7 +71,7 @@ def load_clip_embeddings_from_sqlite(sqlite_db_path: Path) -> pd.DataFrame:
 
 
 # @cache_region.cache_on_arguments()
-def compute_umap_projection(embeddings_df: pd.DataFrame) -> Tuple[pd.DataFrame, object]:
+def compute_umap_projection(embeddings_df: pd.DataFrame) -> tuple[pd.DataFrame, object]:
     """Normalize embeddings and compute 2D UMAP projection with cosine metric.
 
     This function normalizes CLIP embeddings to unit length and computes a 2D UMAP projection
@@ -146,8 +145,8 @@ def compute_umap_projection(embeddings_df: pd.DataFrame) -> Tuple[pd.DataFrame, 
     # Create result DataFrame
     result_df = embeddings_df[[SchemaColumns.UUID_STRING]].copy()
     # Latitude should be -90 to 90, longitude should be -180 to 180.
-    result_df[SchemaColumns.CLIP_UMAP_HAVERSINE_LATITUDE] = umap_embedding[:, 1]
-    result_df[SchemaColumns.CLIP_UMAP_HAVERSINE_LONGITUDE] = umap_embedding[:, 0]
+    result_df[SchemaColumns.SEMANTIC_EMBEDDING_UMAP_LATITUDE] = umap_embedding[:, 1]
+    result_df[SchemaColumns.SEMANTIC_EMBEDDING_UMAP_LONGITUDE] = umap_embedding[:, 0]
 
     logger.info(
         f"UMAP projection completed successfully, {result_df.shape=}, {result_df.columns=}"
@@ -155,7 +154,7 @@ def compute_umap_projection(embeddings_df: pd.DataFrame) -> Tuple[pd.DataFrame, 
     return result_df, umap_transformer
 
 
-def find_lightroom_catalogs(base_dir: Path) -> List[Path]:
+def find_lightroom_catalogs(base_dir: Path) -> list[Path]:
     """Find all Lightroom catalog files recursively in the base directory."""
     if not base_dir.exists():
         raise FileNotFoundError(f"Base directory not found: {base_dir}")
@@ -319,16 +318,16 @@ def ingest(
 
         # Add H3 columns for CLIP UMAP coordinates
         if (
-            SchemaColumns.CLIP_UMAP_HAVERSINE_LATITUDE in combined_df.columns
-            and SchemaColumns.CLIP_UMAP_HAVERSINE_LONGITUDE in combined_df.columns
+            SchemaColumns.SEMANTIC_EMBEDDING_UMAP_LATITUDE in combined_df.columns
+            and SchemaColumns.SEMANTIC_EMBEDDING_UMAP_LONGITUDE in combined_df.columns
         ):
             logger.info("Adding H3 spatial index columns for CLIP UMAP coordinates...")
-            add_clip_umap_h3_bucket_columns(combined_df)
+            add_semantic_embedding_umap_h3_bucket_columns(combined_df)
             logger.info(f"Added CLIP UMAP H3 columns to {len(combined_df)} rows")
 
         # Log statistics
         rows_with_clip_embeddings = (
-            combined_df[SchemaColumns.CLIP_UMAP_HAVERSINE_LATITUDE].notna().sum()
+            combined_df[SchemaColumns.SEMANTIC_EMBEDDING_UMAP_LATITUDE].notna().sum()
         )
         logger.info(
             f"Successfully processed {rows_with_clip_embeddings} rows with CLIP embeddings"

@@ -176,7 +176,6 @@ def load_jsonl_to_dataframe(jsonl_path: Path) -> pd.DataFrame:
     result_df.index.name = SchemaColumns.DF_ID
 
     logger.info(f"Loaded {len(result_df)} records from {jsonl_path=}")
-
     return result_df
 
 
@@ -200,12 +199,12 @@ def load_sqlite_to_dataframe(sqlite_db_path: Path, table_name: str) -> pd.DataFr
     df[SchemaColumns.GPS_LATITUDE] = df[SchemaColumns.GPS_LATITUDE].clip(-90, 90)
     df[SchemaColumns.GPS_LONGITUDE] = df[SchemaColumns.GPS_LONGITUDE].clip(-180, 180)
 
-    df[SchemaColumns.CLIP_UMAP_HAVERSINE_LATITUDE] = df[
-        SchemaColumns.CLIP_UMAP_HAVERSINE_LATITUDE
-    ].clip(-90, 90)
-    df[SchemaColumns.CLIP_UMAP_HAVERSINE_LONGITUDE] = df[
-        SchemaColumns.CLIP_UMAP_HAVERSINE_LONGITUDE
-    ].clip(-180, 180)
+    # df[SchemaColumns.CLIP_UMAP_HAVERSINE_LATITUDE] = df[
+    #     SchemaColumns.CLIP_UMAP_HAVERSINE_LATITUDE
+    # ].clip(-90, 90)
+    # df[SchemaColumns.CLIP_UMAP_HAVERSINE_LONGITUDE] = df[
+    #     SchemaColumns.CLIP_UMAP_HAVERSINE_LONGITUDE
+    # ].clip(-180, 180)
 
     # Validate and coerce only the schema columns
     schema_df = df[required_columns].copy()

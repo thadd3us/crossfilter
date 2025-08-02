@@ -157,27 +157,27 @@ def parse_lightroom_catalog(
             Adobe_images.originalCaptureTime,
             Adobe_images.pick,
             Adobe_images.touchTime,
-            
+
             -- File information
             AgLibraryFile.idx_filename,
             AgLibraryFile.importHash,
             AgLibraryFile.baseName,
             AgLibraryFile.extension,
-            
-            -- Folder information 
+
+            -- Folder information
             AgLibraryFolder.pathFromRoot,
             AgLibraryRootFolder.absolutePath,
-            
+
             -- GPS and EXIF metadata (only fields that commonly exist)
             AgHarvestedExifMetadata.gpsLatitude,
             AgHarvestedExifMetadata.gpsLongitude,
             AgHarvestedExifMetadata.focalLength,
             AgHarvestedExifMetadata.aperture,
             AgHarvestedExifMetadata.flashFired,
-            
+
             -- IPTC metadata (basic fields)
             AgLibraryIPTC.caption
-            
+
         FROM Adobe_images
         LEFT JOIN AgLibraryFile ON AgLibraryFile.id_local = Adobe_images.rootFile
         LEFT JOIN AgLibraryFolder ON AgLibraryFolder.id_local = AgLibraryFile.folder
@@ -231,27 +231,7 @@ def parse_lightroom_catalog(
         # Handle timestamps with proper timezone handling
         # Keep original timestamp strings in TIMESTAMP_MAYBE_TIMEZONE_AWARE
         result_df[SchemaColumns.TIMESTAMP_MAYBE_TIMEZONE_AWARE] = df["captureTime"]
-        
         # Convert to UTC timestamps, handling different timezone formats
-        def convert_to_utc(timestamp_str):
-            """Convert timestamp string to UTC, handling various timezone formats."""
-            if pd.isna(timestamp_str) or timestamp_str is None:
-                return pd.NaT
-            
-            try:
-                # Parse with pandas, which handles ISO8601 formats including timezones
-                parsed = pd.to_datetime(timestamp_str, format="ISO8601")
-                
-                # If the parsed timestamp is timezone-naive, assume it's UTC
-                if parsed.tz is None:
-                    return parsed.tz_localize('UTC')
-                else:
-                    # If it's timezone-aware, convert to UTC
-                    return parsed.tz_convert('UTC')
-            except (ValueError, TypeError, pd.errors.OutOfBoundsDatetime) as e:
-                logger.warning(f"Failed to parse timestamp '{timestamp_str}': {e}")
-                return pd.NaT
-        
         result_df[SchemaColumns.TIMESTAMP_UTC] = df["captureTime"].apply(convert_to_utc)
         if result_df[SchemaColumns.TIMESTAMP_UTC].isna().any():
             logger.warning(
@@ -352,7 +332,7 @@ def _get_keywords_for_images(catalog_path: Path, image_ids: List[str]) -> pd.Dat
     ids_str = ",".join(f"'{id_}'" for id_ in image_ids)
 
     keywords_query = f"""
-    SELECT 
+    SELECT
         Adobe_images.id_global,
         AgLibraryKeyword.name as keyword_name
     FROM AgLibraryKeywordImage
@@ -401,7 +381,7 @@ def _get_collections_for_images(
     )
 
     collections_query = f"""
-    SELECT 
+    SELECT
         Adobe_images.id_global,
         AgLibraryCollection.name as collection_name
     FROM AgLibraryCollectionImage
@@ -432,7 +412,21 @@ def _get_collections_for_images(
     return pd.DataFrame(columns=[SchemaColumns.UUID_STRING, "collections"])
 
 
-def load_lightroom_catalog_to_df(
-    catalog_path: Path, config: Optional[LightroomParserConfig] = None
-) -> pd.DataFrame:
-    return parse_lightroom_catalog(catalog_path, config)
+def convert_to_utc(timestamp_str: str | None) -> pd.Timestamp | None:
+    """Convert timestamp string to UTC, handling various timezone formats."""
+    if pd.isna(timestamp_str) or timestamp_str is None:
+        return pd.NaT
+
+    try:
+        # Parse with pandas, which handles ISO8601 formats including timezones
+        parsed = pd.to_datetime(timestamp_str, format="ISO8601")
+
+        # If the parsed timestamp is timezone-naive, assume it's UTC
+        if parsed.tz is None:
+            return parsed.tz_localize("UTC")
+        else:
+            # If it's timezone-aware, convert to UTC
+            return parsed.tz_convert("UTC")
+    except (ValueError, TypeError, pd.errors.OutOfBoundsDatetime) as e:
+        logger.warning(f"Failed to parse timestamp '{timestamp_str}': {e}")
+        return pd.NaT

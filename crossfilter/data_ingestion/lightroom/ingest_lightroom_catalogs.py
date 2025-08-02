@@ -21,7 +21,6 @@ from crossfilter.core.bucketing import (
 )
 from crossfilter.data_ingestion.lightroom.lightroom_parser import (
     LightroomParserConfig,
-    load_lightroom_catalog_to_df,
 )
 from crossfilter.data_ingestion.sqlite_utils import upsert_dataframe_to_sqlite
 
@@ -59,7 +58,7 @@ def load_clip_embeddings_from_sqlite(sqlite_db_path: Path) -> pd.DataFrame:
     df = df.rename(columns={"uuid_index": SchemaColumns.UUID_STRING})
 
     # Unpack msgpack embeddings and convert to numpy arrays
-    def unpack_embedding(msgpack_data):
+    def unpack_embedding(msgpack_data: bytes) -> np.ndarray:
         unpacked = msgpack.unpackb(msgpack_data)
         return unpacked
 

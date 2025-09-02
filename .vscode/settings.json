@@ -7,9 +7,9 @@
         "--no-cov",
         "--cov-report=",
         "--snapshot-update",
-        // "-m not (resource_intensive or e2e)",
+        "-m not (resource_intensive or e2e)",
         // "-m not (e2e)",
-        "-m resource_intensive"
+        // "-m resource_intensive"
     ],
     "python.testing.unittestEnabled": false,
     "python.testing.pytestEnabled": true,

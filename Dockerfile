@@ -1,16 +1,17 @@
-FROM python:3.11 AS build_stage_1
+FROM ubuntu:24.04 AS build_stage_1
 
 USER root
-
-# Make the dev user.
-RUN adduser --disabled-password dev
 
 RUN apt-get update && apt-get install -y \
     direnv \
     build-essential \
     curl \
     git \
-    ncdu
+    ncdu \
+    adduser
+
+    # Make the dev user.
+RUN adduser --disabled-password dev
 
 # Some general things I like.
 RUN \

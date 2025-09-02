@@ -13,7 +13,6 @@ from crossfilter.data_ingestion.lightroom.lightroom_parser import (
     determine_file_type,
     extract_catalog_from_zip,
     is_zip_file,
-    load_lightroom_catalog_to_df,
     parse_lightroom_catalog,
 )
 
@@ -359,7 +358,9 @@ def test_parse_timezone_aware_timestamps(test_catalogs_dir: Path, snapshot) -> N
 
     # Use dedicated test catalog with timezone formats and NULL captureTime
     test_catalog = (
-        test_catalogs_dir / "test_parse_timezone_aware_timestamps" / "test_parse_timezone_aware_timestamps.lrcat"
+        test_catalogs_dir
+        / "test_parse_timezone_aware_timestamps"
+        / "test_parse_timezone_aware_timestamps.lrcat"
     )
 
     config = LightroomParserConfig(

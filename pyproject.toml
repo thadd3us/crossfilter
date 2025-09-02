@@ -11,7 +11,8 @@ authors = [
 ]
 license = {text = "MIT"}
 readme = "README.md"
-requires-python = ">=3.11"
+# sentencepiece won't build on 3.13.
+requires-python = ">=3.11,<=3.12"
 dependencies = [
     "fastapi>=0.104.0",
     "uvicorn[standard]>=0.24.0",
@@ -39,6 +40,9 @@ dependencies = [
     "pillow>=9.0.0",
     "sentencepiece>=0.1.95",
     "protobuf>=3.20.0",
+    "pyarrow",
+    # "uuid-extension", "uuid7" -- neither can represent dates before 1970.
+    # "pysqlite3-binary",  # Not on macos.
 ]
 
 [project.optional-dependencies]
@@ -62,6 +66,7 @@ dev = [
     "jupyter",
     "ipywidgets",
     "py-spy>=0.3.14",
+    "parquet-tools",
 ]
 
 [project.scripts]

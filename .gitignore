@@ -6,6 +6,9 @@
 coverage.xml
 .venv
 
+# Too risky to accidentally commit personal data.
+*.ipynb
+
 **/.DS_Store
 
 # Docker and container files

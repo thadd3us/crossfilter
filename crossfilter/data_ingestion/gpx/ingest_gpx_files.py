@@ -7,6 +7,7 @@ import pandas as pd
 from sqlalchemy import create_engine
 import typer
 from tqdm.contrib.concurrent import process_map
+import typer.rich_utils
 
 from crossfilter.core.schema import SchemaColumns
 from crossfilter.core.schema import SchemaColumns as C
@@ -14,6 +15,10 @@ from crossfilter.data_ingestion.gpx.gpx_parser import load_gpx_file_to_df
 from crossfilter.data_ingestion.sqlite_utils import upsert_dataframe_to_sqlite
 
 logger = logging.getLogger(__name__)
+typer.main.get_command_name = lambda name: name
+app = typer.Typer(pretty_exceptions_show_locals=False)
+
+# https://github.com/fastapi/typer/issues/341
 
 
 def find_gpx_files(base_dir: Path) -> list[Path]:
@@ -54,14 +59,16 @@ def process_single_gpx_file(gpx_file: Path) -> pd.DataFrame:
         )
 
 
+@app.command()
 def main(
     base_dir: Path = typer.Argument(
         ..., help="Directory to recursively search for GPX files"
     ),
-    destination_sqlite_db: Path = typer.Argument(
-        ..., help="SQLite database file to upsert into"
+    output_sqlite_db: Path | None = typer.Option(
+        None, help="SQLite database file to upsert into"
     ),
-    destination_table: str = typer.Option("data", help="Database table name"),
+    output_table: str | None = typer.Option(None, help="Database table name"),
+    output_parquet: Path | None = typer.Option(None, help="Parquet file to write to."),
     max_workers: int = typer.Option(None, help="Maximum number of parallel workers"),
 ) -> None:
     """Ingest GPX files into SQLite database."""
@@ -96,23 +103,50 @@ def main(
     combined_df = pd.concat(non_empty_dataframes, ignore_index=True)
 
     combined_df = combined_df.drop_duplicates()
+    combined_df = combined_df.sort_values([C.TIMESTAMP_UTC, C.UUID], ignore_index=True)
 
-    if combined_df[C.UUID_STRING].duplicated().any():
-        logger.warning("Duplicate UUIDs found in data")
-        # assert False
-        combined_df = combined_df.drop_duplicates(subset=[C.UUID_STRING])
+    if combined_df[C.UUID].duplicated().any():
+        logger.warning(
+            "Duplicate UUIDs found in data. This should not happen if the data is clean."
+        )
+        dupes = combined_df[C.UUID].duplicated(keep=False)
+        logger.info(f"Dupes: {combined_df[dupes][C.SOURCE_FILE].value_counts()}")
+        raise ValueError("Duplicate UUIDs found in data.")
 
     logger.info(
-        f"Total records: {len(combined_df)} (H3 columns computed per-file in parallel)"
+        f"Total records: {len(combined_df)} (H3 columns already computed per-file in parallel)"
     )
-    combined_df = combined_df.set_index(C.UUID_STRING, verify_integrity=True)
+    combined_df[C.UUID] = combined_df[C.UUID].astype()
+    combined_df = combined_df.set_index(C.UUID, verify_integrity=True)
 
-    # Upsert to database
-    engine = create_engine(f"sqlite:///{destination_sqlite_db}")
-    upsert_dataframe_to_sqlite(combined_df, engine, destination_table)
+    if output_sqlite_db:
+        # Upsert to database
+        assert output_table, "No destination SQLite database or parquet file provided"
+        engine = create_engine(f"sqlite:///{output_sqlite_db}")
+        upsert_dataframe_to_sqlite(combined_df, engine, output_table)
+    else:
+        assert output_parquet, "No destination SQLite database or parquet file provided"
+        logger.info("No destination SQLite database provided, skipping upsert")
+
+    if output_parquet:
+        logger.info(f"Writing to parquet file: {output_parquet}")
+        # dictionary_columns = set(combined_df.columns)
+        # dictionary_columns -= {
+        #     C.UUID_STRING,
+        #     C.GPS_LATITUDE,
+        #     C.GPS_LONGITUDE,
+        #     C.TIMESTAMP_MAYBE_TIMEZONE_AWARE,
+        #     C.TIMESTAMP_UTC,
+        # }
+        combined_df.to_parquet(
+            output_parquet,
+            engine="pyarrow",
+            index=True,
+            # use_dictionary=list(dictionary_columns)
+        )
 
     logger.info("GPX ingestion completed successfully")
 
 
 if __name__ == "__main__":
-    typer.run(main)
+    app()

@@ -16,6 +16,7 @@ from crossfilter.core.schema import SchemaColumns as C
 logger = logging.getLogger(__name__)
 
 
+# TODO: THAD: Generate a time-sortable UUID encoding the point's timestamp.
 def generate_uuid_from_components(
     first_trackpoint_timestamp: datetime,
     first_trackpoint_lat: float,
@@ -24,7 +25,7 @@ def generate_uuid_from_components(
     point_lat: float,
     point_lon: float,
     point_type: DataType,
-) -> str:
+) -> bytes:
     """Generate a deterministic UUID from the specified components."""
     # Create a string representation of all components
     components = [
@@ -40,9 +41,7 @@ def generate_uuid_from_components(
     # Create a deterministic hash from the components
     component_string = "|".join(components)
     hash_digest = hashlib.sha256(component_string.encode("utf-8")).digest()
-
-    # Create a UUID from the hash
-    return str(uuid.UUID(bytes=hash_digest[:16]))
+    return hash_digest[:16]
 
 
 def generate_uuid_for_row(
@@ -50,7 +49,7 @@ def generate_uuid_for_row(
     first_point_timestamp: datetime,
     first_point_lat: float,
     first_point_lon: float,
-) -> str:
+) -> bytes:
     """Generate a UUID for a single DataFrame row."""
     return generate_uuid_from_components(
         first_point_timestamp,
@@ -67,9 +66,6 @@ def load_gpx_file_to_df(gpx_file_path: Path) -> pd.DataFrame:
     """
     Parse a GPX file and convert it to a DataFrame conforming to the schema.
 
-    Args:
-        gpx_file_path: Path to the GPX file
-
     Returns:
         DataFrame with GPX trackpoints and waypoints
 
@@ -84,7 +80,7 @@ def load_gpx_file_to_df(gpx_file_path: Path) -> pd.DataFrame:
         with open(gpx_file_path, encoding="utf-8") as f:
             gpx = gpxpy.parse(f)
     except Exception as e:
-        raise ValueError(f"Failed to parse GPX file {gpx_file_path}: {e}")
+        raise ValueError(f"Failed to parse GPX file {gpx_file_path}") from e
 
     # Get file size
     gpx_file_path.stat().st_size
@@ -167,7 +163,7 @@ def load_gpx_file_to_df(gpx_file_path: Path) -> pd.DataFrame:
         first_point_lon = first_row[C.GPS_LONGITUDE]
 
         # Generate UUIDs for all rows using vectorized operation
-        df[C.UUID_STRING] = df.apply(
+        df[C.UUID] = df.apply(
             lambda row: generate_uuid_for_row(
                 row, first_point_timestamp, first_point_lat, first_point_lon
             ),

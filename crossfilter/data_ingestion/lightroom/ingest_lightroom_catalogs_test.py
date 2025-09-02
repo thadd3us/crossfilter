@@ -18,7 +18,6 @@ from crossfilter.data_ingestion.lightroom.ingest_lightroom_catalogs import (
 )
 from crossfilter.data_ingestion.lightroom.lightroom_parser import (
     LightroomParserConfig,
-    load_lightroom_catalog_to_df,
 )
 
 
@@ -248,7 +247,10 @@ def test_config_case_insensitive_ignore(test_catalogs_dir: Path) -> None:
     assert SchemaColumns.UUID_STRING in df.columns
 
 
-@pytest.mark.skipif(os.environ.get("THAD_DATA_AVAILAVLE") != "true", reason="Data is only on Thad's laptop")
+@pytest.mark.skipif(
+    os.environ.get("THAD_DATA_AVAILAVLE") != "true",
+    reason="Data is only on Thad's laptop",
+)
 def test_thad_ingest_dev_data(
     source_tree_root: Path, tmp_path: Path, snapshot: SnapshotAssertion
 ) -> None:

@@ -114,7 +114,7 @@
       dtype('O'),
     ),
     tuple(
-      <SchemaColumns.UUID_STRING: 'UUID_STRING'>,
+      <SchemaColumns.UUID: 'UUID'>,
       dtype('O'),
     ),
     tuple(
@@ -210,7 +210,7 @@
       <SchemaColumns.SOURCE_FILE: 'SOURCE_FILE'>: 'test.gpx',
       <SchemaColumns.TIMESTAMP_MAYBE_TIMEZONE_AWARE: 'TIMESTAMP_MAYBE_TIMEZONE_AWARE'>: '2023-01-01T12:00:00+00:00',
       <SchemaColumns.TIMESTAMP_UTC: 'TIMESTAMP_UTC'>: Timestamp('2023-01-01 12:00:00+0000', tz='UTC'),
-      <SchemaColumns.UUID_STRING: 'UUID_STRING'>: 'f50ca1b8-4ef2-5277-f204-ead8ff90010b',
+      <SchemaColumns.UUID: 'UUID'>: b'\xf5\x0c\xa1\xb8N\xf2Rw\xf2\x04\xea\xd8\xff\x90\x01\x0b',
     }),
     dict({
       'BUCKETED_H3_L0': '8029fffffffffff',
@@ -237,7 +237,7 @@
       <SchemaColumns.SOURCE_FILE: 'SOURCE_FILE'>: 'test.gpx',
       <SchemaColumns.TIMESTAMP_MAYBE_TIMEZONE_AWARE: 'TIMESTAMP_MAYBE_TIMEZONE_AWARE'>: '2023-01-01T12:05:00+00:00',
       <SchemaColumns.TIMESTAMP_UTC: 'TIMESTAMP_UTC'>: Timestamp('2023-01-01 12:05:00+0000', tz='UTC'),
-      <SchemaColumns.UUID_STRING: 'UUID_STRING'>: 'd8cc04e9-eaf6-faa8-fc15-8e67a8f6918d',
+      <SchemaColumns.UUID: 'UUID'>: b'\xd8\xcc\x04\xe9\xea\xf6\xfa\xa8\xfc\x15\x8eg\xa8\xf6\x91\x8d',
     }),
     dict({
       'BUCKETED_H3_L0': '8029fffffffffff',
@@ -264,7 +264,7 @@
       <SchemaColumns.SOURCE_FILE: 'SOURCE_FILE'>: 'test.gpx',
       <SchemaColumns.TIMESTAMP_MAYBE_TIMEZONE_AWARE: 'TIMESTAMP_MAYBE_TIMEZONE_AWARE'>: '2023-01-01T12:10:00+00:00',
       <SchemaColumns.TIMESTAMP_UTC: 'TIMESTAMP_UTC'>: Timestamp('2023-01-01 12:10:00+0000', tz='UTC'),
-      <SchemaColumns.UUID_STRING: 'UUID_STRING'>: '0b1274cd-b196-2831-b4f6-166e73220eb8',
+      <SchemaColumns.UUID: 'UUID'>: b'\x0b\x12t\xcd\xb1\x96(1\xb4\xf6\x16ns"\x0e\xb8',
     }),
   ])
 # ---

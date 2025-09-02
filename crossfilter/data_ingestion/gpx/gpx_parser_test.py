@@ -40,7 +40,7 @@ def test_generate_uuid_from_components() -> None:
     )
 
     assert uuid1 == uuid2
-    assert uuid.UUID(uuid1)  # Should be valid UUID
+    assert uuid.UUID(bytes=uuid1)  # Should be valid UUID
 
     # Different inputs should generate different UUIDs
     uuid3 = generate_uuid_from_components(

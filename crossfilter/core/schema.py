@@ -6,6 +6,7 @@ import sqlite3
 from enum import StrEnum
 from pathlib import Path
 from typing import Optional
+import uuid
 
 import pandas as pd
 import pandera.pandas as pa
@@ -42,6 +43,7 @@ class SchemaColumns(StrEnum):
     # Used to refer to the DataFrame integer index.
     DF_ID = "df_id"
 
+    UUID = "UUID"
     UUID_STRING = "UUID_STRING"
     DATA_TYPE = "DATA_TYPE"
     NAME = "NAME"
@@ -75,6 +77,7 @@ class DataType(StrEnum):
 
 
 class DataSchema(pa.DataFrameModel):
+    UUID: Series[uuid.UUID] = pa.Field(nullable=False)
     UUID_STRING: Series[str] = pa.Field(nullable=True)
     DATA_TYPE: Series[str] = pa.Field(
         nullable=True, isin=list(DataType.__members__.values())

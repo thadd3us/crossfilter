@@ -2,6 +2,7 @@
 
 from pathlib import Path
 
+import pandas as pd
 import pytest
 from sqlalchemy import create_engine
 from syrupy.assertion import SnapshotAssertion
@@ -106,11 +107,15 @@ def test_thad_ingest_dev_data(
 ) -> None:
     main(
         base_dir=gpx_file.parent,
-        destination_sqlite_db=tmp_path / "data.sqlite",
-        destination_table="data",
         max_workers=1,
+        output_parquet=tmp_path / "data.parquet",
+        output_sqlite_db=None,
+        output_table=None,
     )
 
-    engine = create_engine(f"sqlite:///{tmp_path / 'data.sqlite'}")
-    df = query_sqlite_to_dataframe(engine, "SELECT * FROM data")
+    df = pd.read_parquet(tmp_path / "data.parquet")
     assert df.to_dict(orient="records") == snapshot
+
+    # engine = create_engine(f"sqlite:///{tmp_path / 'data.sqlite'}")
+    # df = query_sqlite_to_dataframe(engine, "SELECT * FROM data")
+    # assert df.to_dict(orient="records") == snapshot

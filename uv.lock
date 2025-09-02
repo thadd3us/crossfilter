@@ -390,7 +390,6 @@ dependencies = [
     { name = "transformers" },
     { name = "typer" },
     { name = "umap-learn" },
-    { name = "uuid-extension" },
     { name = "uvicorn", extra = ["standard"] },
 ]
 
@@ -464,7 +463,6 @@ requires-dist = [
     { name = "typer", specifier = ">=0.9.0" },
     { name = "types-aiofiles", marker = "extra == 'dev'", specifier = ">=23.2.0" },
     { name = "umap-learn", specifier = ">=0.5.9" },
-    { name = "uuid-extension" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.24.0" },
 ]
 provides-extras = ["kepler", "dev"]
@@ -3318,15 +3316,6 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/15/22/9ee70a2574a4f4599c47dd506532914ce044817c7752a79b6a51286319bc/urllib3-2.5.0.tar.gz", hash = "sha256:3fc47733c7e419d4bc3f6b3dc2b4f890bb743906a30d56ba4a5bfa4bbff92760", size = 393185, upload-time = "2025-06-18T14:07:41.644Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/a7/c2/fe1e52489ae3122415c51f387e221dd0773709bad6c6cdaa599e8a2c5185/urllib3-2.5.0-py3-none-any.whl", hash = "sha256:e6b01673c0fa6a13e374b50871808eb3bf7046c4b125b216f6bf1cc604cff0dc", size = 129795, upload-time = "2025-06-18T14:07:40.39Z" },
-]
-
-[[package]]
-name = "uuid-extension"
-version = "0.2.0"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/05/4e/55636e6655feae1e843e5db0255edb42497e1fb865529860a916e82286d9/uuid_extension-0.2.0.tar.gz", hash = "sha256:e68907184276f47a4b169dc9891477693371b5f3756aebdaffb7cf83b9a6077e", size = 54458, upload-time = "2025-07-21T05:51:13.782Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/43/82/006fbeb46fc6856ea813c4a09264c2fd60dc86e6c19b218b31b17766cba9/uuid_extension-0.2.0-py3-none-any.whl", hash = "sha256:8dac0d934afd07a16ae8537dd873bc833f1fcc31530295029d86c9cea49bf6a3", size = 5660, upload-time = "2025-07-21T05:51:12.095Z" },
 ]
 
 [[package]]

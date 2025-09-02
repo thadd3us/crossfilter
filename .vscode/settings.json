@@ -9,7 +9,7 @@
         "--snapshot-update",
         // "-m not (resource_intensive or e2e)",
         // "-m not (e2e)",
-        "-m resource_intensive"
+        "-m not (resource_intensive or e2e)"
     ],
     "python.testing.unittestEnabled": false,
     "python.testing.pytestEnabled": true,

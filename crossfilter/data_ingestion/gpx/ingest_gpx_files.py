@@ -44,7 +44,7 @@ def process_single_gpx_file(gpx_file: Path) -> pd.DataFrame:
         # Return empty DataFrame with correct schema on error
         return pd.DataFrame(
             columns=[
-                SchemaColumns.UUID_STRING,
+                SchemaColumns.UUID,
                 SchemaColumns.DATA_TYPE,
                 SchemaColumns.NAME,
                 SchemaColumns.CAPTION,
@@ -116,7 +116,7 @@ def main(
     logger.info(
         f"Total records: {len(combined_df)} (H3 columns already computed per-file in parallel)"
     )
-    combined_df[C.UUID] = combined_df[C.UUID].astype()
+    combined_df[C.UUID] = combined_df[C.UUID].astype('object')
     combined_df = combined_df.set_index(C.UUID, verify_integrity=True)
 
     if output_sqlite_db:

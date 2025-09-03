@@ -24,7 +24,7 @@
       'SOURCE_FILE': 'test.gpx',
       'TIMESTAMP_MAYBE_TIMEZONE_AWARE': '2023-01-01T12:00:00+00:00',
       'TIMESTAMP_UTC': Timestamp('2023-01-01 12:00:00+0000', tz='UTC'),
-      'UUID_STRING': 'f50ca1b8-4ef2-5277-f204-ead8ff90010b',
+      'UUID': b'\xf5\x0c\xa1\xb8N\xf2Rw\xf2\x04\xea\xd8\xff\x90\x01\x0b',
     }),
   ])
 # ---

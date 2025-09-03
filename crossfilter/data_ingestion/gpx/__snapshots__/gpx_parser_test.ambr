@@ -2,7 +2,7 @@
 # name: test_load_gpx_file_to_df_empty_file
   list([
     tuple(
-      <SchemaColumns.UUID_STRING: 'UUID_STRING'>,
+      <SchemaColumns.UUID: 'UUID'>,
       dtype('O'),
     ),
     tuple(
@@ -42,7 +42,7 @@
 # name: test_load_gpx_file_to_df_trackpoints_without_time
   list([
     tuple(
-      <SchemaColumns.UUID_STRING: 'UUID_STRING'>,
+      <SchemaColumns.UUID: 'UUID'>,
       dtype('O'),
     ),
     tuple(

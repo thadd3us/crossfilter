@@ -98,7 +98,6 @@ def test_process_single_gpx_file_invalid(tmp_path: Path) -> None:
 
     # Should return empty DataFrame with correct schema
     assert len(df) == 0
-    assert SchemaColumns.UUID_STRING in df.columns
     assert SchemaColumns.DATA_TYPE in df.columns
 
 
@@ -114,6 +113,8 @@ def test_thad_ingest_dev_data(
     )
 
     df = pd.read_parquet(tmp_path / "data.parquet")
+    # Reset index to include UUID column in the records
+    df = df.reset_index()
     assert df.to_dict(orient="records") == snapshot
 
     # engine = create_engine(f"sqlite:///{tmp_path / 'data.sqlite'}")

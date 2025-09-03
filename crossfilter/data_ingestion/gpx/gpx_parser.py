@@ -133,7 +133,7 @@ def load_gpx_file_to_df(gpx_file_path: Path) -> pd.DataFrame:
         # Return empty DataFrame with correct schema
         df = pd.DataFrame(
             columns=[
-                C.UUID_STRING,
+                C.UUID,
                 C.DATA_TYPE,
                 C.NAME,
                 C.SOURCE_FILE,

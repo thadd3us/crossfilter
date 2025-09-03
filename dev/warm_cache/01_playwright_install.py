@@ -19,7 +19,8 @@ def main() -> None:
     try:
         # Install Playwright browsers
         result = subprocess.run(
-            [sys.executable, "-m", "playwright", "install"],
+            # Only shell makes it smaller for CI/CD.
+            [sys.executable, "-m", "playwright", "install", "--only-shell"],
             check=True,
             capture_output=True,
             text=True

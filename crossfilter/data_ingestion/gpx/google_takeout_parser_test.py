@@ -17,6 +17,37 @@ from crossfilter.data_ingestion.gpx.google_takeout_parser import (
 from crossfilter.core.schema import DataType
 
 
+def create_sample_takeout_data() -> dict:
+    """Create sample Google Takeout Records.json data for testing."""
+    return {
+        "locations": [
+            {
+                "timestamp": "2022-01-12T17:18:24.190Z",
+                "latitudeE7": 377749000,  # 37.7749
+                "longitudeE7": -1224194000,  # -122.4194
+                "accuracy": 20,
+                "source": "WIFI",
+                "deviceTag": 1234567890,
+                "platformType": "ANDROID"
+            },
+            {
+                "timestamp": "2022-01-12T17:23:24.000Z",
+                "latitudeE7": 377750000,  # 37.7750
+                "longitudeE7": -1224195000,  # -122.4195
+                "accuracy": 15,
+                "source": "GPS",
+                "altitude": 150
+            },
+            {
+                "timestamp": "2022-01-12T17:28:24.500Z",
+                "latitudeE7": 377751000,  # 37.7751
+                "longitudeE7": -1224196000,  # -122.4196
+                "accuracy": 25
+            }
+        ]
+    }
+
+
 def test_parse_takeout_timestamp() -> None:
     """Test parsing Google Takeout timestamp strings."""
     # Test standard ISO 8601 format with Z suffix
@@ -151,34 +182,7 @@ def test_load_google_takeout_records_to_df_valid_file(
     tmp_path: Path, snapshot: SnapshotAssertion
 ) -> None:
     """Test loading a valid Google Takeout Records.json file."""
-    # Create a sample Records.json file
-    records_data = {
-        "locations": [
-            {
-                "timestamp": "2022-01-12T17:18:24.190Z",
-                "latitudeE7": 377749000,  # 37.7749
-                "longitudeE7": -1224194000,  # -122.4194
-                "accuracy": 20,
-                "source": "WIFI",
-                "deviceTag": 1234567890,
-                "platformType": "ANDROID"
-            },
-            {
-                "timestamp": "2022-01-12T17:23:24.000Z",
-                "latitudeE7": 377750000,  # 37.7750
-                "longitudeE7": -1224195000,  # -122.4195
-                "accuracy": 15,
-                "source": "GPS",
-                "altitude": 150
-            },
-            {
-                "timestamp": "2022-01-12T17:28:24.500Z",
-                "latitudeE7": 377751000,  # 37.7751
-                "longitudeE7": -1224196000,  # -122.4196
-                "accuracy": 25
-            }
-        ]
-    }
+    records_data = create_sample_takeout_data()
 
     records_file = tmp_path / "Records.json"
     with open(records_file, "w", encoding="utf-8") as f:

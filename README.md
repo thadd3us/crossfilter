@@ -1,5 +1,7 @@
 # Crossfilter
 
+Hi there!
+
 A Python web application for interactive crossfiltering and analysis of geospatial and temporal data, with support for large collections of GPX files and other datasets.
 
 ## Features

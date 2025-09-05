@@ -74,6 +74,7 @@ class DataType(StrEnum):
     VIDEO = "VIDEO"
     GPX_TRACKPOINT = "GPX_TRACKPOINT"
     GPX_WAYPOINT = "GPX_WAYPOINT"
+    GOOGLE_TAKEOUT_LOCATION = "GOOGLE_TAKEOUT_LOCATION"
 
 
 class DataSchema(pa.DataFrameModel):

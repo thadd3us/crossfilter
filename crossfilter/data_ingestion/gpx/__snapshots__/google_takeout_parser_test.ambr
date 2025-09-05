@@ -1,0 +1,406 @@
+# serializer version: 1
+# name: test_load_google_takeout_records_to_df_all_invalid_records
+  list([
+    tuple(
+      <SchemaColumns.UUID: 'UUID'>,
+      dtype('O'),
+    ),
+    tuple(
+      <SchemaColumns.DATA_TYPE: 'DATA_TYPE'>,
+      dtype('O'),
+    ),
+    tuple(
+      <SchemaColumns.NAME: 'NAME'>,
+      dtype('O'),
+    ),
+    tuple(
+      <SchemaColumns.SOURCE_FILE: 'SOURCE_FILE'>,
+      dtype('O'),
+    ),
+    tuple(
+      <SchemaColumns.TIMESTAMP_MAYBE_TIMEZONE_AWARE: 'TIMESTAMP_MAYBE_TIMEZONE_AWARE'>,
+      dtype('O'),
+    ),
+    tuple(
+      <SchemaColumns.TIMESTAMP_UTC: 'TIMESTAMP_UTC'>,
+      dtype('O'),
+    ),
+    tuple(
+      <SchemaColumns.GPS_LATITUDE: 'GPS_LATITUDE'>,
+      dtype('O'),
+    ),
+    tuple(
+      <SchemaColumns.GPS_LONGITUDE: 'GPS_LONGITUDE'>,
+      dtype('O'),
+    ),
+  ])
+# ---
+# name: test_load_google_takeout_records_to_df_all_invalid_records.1
+  list([
+  ])
+# ---
+# name: test_load_google_takeout_records_to_df_empty_locations
+  list([
+    tuple(
+      <SchemaColumns.UUID: 'UUID'>,
+      dtype('O'),
+    ),
+    tuple(
+      <SchemaColumns.DATA_TYPE: 'DATA_TYPE'>,
+      dtype('O'),
+    ),
+    tuple(
+      <SchemaColumns.NAME: 'NAME'>,
+      dtype('O'),
+    ),
+    tuple(
+      <SchemaColumns.SOURCE_FILE: 'SOURCE_FILE'>,
+      dtype('O'),
+    ),
+    tuple(
+      <SchemaColumns.TIMESTAMP_MAYBE_TIMEZONE_AWARE: 'TIMESTAMP_MAYBE_TIMEZONE_AWARE'>,
+      dtype('O'),
+    ),
+    tuple(
+      <SchemaColumns.TIMESTAMP_UTC: 'TIMESTAMP_UTC'>,
+      dtype('O'),
+    ),
+    tuple(
+      <SchemaColumns.GPS_LATITUDE: 'GPS_LATITUDE'>,
+      dtype('O'),
+    ),
+    tuple(
+      <SchemaColumns.GPS_LONGITUDE: 'GPS_LONGITUDE'>,
+      dtype('O'),
+    ),
+  ])
+# ---
+# name: test_load_google_takeout_records_to_df_empty_locations.1
+  list([
+  ])
+# ---
+# name: test_load_google_takeout_records_to_df_mixed_valid_invalid_records
+  list([
+    tuple(
+      <SchemaColumns.DATA_TYPE: 'DATA_TYPE'>,
+      dtype('O'),
+    ),
+    tuple(
+      <SchemaColumns.SOURCE_FILE: 'SOURCE_FILE'>,
+      dtype('O'),
+    ),
+    tuple(
+      <SchemaColumns.TIMESTAMP_MAYBE_TIMEZONE_AWARE: 'TIMESTAMP_MAYBE_TIMEZONE_AWARE'>,
+      dtype('O'),
+    ),
+    tuple(
+      <SchemaColumns.TIMESTAMP_UTC: 'TIMESTAMP_UTC'>,
+      datetime64[ns, UTC],
+    ),
+    tuple(
+      <SchemaColumns.GPS_LATITUDE: 'GPS_LATITUDE'>,
+      dtype('float64'),
+    ),
+    tuple(
+      <SchemaColumns.GPS_LONGITUDE: 'GPS_LONGITUDE'>,
+      dtype('float64'),
+    ),
+    tuple(
+      <SchemaColumns.UUID: 'UUID'>,
+      dtype('O'),
+    ),
+    tuple(
+      'BUCKETED_H3_L0',
+      dtype('O'),
+    ),
+    tuple(
+      'BUCKETED_H3_L1',
+      dtype('O'),
+    ),
+    tuple(
+      'BUCKETED_H3_L2',
+      dtype('O'),
+    ),
+    tuple(
+      'BUCKETED_H3_L3',
+      dtype('O'),
+    ),
+    tuple(
+      'BUCKETED_H3_L4',
+      dtype('O'),
+    ),
+    tuple(
+      'BUCKETED_H3_L5',
+      dtype('O'),
+    ),
+    tuple(
+      'BUCKETED_H3_L6',
+      dtype('O'),
+    ),
+    tuple(
+      'BUCKETED_H3_L7',
+      dtype('O'),
+    ),
+    tuple(
+      'BUCKETED_H3_L8',
+      dtype('O'),
+    ),
+    tuple(
+      'BUCKETED_H3_L9',
+      dtype('O'),
+    ),
+    tuple(
+      'BUCKETED_H3_L10',
+      dtype('O'),
+    ),
+    tuple(
+      'BUCKETED_H3_L11',
+      dtype('O'),
+    ),
+    tuple(
+      'BUCKETED_H3_L12',
+      dtype('O'),
+    ),
+    tuple(
+      'BUCKETED_H3_L13',
+      dtype('O'),
+    ),
+    tuple(
+      'BUCKETED_H3_L14',
+      dtype('O'),
+    ),
+    tuple(
+      'BUCKETED_H3_L15',
+      dtype('O'),
+    ),
+  ])
+# ---
+# name: test_load_google_takeout_records_to_df_mixed_valid_invalid_records.1
+  list([
+    dict({
+      'BUCKETED_H3_L0': '8029fffffffffff',
+      'BUCKETED_H3_L1': '81283ffffffffff',
+      'BUCKETED_H3_L10': '8a283082800ffff',
+      'BUCKETED_H3_L11': '8b283082800bfff',
+      'BUCKETED_H3_L12': '8c283082800b3ff',
+      'BUCKETED_H3_L13': '8d283082800b3bf',
+      'BUCKETED_H3_L14': '8e283082800b397',
+      'BUCKETED_H3_L15': '8f283082800b390',
+      'BUCKETED_H3_L2': '822837fffffffff',
+      'BUCKETED_H3_L3': '832830fffffffff',
+      'BUCKETED_H3_L4': '8428309ffffffff',
+      'BUCKETED_H3_L5': '85283083fffffff',
+      'BUCKETED_H3_L6': '86283082fffffff',
+      'BUCKETED_H3_L7': '872830828ffffff',
+      'BUCKETED_H3_L8': '8828308281fffff',
+      'BUCKETED_H3_L9': '89283082803ffff',
+      <SchemaColumns.DATA_TYPE: 'DATA_TYPE'>: <DataType.GOOGLE_TAKEOUT_LOCATION: 'GOOGLE_TAKEOUT_LOCATION'>,
+      <SchemaColumns.GPS_LATITUDE: 'GPS_LATITUDE'>: 37.7749,
+      <SchemaColumns.GPS_LONGITUDE: 'GPS_LONGITUDE'>: -122.4194,
+      <SchemaColumns.SOURCE_FILE: 'SOURCE_FILE'>: 'mixed_Records.json',
+      <SchemaColumns.TIMESTAMP_MAYBE_TIMEZONE_AWARE: 'TIMESTAMP_MAYBE_TIMEZONE_AWARE'>: '2022-01-12T17:18:24.190Z',
+      <SchemaColumns.TIMESTAMP_UTC: 'TIMESTAMP_UTC'>: Timestamp('2022-01-12 17:18:24.190000+0000', tz='UTC'),
+      <SchemaColumns.UUID: 'UUID'>: b"K9\x1f\x83\x93\x1ani\x15\xa0v\r\xac\xab'\x03",
+    }),
+    dict({
+      'BUCKETED_H3_L0': '8029fffffffffff',
+      'BUCKETED_H3_L1': '81283ffffffffff',
+      'BUCKETED_H3_L10': '8a2830828057fff',
+      'BUCKETED_H3_L11': '8b2830828056fff',
+      'BUCKETED_H3_L12': '8c28308280565ff',
+      'BUCKETED_H3_L13': '8d28308280564bf',
+      'BUCKETED_H3_L14': '8e283082805648f',
+      'BUCKETED_H3_L15': '8f2830828056488',
+      'BUCKETED_H3_L2': '822837fffffffff',
+      'BUCKETED_H3_L3': '832830fffffffff',
+      'BUCKETED_H3_L4': '8428309ffffffff',
+      'BUCKETED_H3_L5': '85283083fffffff',
+      'BUCKETED_H3_L6': '86283082fffffff',
+      'BUCKETED_H3_L7': '872830828ffffff',
+      'BUCKETED_H3_L8': '8828308281fffff',
+      'BUCKETED_H3_L9': '89283082807ffff',
+      <SchemaColumns.DATA_TYPE: 'DATA_TYPE'>: <DataType.GOOGLE_TAKEOUT_LOCATION: 'GOOGLE_TAKEOUT_LOCATION'>,
+      <SchemaColumns.GPS_LATITUDE: 'GPS_LATITUDE'>: 37.7751,
+      <SchemaColumns.GPS_LONGITUDE: 'GPS_LONGITUDE'>: -122.4196,
+      <SchemaColumns.SOURCE_FILE: 'SOURCE_FILE'>: 'mixed_Records.json',
+      <SchemaColumns.TIMESTAMP_MAYBE_TIMEZONE_AWARE: 'TIMESTAMP_MAYBE_TIMEZONE_AWARE'>: '2022-01-12T17:28:24.500Z',
+      <SchemaColumns.TIMESTAMP_UTC: 'TIMESTAMP_UTC'>: Timestamp('2022-01-12 17:28:24.500000+0000', tz='UTC'),
+      <SchemaColumns.UUID: 'UUID'>: b'\xc2\xd2\xf4\xb0\x92`;"\xb6\xd8\xb35\x0e~@\x1c',
+    }),
+  ])
+# ---
+# name: test_load_google_takeout_records_to_df_valid_file
+  list([
+    tuple(
+      <SchemaColumns.DATA_TYPE: 'DATA_TYPE'>,
+      dtype('O'),
+    ),
+    tuple(
+      <SchemaColumns.SOURCE_FILE: 'SOURCE_FILE'>,
+      dtype('O'),
+    ),
+    tuple(
+      <SchemaColumns.TIMESTAMP_MAYBE_TIMEZONE_AWARE: 'TIMESTAMP_MAYBE_TIMEZONE_AWARE'>,
+      dtype('O'),
+    ),
+    tuple(
+      <SchemaColumns.TIMESTAMP_UTC: 'TIMESTAMP_UTC'>,
+      datetime64[ns, UTC],
+    ),
+    tuple(
+      <SchemaColumns.GPS_LATITUDE: 'GPS_LATITUDE'>,
+      dtype('float64'),
+    ),
+    tuple(
+      <SchemaColumns.GPS_LONGITUDE: 'GPS_LONGITUDE'>,
+      dtype('float64'),
+    ),
+    tuple(
+      <SchemaColumns.UUID: 'UUID'>,
+      dtype('O'),
+    ),
+    tuple(
+      'BUCKETED_H3_L0',
+      dtype('O'),
+    ),
+    tuple(
+      'BUCKETED_H3_L1',
+      dtype('O'),
+    ),
+    tuple(
+      'BUCKETED_H3_L2',
+      dtype('O'),
+    ),
+    tuple(
+      'BUCKETED_H3_L3',
+      dtype('O'),
+    ),
+    tuple(
+      'BUCKETED_H3_L4',
+      dtype('O'),
+    ),
+    tuple(
+      'BUCKETED_H3_L5',
+      dtype('O'),
+    ),
+    tuple(
+      'BUCKETED_H3_L6',
+      dtype('O'),
+    ),
+    tuple(
+      'BUCKETED_H3_L7',
+      dtype('O'),
+    ),
+    tuple(
+      'BUCKETED_H3_L8',
+      dtype('O'),
+    ),
+    tuple(
+      'BUCKETED_H3_L9',
+      dtype('O'),
+    ),
+    tuple(
+      'BUCKETED_H3_L10',
+      dtype('O'),
+    ),
+    tuple(
+      'BUCKETED_H3_L11',
+      dtype('O'),
+    ),
+    tuple(
+      'BUCKETED_H3_L12',
+      dtype('O'),
+    ),
+    tuple(
+      'BUCKETED_H3_L13',
+      dtype('O'),
+    ),
+    tuple(
+      'BUCKETED_H3_L14',
+      dtype('O'),
+    ),
+    tuple(
+      'BUCKETED_H3_L15',
+      dtype('O'),
+    ),
+  ])
+# ---
+# name: test_load_google_takeout_records_to_df_valid_file.1
+  list([
+    dict({
+      'BUCKETED_H3_L0': '8029fffffffffff',
+      'BUCKETED_H3_L1': '81283ffffffffff',
+      'BUCKETED_H3_L10': '8a283082800ffff',
+      'BUCKETED_H3_L11': '8b283082800bfff',
+      'BUCKETED_H3_L12': '8c283082800b3ff',
+      'BUCKETED_H3_L13': '8d283082800b3bf',
+      'BUCKETED_H3_L14': '8e283082800b397',
+      'BUCKETED_H3_L15': '8f283082800b390',
+      'BUCKETED_H3_L2': '822837fffffffff',
+      'BUCKETED_H3_L3': '832830fffffffff',
+      'BUCKETED_H3_L4': '8428309ffffffff',
+      'BUCKETED_H3_L5': '85283083fffffff',
+      'BUCKETED_H3_L6': '86283082fffffff',
+      'BUCKETED_H3_L7': '872830828ffffff',
+      'BUCKETED_H3_L8': '8828308281fffff',
+      'BUCKETED_H3_L9': '89283082803ffff',
+      <SchemaColumns.DATA_TYPE: 'DATA_TYPE'>: <DataType.GOOGLE_TAKEOUT_LOCATION: 'GOOGLE_TAKEOUT_LOCATION'>,
+      <SchemaColumns.GPS_LATITUDE: 'GPS_LATITUDE'>: 37.7749,
+      <SchemaColumns.GPS_LONGITUDE: 'GPS_LONGITUDE'>: -122.4194,
+      <SchemaColumns.SOURCE_FILE: 'SOURCE_FILE'>: 'Records.json',
+      <SchemaColumns.TIMESTAMP_MAYBE_TIMEZONE_AWARE: 'TIMESTAMP_MAYBE_TIMEZONE_AWARE'>: '2022-01-12T17:18:24.190Z',
+      <SchemaColumns.TIMESTAMP_UTC: 'TIMESTAMP_UTC'>: Timestamp('2022-01-12 17:18:24.190000+0000', tz='UTC'),
+      <SchemaColumns.UUID: 'UUID'>: b"K9\x1f\x83\x93\x1ani\x15\xa0v\r\xac\xab'\x03",
+    }),
+    dict({
+      'BUCKETED_H3_L0': '8029fffffffffff',
+      'BUCKETED_H3_L1': '81283ffffffffff',
+      'BUCKETED_H3_L10': '8a283082800ffff',
+      'BUCKETED_H3_L11': '8b283082800bfff',
+      'BUCKETED_H3_L12': '8c283082800b3ff',
+      'BUCKETED_H3_L13': '8d283082800b2ff',
+      'BUCKETED_H3_L14': '8e283082800b2c7',
+      'BUCKETED_H3_L15': '8f283082800b2c3',
+      'BUCKETED_H3_L2': '822837fffffffff',
+      'BUCKETED_H3_L3': '832830fffffffff',
+      'BUCKETED_H3_L4': '8428309ffffffff',
+      'BUCKETED_H3_L5': '85283083fffffff',
+      'BUCKETED_H3_L6': '86283082fffffff',
+      'BUCKETED_H3_L7': '872830828ffffff',
+      'BUCKETED_H3_L8': '8828308281fffff',
+      'BUCKETED_H3_L9': '89283082803ffff',
+      <SchemaColumns.DATA_TYPE: 'DATA_TYPE'>: <DataType.GOOGLE_TAKEOUT_LOCATION: 'GOOGLE_TAKEOUT_LOCATION'>,
+      <SchemaColumns.GPS_LATITUDE: 'GPS_LATITUDE'>: 37.775,
+      <SchemaColumns.GPS_LONGITUDE: 'GPS_LONGITUDE'>: -122.4195,
+      <SchemaColumns.SOURCE_FILE: 'SOURCE_FILE'>: 'Records.json',
+      <SchemaColumns.TIMESTAMP_MAYBE_TIMEZONE_AWARE: 'TIMESTAMP_MAYBE_TIMEZONE_AWARE'>: '2022-01-12T17:23:24.000Z',
+      <SchemaColumns.TIMESTAMP_UTC: 'TIMESTAMP_UTC'>: Timestamp('2022-01-12 17:23:24+0000', tz='UTC'),
+      <SchemaColumns.UUID: 'UUID'>: b'\xd9\xad\x02D$\xb2\x12\xa8\x03\x86\x0e\x08\xa8Rw\xa7',
+    }),
+    dict({
+      'BUCKETED_H3_L0': '8029fffffffffff',
+      'BUCKETED_H3_L1': '81283ffffffffff',
+      'BUCKETED_H3_L10': '8a2830828057fff',
+      'BUCKETED_H3_L11': '8b2830828056fff',
+      'BUCKETED_H3_L12': '8c28308280565ff',
+      'BUCKETED_H3_L13': '8d28308280564bf',
+      'BUCKETED_H3_L14': '8e283082805648f',
+      'BUCKETED_H3_L15': '8f2830828056488',
+      'BUCKETED_H3_L2': '822837fffffffff',
+      'BUCKETED_H3_L3': '832830fffffffff',
+      'BUCKETED_H3_L4': '8428309ffffffff',
+      'BUCKETED_H3_L5': '85283083fffffff',
+      'BUCKETED_H3_L6': '86283082fffffff',
+      'BUCKETED_H3_L7': '872830828ffffff',
+      'BUCKETED_H3_L8': '8828308281fffff',
+      'BUCKETED_H3_L9': '89283082807ffff',
+      <SchemaColumns.DATA_TYPE: 'DATA_TYPE'>: <DataType.GOOGLE_TAKEOUT_LOCATION: 'GOOGLE_TAKEOUT_LOCATION'>,
+      <SchemaColumns.GPS_LATITUDE: 'GPS_LATITUDE'>: 37.7751,
+      <SchemaColumns.GPS_LONGITUDE: 'GPS_LONGITUDE'>: -122.4196,
+      <SchemaColumns.SOURCE_FILE: 'SOURCE_FILE'>: 'Records.json',
+      <SchemaColumns.TIMESTAMP_MAYBE_TIMEZONE_AWARE: 'TIMESTAMP_MAYBE_TIMEZONE_AWARE'>: '2022-01-12T17:28:24.500Z',
+      <SchemaColumns.TIMESTAMP_UTC: 'TIMESTAMP_UTC'>: Timestamp('2022-01-12 17:28:24.500000+0000', tz='UTC'),
+      <SchemaColumns.UUID: 'UUID'>: b'\xc2\xd2\xf4\xb0\x92`;"\xb6\xd8\xb35\x0e~@\x1c',
+    }),
+  ])
+# ---

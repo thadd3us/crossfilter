@@ -1,12 +1,13 @@
 """Tests for Google Takeout CLI ingestion."""
 
 import json
+import subprocess
+import sys
 from pathlib import Path
 
 import pandas as pd
 from syrupy.assertion import SnapshotAssertion
 
-from crossfilter.data_ingestion.gpx.ingest_google_takeout import main
 from crossfilter.data_ingestion.gpx.google_takeout_parser_test import create_sample_takeout_data
 
 
@@ -21,9 +22,14 @@ def test_ingest_google_takeout_cli(tmp_path: Path, snapshot: SnapshotAssertion) 
     
     output_parquet = tmp_path / "output.parquet"
     
-    # Call the main function directly to avoid CliRunner issues with tqdm
-    main(takeout_dir, output_parquet, max_workers=1)
+    # Run the CLI via subprocess
+    result = subprocess.run([
+        sys.executable, "-m", "crossfilter.data_ingestion.gpx.ingest_google_takeout",
+        str(takeout_dir), str(output_parquet)
+    ], capture_output=True, text=True)
     
+    assert result.returncode == 0, f"CLI failed: {result.stderr}"
     assert output_parquet.exists()
+    
     df = pd.read_parquet(output_parquet)
     assert df.to_dict(orient="records") == snapshot
